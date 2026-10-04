@@ -6252,6 +6252,8 @@ function solveRoom(r){
 // rooms that complete a Logic Book page (lesson id in the book)
 // a preview build stops after this room with a TO BE CONTINUED screen (0 = the whole game)
 const PREVIEW_LAST = 0;
+// the full game replaced the rooms 1-12 preview on the same site: throw the preview's old save away (Tom: Max starts clean)
+if (!PREVIEW_LAST) try { Object.keys(localStorage).filter(k => k.startsWith('sparks-preview.')).forEach(k => localStorage.removeItem(k)); if (window.indexedDB) indexedDB.deleteDatabase('sparks-preview'); } catch (e) {}
 function previewEnd(){
   if (!A.on || A.previewShown) return;
   if (!$('#why').hidden || DLG.on) return void setTimeout(previewEnd, 600);   // wait for the gate card and password to be read
