@@ -407,10 +407,6 @@ body.tutOn #tut{top:calc(74px + env(safe-area-inset-top,0px));}
 'use strict';
 const $ = s => document.querySelector(s);
 const reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-// the full game replaced the rooms 1-12 preview on the same site: the first time, carry the preview's save over (same format, other key names)
-try { const ks = Object.keys(localStorage), from = 'sparks-' + 'preview.';
-  if (!ks.some(k => k.startsWith('redstone-academy.')) && ks.some(k => k.startsWith(from)))
-    ks.filter(k => k.startsWith(from)).forEach(k => localStorage.setItem('redstone-academy.' + k.slice(from.length), localStorage.getItem(k))); } catch (e) {}
 if (typeof THREE === 'undefined') { $('#nogl').hidden = false; return; }
 
 /* ================= constants ================= */
