@@ -526,7 +526,7 @@ const ITEMS = [
   {id:'confetti', name:'Confetti Cannon', tip:'Give it power: PARTY!'},
   {id:'firework', name:'Fireworks', tip:'Give it power: whoosh... BANG!'},
   {id:'gong', name:'Temple Gong', tip:'Give it power: BONNNNG'},
-  {id:'goldfish', name:'MEGA GOLDFISH', tip:'Give it power: BLUB!'},
+  {id:'goldfish', name:'MEGA ROBOT', tip:'Give it power: it GROWS, and everything near it goes BOING!'},   // id kept as 'goldfish' so old saves keep their toy
   {id:'spacetoilet', name:'Space Toilet', tip:'Give it power: 3, 2, 1... FLUSH OFF!'},
   {id:'glass', name:'Glass', tip:'See-through. Power can\'t get in'},
   {id:'disco', name:'Disco Ball', tip:'Give it power: PARTY!'},
@@ -1168,7 +1168,9 @@ const ICONS = {
   confetti: icon(g => { g.fillStyle='#7a3fbf'; g.fillRect(3,8,4,7); g.fillStyle='#ffd84a'; g.fillRect(4,6,6,3); [['#ff3b1f',10,2],['#4fa3ff',13,4],['#5d9c3a',11,0],['#ffd84a',14,1],['#ff7fb0',8,1]].forEach(([c,x,y]) => { g.fillStyle=c; g.fillRect(x,y,2,2); }); }),
   firework: icon(g => { g.fillStyle='#5a3d22'; g.fillRect(7,9,2,6); g.fillStyle='#d8261a'; g.fillRect(6,4,4,6); g.fillStyle='#ffd84a'; g.fillRect(7,2,2,2); g.fillStyle='#4fa3ff'; g.fillRect(2,1,1,1); g.fillRect(13,2,1,1); g.fillRect(12,6,1,1); }),
   gong: icon(g => { g.fillStyle='#6b4a24'; g.fillRect(1,2,2,13); g.fillRect(13,2,2,13); g.fillRect(1,2,14,2); g.fillStyle='#e8b830'; g.fillRect(4,5,8,8); g.fillStyle='#fff1a8'; g.fillRect(6,7,3,3); }),
-  goldfish: icon(g => { g.fillStyle='rgba(180,220,255,.6)'; g.fillRect(1,3,14,12); g.fillStyle='#ff8a1c'; g.fillRect(4,7,7,5); g.fillRect(11,6,3,7); g.fillStyle='#ffb35c'; g.fillRect(5,8,3,2); g.fillStyle='#111'; g.fillRect(5,8,1,1); }),
+  goldfish: icon(g => {   // the MEGA ROBOT (the old goldfish's id)
+    g.fillStyle='#7f8a96'; g.fillRect(4,2,8,6); g.fillRect(3,9,10,5); g.fillStyle='#ffe14a'; g.fillRect(7,0,2,2); g.fillStyle='#111'; g.fillRect(5,4,2,2); g.fillRect(9,4,2,2); g.fillStyle='#7ff0ff'; g.fillRect(5,4,1,1); g.fillRect(9,4,1,1);
+    g.fillStyle='#ff3b1f'; g.fillRect(6,10,4,2); g.fillStyle='#5a646e'; g.fillRect(1,9,2,4); g.fillRect(13,9,2,4); g.fillRect(4,14,3,2); g.fillRect(9,14,3,2); }),
   spacetoilet: icon(g => { g.fillStyle='#ffffff'; g.fillRect(4,4,8,5); g.fillRect(6,9,4,4); g.fillRect(9,1,4,4); g.fillStyle='#d8261a'; g.fillRect(3,9,2,4); g.fillRect(11,9,2,4); g.fillStyle='#ffb000'; g.fillRect(6,13,4,3); g.fillStyle='#ff5a1c'; g.fillRect(7,14,2,2); }),
   plate: icon(g => { g.fillStyle = '#5a5a5a'; g.fillRect(2,10,12,3); g.fillStyle = '#b0b0b0'; g.fillRect(2,9,12,2); g.fillStyle = '#d6d6d6'; g.fillRect(2,9,12,1); }),
   glass: CV.glass.toDataURL(),
@@ -1376,10 +1378,9 @@ function buildMesh(c, ghost){
       add(cbox(.1,1.6,.1), M.wood, -.45,.8,0); add(cbox(.1,1.6,.1), M.wood, .45,.8,0); add(cbox(1,.1,.12), M.wood, 0,1.6,0);
       const d = new THREE.Mesh(new THREE.CylinderGeometry(.38,.38,.06,18), M.gold); d.rotation.x = Math.PI/2; d.position.y = .95; d.userData.gong = true; g.add(d);
       break; }
-    case 'goldfish': {
-      add(cbox(.96,.9,.96), M.glass, 0,.45,0);
-      add(cbox(.9,.55,.9), M.waterOff, 0,.3,0);
-      if (!c.away){ const f = makeFish(.5); f.position.y = .35; g.add(f); }
+    case 'goldfish': {   // the MEGA ROBOT (id kept from the old goldfish): a small tin robot on a plinth
+      add(cbox(.9,.12,.9), M.smooth, 0,.06,0);
+      if (!c.away){ const rb = makeRobot(); rb.position.y = .12; g.add(rb); }
       break; }
     case 'spacetoilet': {
       add(cbox(.8,.08,.8), M.smooth, 0,.04,0);
@@ -2015,7 +2016,7 @@ function renderCard(){
     if (r.check === 'pen'){ const nT = TROOP.room === r && TROOP.list.length ? TROOP.list.length : r.troop.n; card.innerHTML = `<h3>Tamarins in the pen</h3><div class="note"><b style="font-size:22px">${rt.inPen || 0} / ${nT}</b>${nT < r.troop.n ? '<br>(just one, to start with)' : ''}</div>`; return; }
     if (r.check === 'launch'){ card.innerHTML = `<h3>Monkey launches</h3><div class="note"><b style="font-size:22px">${Math.min(rt.launches || 0, r.launches)} / ${r.launches}</b><br>(they have to do it themselves!)</div>`; return; }
     if (r.check === 'together'){ card.hidden = true; card.innerHTML = ''; return; }
-    if (r.check === 'each'){ const seen = rt.seen || new Set(); card.innerHTML = `<h3>Dance plates</h3><div class="blinks">${r.inputs.map((_, k) => `<span style="font-size:24px">${seen.has(k) ? '&#10003;' : '&#9675;'}</span>`).join('')}</div><div class="note">Stand on each plate by itself.</div>`; return; }
+    if (r.check === 'each'){ const n = (rt.seen || new Set()).size; card.innerHTML = `<h3>Dance plates: ${n} / ${r.inputs.length}</h3>${DISCO_LAYERS.map((nm, k) => `<div class="step${k < n ? ' on' : ''}">${k < n ? '&#10003;' : '&#9675;'} ${nm}</div>`).join('')}<div class="note">Stand on each plate by itself.</div>`; return; }
     if (r.check === 'pulse'){ card.innerHTML = `<h3>Parps</h3><div class="blinks">${[...Array(r.count)].map((_, i) => `<span style="font-size:24px">${i < rt.pulses ? '&#10003;' : '&#9675;'}</span>`).join('')}</div>${r.need === 'lever' ? '<div class="note">Lever ON, OFF, ON</div>' : ''}`; return; }
     if (r.check === 'latch'){ const ph = rt.phase || 0; card.innerHTML = `<h3>Memory test</h3><div class="note">${ph ? '&#10003; It remembered ON' : '&#9675; Step on the plate, step off: does it stay ringing?'}<br>&#9675; Reset: does it stay OFF?</div>`; return; }
     if (r.check === 'stopclock'){ card.innerHTML = `<h3>Haunted lamp</h3><div class="note">${rt.calmSeen ? '&#10003;' : '&#9675;'} Lever ON: it stays calm<br>${rt.blinkSeen ? '&#10003;' : '&#9675;'} Then lever OFF: it flickers again</div>`; return; }
@@ -3166,7 +3167,7 @@ function stinkMat(map){
 const STINK_TINT = {k:0, hold:0, el:null, wp:null};
 function stinkTintFrame(dt){
   const T = STINK_TINT; if (!T.el){ T.el = $('#stinkTint'); T.wp = new THREE.Vector3(); }
-  if (A.on && inFP()) for (const f of fx){ if (f.kind !== 'stink' || f.line || f.t < f.d) continue; f.g.getWorldPosition(T.wp); if (T.wp.distanceTo(camera.position) < .55 + f.g.scale.x*.6){ T.hold = 900; break; } }
+  if (A.on && inFP()) for (const f of fx){ if (f.kind !== 'stink' || f.line || f.t < f.d) continue; f.g.getWorldPosition(T.wp); if (Math.hypot(T.wp.x - camera.position.x, T.wp.z - camera.position.z) < .5 + f.g.scale.x*.5 && T.wp.y > camera.position.y - EYE - .3 && T.wp.y < camera.position.y + .7){ T.hold = 900; break; } }   // a puff anywhere around your body counts
   T.hold -= dt; const want = T.hold > 0 ? 1 : 0; T.k += (want - T.k)*Math.min(1, dt/(want ? 120 : 600));
   if (T.k < .01 && !want) T.k = 0;
   const o = Math.round(T.k*40)/50; if (T.o !== o){ T.o = o; T.el.style.opacity = o; }
@@ -3242,6 +3243,11 @@ function runFx(dt){
     else if (f.kind === 'fw'){ f.g.position.y += s*14; if (Math.random() < .7) burst(f.g.position.clone(), 0xffb000, 1); done = f.g.position.y > f.top; if (done) fireworkBurst(f.g.position.clone()); }
     else if (f.kind === 'spark'){ f.vy -= 3*s; f.vx *= .97; f.vy *= .97; f.vz *= .97; f.g.position.x += f.vx*s; f.g.position.y += f.vy*s; f.g.position.z += f.vz*s; f.g.scale.setScalar(Math.max(.05, 1 - f.t/1.6)); done = f.t > 1.6; }
     else if (f.kind === 'gong'){ const c = f.cell, gg = cellGroups[c.y*NX + c.x]; if (gg) gg.traverse(o => { if (o.userData.gong) o.rotation.z = Math.sin(f.t*22)*.25*Math.max(0, 1 - f.t/2); }); done = f.t > 2; }
+    else if (f.kind === 'robot'){   // grow (whirr), STOMP (everything near goes boing, happily), wave, shrink back
+      const t = f.t, k = t < 1.1 ? t/1.1 : t < 2.6 ? 1 : Math.max(0, 1 - (t - 2.6)/.7), sc = 1 + 2.4*(k*k*(3 - 2*k)) + (t < 1.1 && !reduceMotion ? Math.sin(t*30)*.04 : 0);
+      f.g.scale.setScalar(sc); const ud = f.g.userData; if (ud.arms) ud.arms.forEach((a, i) => { a.rotation.z = (i ? -1 : 1)*(t > 1.1 && t < 2.6 ? 2.4 + Math.sin(t*8)*.3 : .1); }); if (ud.eyes) ud.eyes.forEach(e => e.scale.y = t > 1.1 && t < 2.6 ? 1.4 : 1);
+      if (!f.stomped && t >= 1.1){ f.stomped = true; robotStomp(f.base); }
+      done = t >= 3.3; if (done){ f.cell.away = false; syncVisuals(); } }
     else if (f.kind === 'fish'){ const k = f.t/1.4; f.g.position.y = .5 + Math.sin(Math.min(1, k)*Math.PI)*3.2; f.g.rotation.z = k*Math.PI*2; f.g.position.x = f.base.x + Math.sin(k*Math.PI)*.3; done = k >= 1; if (done){ f.cell.away = false; syncVisuals(); burst(new THREE.Vector3(f.base.x, .9, f.base.z), 0x7fd0ff, 10); sfx.splash(); } }
     else if (f.kind === 'stoilet'){
       if (f.t < 2.6){ f.g.position.y += s*(4 + f.t*10); if (Math.random() < .8) burst(new THREE.Vector3(f.g.position.x, f.g.position.y, f.g.position.z), Math.random() < .5 ? 0xff9a2a : 0xdddddd, 1); }
@@ -3340,7 +3346,7 @@ const TEMPLE_ROOMS = [
     hint:'Lay Redstone Dust from the red block, round the pillar, all the way to the door. No gaps! The END of the wire must point straight INTO the door.',
     win:'The door\'s open! Power gets weaker on every dust. After 15, it\'s gone!',
     mc:'Redstone dust is a wire in Minecraft too. Run it from power right up to a door, and the door opens.',
-    bonus:{text:'BONUS: do it with 10 dust or fewer to win a MEGA GOLDFISH!', kind:'dust', n:10, reward:'goldfish'},
+    bonus:{text:'BONUS: do it with 10 dust or fewer to win a MEGA ROBOT!', kind:'dust', n:10, reward:'goldfish'},
     sol:[D(3,5),D(4,5),D(4,6),D(5,6),D(6,6),D(6,5),D(7,5),D(8,5),D(9,5),D(10,5)] },
   // the "into, not alongside" room: a wire that touches the lamp but turns away, so its END doesn't point in (Java). One pick-up fixes it.
   { id:4, ban:['rblock','lever','button','plate'], want:'the power has to come from the red block that\'s already here, along the wire', ch:1, name:'Point it IN!', give:['dust'], check:'lit', out:[[8,2]],
@@ -3421,9 +3427,9 @@ const TEMPLE_ROOMS = [
   { id:12, ch:4, name:'Monkey Disco', give:['dust'], check:'each', inputs:[[2,2],[8,2],[2,6],[8,6]], out:[[5,4]],
     fixed:[K('plate',2,2),K('plate',8,2),K('plate',2,6),K('plate',8,6),K('disco',5,4)],
     troop:{kinds:['mandrill','baboon','howler','spider','proboscis','lemur'], n:18, start:[1,1,9,7], dance:true, danceAt:[5,4], avoidPlates:true},
-    goal:'Wire the disco ball so stepping on ANY of the four dance plates starts the party.',
-    hello:'The wildest party animals in the jungle! They\'ll dance the second that disco ball lights up.',
-    hint:'Run a wire from every plate to the disco ball. Wires can join together, just like they can split.',
+    goal:'Wire ALL FOUR dance plates to the disco ball. Every plate that works adds more party: lights, a beat, a mirror ball... then DANCING!',
+    hello:'The wildest party animals in the jungle! Every dance plate that works adds more party. Get all four for the full disco!',
+    hint:'Run a wire from EVERY plate to the disco ball, then stand on each plate by itself. Wires can join together, just like they can split.',
     win:'PARTY! This plate OR that plate OR that one: any of them works. That\'s a real thing called an OR gate!',
     mc:'Join wires from lots of plates or buttons and any of them can open the same door. Handy for secret bases!',
     sol:[...row(2,3,7), D(5,3), ...row(6,3,7), D(5,5)] },
@@ -4649,7 +4655,6 @@ function sayOn(m, text, ms){
 
 /* ---- troops: dozens of small monkeys in the Monkey Business rooms, steered by what Max builds ---- */
 const TROOP = {room:null, list:[], bananas:[], spawnT:0, labels:[]};
-const DANCE_TUNE = [523, 659, 784, 659, 587, 698, 880, 698];
 function troopPassable(x, y, r){
   if (!inb(x, y) || wallAt(x, y) || isQuick(x, y)) return false;
   const c = at(x, y); if (!c) return true;
@@ -4699,7 +4704,7 @@ function troopAdd(r, n, hopIn){
   }
 }
 function despawnTroop(){
-  TROOP.list.forEach(m => decorRoot.remove(m)); TROOP.list = [];
+  TROOP.list.forEach(m => decorRoot.remove(m)); TROOP.list = []; discoDrop();
   TROOP.labels.forEach(l => decorRoot.remove(l)); TROOP.labels = [];
   TROOP.bananas.forEach(b => fxRoot.remove(b.g)); TROOP.bananas = [];
   TROOP.room = null;
@@ -4717,7 +4722,8 @@ function troopFrame(dt){
   const r = TROOP.room; if (!r || !TROOP.list.length) return;
   const t = r.troop, s = dt/1000, rt = A.rt && A.rt.room === r ? A.rt : null, now = performance.now();
   // what's going on in the room
-  const disp = litOfType(r, 'dispenser'), party = t.dance && litOfType(r, 'disco').length > 0, launchers = litOfType(r, 'launcher');
+  const disp = litOfType(r, 'dispenser'), discoOn = t.dance && litOfType(r, 'disco').length > 0, party = discoOn && discoLayer(r) >= 4, launchers = litOfType(r, 'launcher');
+  if (t.dance) discoFrame(r, s, discoOn);
   // dispensers fire bananas into the pen
   if (disp.length && !reduceMotion){
     TROOP.spawnT -= s;
@@ -4734,7 +4740,7 @@ function troopFrame(dt){
   }
   if (party && !TROOP.partyOn){ TROOP.partyOn = true; TROOP.partyT = 0; if (rt && !A.solved.has(r.id)) monkeySay('PARTY! Look at them go!', 2500); }
   if (!party && TROOP.partyOn){ TROOP.partyOn = false; const m = TROOP.list[Math.floor(Math.random()*TROOP.list.length)]; if (m && !(TROOP.danceUntil > now)) sayOn(m, 'Awww!', 1500); }
-  if (TROOP.partyOn){ TROOP.partyT += s; const k = Math.floor(TROOP.partyT*4); if (k !== TROOP.beat){ TROOP.beat = k; tone(DANCE_TUNE[k % DANCE_TUNE.length], .12, 'square', .025); if (k % 2 === 0) tone(110, .1, 'triangle', .05); } }
+  if (TROOP.partyOn) TROOP.partyT += s;   // the beat itself is the disco groove (discoFrame)
   const dancing = TROOP.partyOn || TROOP.danceUntil > now;
   let inLure = 0;
   for (const m of TROOP.list){
@@ -4747,7 +4753,7 @@ function troopFrame(dt){
     }
     if (u.dizzy > 0){ u.dizzy -= s; m.rotation.y += s*9; continue; }
     // shy of people: step away if you get too close (so they don't get under your feet while you build)
-    if (u.mode !== 'sit'){ const ax = m.position.x - P.x, az = m.position.z - P.z, ad = Math.hypot(ax, az); if (ad < 1.4 && ad > .01 && !(u.goalKind === 'lure' || u.goalKind === 'food')){ const k = Math.min(1, (1.4 - ad)) * s * 3.5; const nx = m.position.x + ax/ad*k, nz = m.position.z + az/ad*k, [qx, qy] = cellAtWorld(nx, nz); if (troopPassable(qx, qy, r) && troopIn([r.box.x0+2, r.box.y0+2, r.box.x1-2, r.box.y1-2], qx, qy)){ m.position.x = nx; m.position.z = nz; } if (u.goalKind === 'roam') u.goal = null; } }
+    if (u.mode !== 'sit' && !(dancing && t.dance)){ const ax = m.position.x - P.x, az = m.position.z - P.z, ad = Math.hypot(ax, az); if (ad < 1.4 && ad > .01 && !(u.goalKind === 'lure' || u.goalKind === 'food')){ const k = Math.min(1, (1.4 - ad)) * s * 3.5; const nx = m.position.x + ax/ad*k, nz = m.position.z + az/ad*k, [qx, qy] = cellAtWorld(nx, nz); if (troopPassable(qx, qy, r) && troopIn([r.box.x0+2, r.box.y0+2, r.box.x1-2, r.box.y1-2], qx, qy)){ m.position.x = nx; m.position.z = nz; } if (u.goalKind === 'roam') u.goal = null; } }
     let [cx, cy] = cellAtWorld(m.position.x, m.position.z);
     // never let one get wedged somewhere the troop can't path from (a toy dropped on it, squeezed onto the walkway): hop to the nearest open spot
     if (!troopPassable(cx, cy, r) || !troopIn([r.box.x0+2, r.box.y0+2, r.box.x1-2, r.box.y1-2], cx, cy)){
@@ -4777,8 +4783,8 @@ function troopFrame(dt){
     }
     if (dancing && t.dance){
       if (!u.dGoal){ const cs = [...Array(14)].map(() => [t.danceAt[0] + Math.round((Math.random() - .5)*4), t.danceAt[1] + Math.round((Math.random() - .5)*4)]).filter(([x, y]) => troopPassable(x, y, r) && !(x === t.danceAt[0] && y === t.danceAt[1])); u.dGoal = cs[0] || [cx, cy]; }
-      u.goal = u.dGoal; speedK = 2;
-    } else { u.dGoal = null; }
+      u.goal = u.dGoal; u.goalKind = 'danceSpot'; speedK = 1.4;
+    } else { u.dGoal = null; if (u.goalKind === 'danceSpot'){ u.goal = null; u.goalKind = null; } }
     if (!dancing || !t.dance){
       if (lureField && lureField.get(cx, cy) >= 0){
         if (!u.goal || u.goalKind !== 'lure'){ const inPen = lureField.cells.filter(([x, y]) => troopIn(t.pen, x, y)); u.goal = inPen.length ? inPen[Math.floor(Math.random()*inPen.length)] : t.lure; u.goalKind = 'lure'; if (Math.random() < .15) sayOn(m, 'BANANAS!', 1200); }
@@ -4843,12 +4849,78 @@ function troopFrame(dt){
 }
 function animTroop(m, s, moving, dancing){
   const u = m.userData;
-  u.phase += s * (moving ? 12 : dancing ? 10 : 0);
+  u.phase += s * (moving ? 12 : 0);
   const sw = reduceMotion ? 0 : (moving ? Math.sin(u.phase)*.6 : 0), fl = floorAtWorld(m.position.x, m.position.z);
   u.legs[0].rotation.x = sw; u.legs[1].rotation.x = -sw;
-  if (dancing && !reduceMotion){ u.arms[0].rotation.z = Math.PI*.8 + Math.sin(u.phase)*.4; u.arms[1].rotation.z = -Math.PI*.8 - Math.sin(u.phase)*.4; m.position.y = fl + Math.abs(Math.sin(u.phase*.5))*.25; if (!moving) m.rotation.y += s*3; }
-  else { u.arms[0].rotation.x = -sw; u.arms[1].rotation.x = sw; u.arms[0].rotation.z = 0; u.arms[1].rotation.z = 0; m.position.y = fl; }
+  u.dk = Math.max(0, Math.min(1, (u.dk || 0) + (dancing && !moving ? 1 : -1)*s*2.5));   // ease into the dance and out of it
+  if (u.dk > 0){
+    // a smooth, slow dance on the groove's beat (it used to jitter): bob once every two beats, sway, wave the arms; no spinning
+    const b = DISCO.beat + (u.phase % 1)*.25, w = Math.PI*b, k = u.dk*u.dk*(3 - 2*u.dk);   // a little out of step with each other, like real dancers
+    if (reduceMotion){ u.arms[0].rotation.z = Math.PI*.7*k; u.arms[1].rotation.z = -Math.PI*.7*k; u.arms[0].rotation.x = u.arms[1].rotation.x = 0; m.position.y = fl; m.rotation.z = 0; }
+    else { u.arms[0].rotation.z = (Math.PI*.72 + Math.sin(w)*.28)*k; u.arms[1].rotation.z = (-Math.PI*.72 + Math.sin(w)*.28)*k; u.arms[0].rotation.x = -sw*(1 - k); u.arms[1].rotation.x = sw*(1 - k);
+      m.position.y = fl + (1 - Math.cos(w))*.06*k; m.rotation.z = Math.sin(w*.5)*.12*k; u.head.rotation.x = Math.sin(w)*.12*k; }
+    if (dancing && !moving && TROOP.room && TROOP.room.troop.danceAt){ const c = cellPos(...TROOP.room.troop.danceAt), want = Math.atan2(c.x - m.position.x, c.z - m.position.z); m.rotation.y += Math.atan2(Math.sin(want - m.rotation.y), Math.cos(want - m.rotation.y))*Math.min(1, s*3); }
+  }
+  else { u.arms[0].rotation.x = -sw; u.arms[1].rotation.x = sw; u.arms[0].rotation.z = 0; u.arms[1].rotation.z = 0; m.position.y = fl; m.rotation.z = 0; u.head.rotation.x = 0; }
   if (u.hop > 0){ u.hop -= s*2.5; m.position.y = Math.max(m.position.y, fl + Math.sin(Math.max(0, u.hop)*Math.PI)*.4); }
+}
+/* ---- room 12's disco: every plate that works switches on one more layer of the party, so what's missing is obvious.
+   1 lights (coloured spots sweeping the floor), 2 the beat (musicCue('disco', n)), 3 a big mirror ball, 4 dancers + confetti.
+   Nothing strobes: colours drift, nothing flashes faster than the beat; with reduced motion the lights hold still. */
+const DISCO_LAYERS = ['Lights', 'A beat', 'Mirror ball', 'Dancing!'];
+const DISCO_SAY = ['LIGHTS! That plate works. But no music yet... try another plate!', 'A BEAT! Two plates work. Still no mirror ball...', 'A MIRROR BALL! Three plates. But nobody\'s dancing yet. ONE more!'];
+const DISCO = {g:null, n:0, beat:0, bpm:140, next:0, conT:0, lit:false};
+function discoLayer(r){ return A.solved.has(r.id) ? 4 : (A.rt && A.rt.room === r && A.rt.seen ? A.rt.seen.size : 0); }
+function discoBuild(r){
+  discoDrop();
+  const g = new THREE.Group(), c = cellPos(...r.troop.danceAt), add = o => { o.raycast = () => {}; g.add(o); return o; };
+  g.position.set(c.x, c.y, c.z);
+  const cols = [0xff3b6a, 0x3bb4ff, 0x7dff5a, 0xffd23b, 0xc05cff];
+  DISCO.spots = cols.map((col, i) => { const m = add(new THREE.Mesh(new THREE.CircleGeometry(1.05, 20), new THREE.MeshBasicMaterial({color:col, transparent:true, opacity:.38, blending:THREE.AdditiveBlending, depthWrite:false})));
+    m.rotation.x = -Math.PI/2; m.position.y = .03 + i*.002; m.userData.ph = i/cols.length*Math.PI*2; m.userData.rad = 1.6 + (i % 2)*1.3; return m; });
+  DISCO.beams = DISCO.spots.map(sp => { const b = add(new THREE.Mesh(new THREE.CylinderGeometry(.08, 1, 5, 12, 1, true), new THREE.MeshBasicMaterial({color:sp.material.color, transparent:true, opacity:.1, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide}))); b.position.y = 2.5; return b; });
+  // the mirror ball: lowers from up high on a chain, turns slowly, scatters little squares of light on the walls
+  const ball = new THREE.Group(); ball.position.y = 7; add(ball);
+  const bm = new THREE.Mesh(new THREE.IcosahedronGeometry(.75, 1), new THREE.MeshPhongMaterial({color:0xe8eef6, specular:0xffffff, shininess:140, flatShading:true, emissive:0x3a3f48})); bm.raycast = () => {}; ball.add(bm);
+  const chain = new THREE.Mesh(new THREE.BoxGeometry(.05, 6, .05), new THREE.MeshLambertMaterial({color:0x888888})); chain.position.y = 3.75; chain.raycast = () => {}; ball.add(chain);
+  const pts = []; for (let i = 0; i < 70; i++){ const a = Math.random()*Math.PI*2, h = Math.random()*2.8 - 1.2, rr = 4.2 + Math.random()*1.2; pts.push(Math.cos(a)*rr, h, Math.sin(a)*rr*.8); }
+  const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  const sparkle = new THREE.Points(pg, new THREE.PointsMaterial({color:0xffffff, size:.16, transparent:true, opacity:.85, depthWrite:false})); sparkle.raycast = () => {}; ball.add(sparkle);
+  DISCO.ball = ball; DISCO.ballMesh = bm; DISCO.sparkle = sparkle;
+  g.visible = false; decorRoot.add(g); DISCO.g = g; DISCO.n = 0; DISCO.lit = false; DISCO.drop = 0;
+}
+function discoDrop(){ if (DISCO.g){ decorRoot.remove(DISCO.g); DISCO.g.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); }); DISCO.g = null; } DISCO.lit = false; }
+function discoFrame(r, s, on){
+  if (!DISCO.g) discoBuild(r);
+  const n = on ? discoLayer(r) : 0, rm = reduceMotion;
+  DISCO.n = n;
+  DISCO.lit = on; DISCO.g.visible = n >= 1;
+  DISCO.beat += s*DISCO.bpm/60 * (n >= 2 ? 1 : .5);
+  if (n >= 1){
+    const tt = DISCO.beat*.25;   // the spots drift round slowly (a lap every 16 beats)
+    DISCO.spots.forEach((sp, i) => { const a = sp.userData.ph + (rm ? 0 : tt*Math.PI*2*(i % 2 ? 1 : -.8)); sp.position.x = Math.cos(a)*sp.userData.rad; sp.position.z = Math.sin(a)*sp.userData.rad*.8;
+      sp.material.opacity = .3 + (n >= 2 && !rm ? (1 - Math.cos(Math.PI*2*DISCO.beat))*.05 : 0);
+      const b = DISCO.beams[i]; b.position.x = sp.position.x/2; b.position.z = sp.position.z/2; b.lookAt(b.position.x*2 + DISCO.g.position.x, DISCO.g.position.y, b.position.z*2 + DISCO.g.position.z); b.rotateX(Math.PI/2); });
+  }
+  // the mirror ball comes down for layer 3, and goes back up when the party stops
+  const want = n >= 3 ? 3.6 : 7.5; DISCO.ball.position.y += (want - DISCO.ball.position.y)*Math.min(1, s*(rm ? 6 : 1.8)); DISCO.ball.visible = n >= 3 || DISCO.ball.position.y < 7.2;
+  if (!rm){ DISCO.ballMesh.rotation.y += s*.6; DISCO.sparkle.rotation.y += s*.25; }
+  // the beat: one bar at a time, scheduled a little ahead on the audio clock
+  if (n >= 2) discoGroove(n);
+  // dancers + confetti: a pop of confetti every couple of bars
+  if (n >= 4){ DISCO.conT -= s; if (DISCO.conT <= 0){ DISCO.conT = 3.4; if (!rm) confetti3D(cellPos(...r.troop.danceAt).add(new THREE.Vector3(0, 1.5, 0))); } } else DISCO.conT = .4;
+}
+function discoGroove(n){
+  const a = mbus(); if (!a) return;
+  const bar = 4*60/DISCO.bpm;
+  if (DISCO.next < a.currentTime) DISCO.next = a.currentTime + .06;
+  if (DISCO.next - a.currentTime < .35){ musicCue('disco', n); DISCO.next += bar; }
+}
+// a noise burst for the drums (one shared buffer)
+function discoNoise(a, t, dur, vol, hp){
+  if (!a.discoBuf){ const b = a.createBuffer(1, Math.floor(a.sampleRate*.4), a.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random()*2 - 1; a.discoBuf = b; }
+  const src = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain(); src.buffer = a.discoBuf; f.type = 'highpass'; f.frequency.value = hp;
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur); src.connect(f).connect(g).connect(a.mbus); src.start(t); src.stop(t + dur + .02); mdone([src, f, g], src);
 }
 function troopCheer(){ TROOP.list.forEach(m => { m.userData.hop = 1 + Math.random()*.4; }); }
 
@@ -5128,13 +5200,20 @@ function showPassword(pw){
   setTimeout(() => { if (!A.on) return; sfx.chime(); showCard(first ? 'Your first SECRET PASSWORD!' : 'SECRET PASSWORD!', (first ? 'A password is a secret code that takes you back to this exact spot. Grab a <b>pencil and paper</b> (or a grown-up) and <b>write it down</b>:<br>' : 'Write this down on your password paper:<br>') + `<b style="font-size:26px;letter-spacing:.04em">${pw.words}</b><br><small>${first ? 'Keep the paper safe. If the game ever forgets where you were, or you play on another device, go to <b>Passwords</b> on the menu and type it in. (The game remembers them for you too.)' : 'Find all your passwords under Passwords on the menu.'}</small><br><button class="btn" style="margin-top:8px" id="pwBackup">Also save a backup file</button>`); const bk = $('#pwBackup'); if (bk) bk.onclick = e => { e.stopPropagation(); sfx.click(); saveToFile().then(() => showToast($('#fileMsg').textContent)); }; }, 5000);
 }
 function usePassword(text){
+  const pw = passMatch(text); if (!pw) return false;
+  return passApply(pw);
+}
+function passMatch(text){
   // forgive a couple of spelling slips: kids type "BOOGY" for "BOOGIE"
   const lev = (x, y) => { const d = [...Array(y.length + 1).keys()]; for (let i = 1; i <= x.length; i++){ let prev = d[0]; d[0] = i; for (let j = 1; j <= y.length; j++){ const t = d[j]; d[j] = Math.min(d[j] + 1, d[j-1] + 1, prev + (x[i-1] === y[j-1] ? 0 : 1)); prev = t; } } return d[y.length]; };
-  // one-word passwords forgive one slip (two for long words); the old three-word ones still forgive two
+  // one-word passwords forgive two slips (one for five-letter words); the old three-word ones still forgive two
   const typed = passNorm(text), near = (w, k) => lev(typed, passNorm(w)) <= k;
   const pw = typed.length >= 4 && (PASSWORDS.find(p2 => typed === passNorm(p2.words) || (p2.old && typed === passNorm(p2.old)))
-    || PASSWORDS.map(p2 => ({p2, d:lev(typed, passNorm(p2.words))})).filter(o => o.d <= (typed.length >= 8 ? 2 : typed.length >= 5 ? 1 : 0)).sort((u, v) => u.d - v.d).map(o => o.p2)[0]
-    || (typed.length >= 6 && PASSWORDS.find(p2 => p2.old && near(p2.old, 2)))); if (!pw) return false;
+    || PASSWORDS.map(p2 => ({p2, d:lev(typed, passNorm(p2.words))})).filter(o => o.d <= (o.p2.words.length >= 6 ? 2 : o.p2.words.length >= 5 ? 1 : 0)).sort((u, v) => u.d - v.d).map(o => o.p2)[0]
+    || (typed.length >= 6 && PASSWORDS.find(p2 => p2.old && near(p2.old, 2))));
+  return pw || null;
+}
+function passApply(pw){
   const n = pw.after === 'launch' || pw.act === 2 ? TEMPLE_ROOMS.length : pw.after, cur = advLoad() || {};
   const solved = new Set([...(cur.solved || []), ...TEMPLE_ROOMS.filter(r => r.id <= n).map(r => r.id), ...(pw.act === 2 ? FUN_ROOMS.filter(r => r.id <= pw.after).map(r => r.id) : [])]);
   const unlocked = new Set([...(cur.unlocked || ['rblock']), 'rblock']); TEMPLE_ROOMS.filter(r => r.id <= n).forEach(r => (r.unlock || []).forEach(u => unlocked.add(u)));
@@ -5655,8 +5734,22 @@ function musicSet(key){
   a.mcomp.gain.cancelScheduledValues(now); a.mcomp.gain.setValueAtTime(a.mcomp.gain.value, now); a.mcomp.gain.linearRampToValueAtTime(.0001, now + 2.5);
   MUSIC.phase = 'fade'; MUSIC.fadeEnd = now + 2.6; MUSIC.q = []; MUSIC.qi = 0; MUSIC.at = M ? Math.min(MUSIC.at, now + (MUSIC.seen.has(key) && M.fam !== 'tense' ? mrange([8, 20]) : mrange([3, 6]))) : MUSIC.at;
 }
-function musicCue(kind){
+function musicCue(kind, n){
   const a = mbus(); if (!a || !MUSIC.on) return; const t = a.currentTime + .05;
+  if (kind === 'disco'){   // one bar at DISCO.bpm, scheduled at DISCO.next: 2 = kick, clap and hats; 3 = + a wobbly bass; 4 = + a bouncy lead and a sub drop
+    const t0 = Math.max(t, DISCO.next || 0), b = 60/DISCO.bpm, L = n || 2;
+    [0, 2.5].forEach(k => voice(150, t0 + k*b, .28, 'sine', .55, {slide:42}));
+    discoNoise(a, t0 + 2*b, .22, .32, 900);
+    for (let k = 0; k < 8; k++) discoNoise(a, t0 + k*b/2, .04, k % 2 ? .07 : .12, 7000);
+    if (L >= 3){ const o = a.createOscillator(), f = a.createBiquadFilter(), g = a.createGain(), lfo = a.createOscillator(), lg = a.createGain();
+      o.type = 'sawtooth'; o.frequency.setValueAtTime(N(-26), t0); o.frequency.setValueAtTime(N(-29), t0 + 2*b);
+      f.type = 'lowpass'; f.Q.value = 8; f.frequency.value = 420; lfo.type = 'sine'; lfo.frequency.setValueAtTime(2*DISCO.bpm/60, t0); lfo.frequency.setValueAtTime(3*DISCO.bpm/60, t0 + 2*b); lg.gain.value = 360;
+      lfo.connect(lg).connect(f.frequency); g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(.16, t0 + .02); g.gain.setValueAtTime(.16, t0 + 4*b - .06); g.gain.exponentialRampToValueAtTime(.0001, t0 + 4*b);
+      o.connect(f).connect(g).connect(a.mbus); o.start(t0); lfo.start(t0); o.stop(t0 + 4*b + .02); lfo.stop(t0 + 4*b + .02); mdone([o, f, g, lfo, lg], o); }
+    if (L >= 4){ [12, 15, 19, 15, 22, 19, 15, 12].forEach((s2, k) => voice(N(s2 - 12), t0 + k*b/2, b*.4, 'square', .03, {lp:2600}));
+      voice(N(-36), t0, 4*b, 'sine', .12); }
+    return;
+  }
   if (kind === 'reveal') [[0,4,7,12]].forEach(ch => ch.forEach((n, i) => { voice(N(n - 12), t + i*.12, 3.2, 'sawtooth', .04, {lp:1200, att:.4}); }));
   if (kind === 'fanfare') [0, 4, 7, 12, 7, 12, 16].forEach((n, i) => voice(N(n), t + i*.14, .5, 'square', .035, {lp:2400}));
 }
@@ -5665,6 +5758,7 @@ function musicFrame(){
   if (!A.on) return;
   let key = 'jungle';
   if (A.openCine) key = null;   // the opening scene has its own sting; let it breathe
+  else if (DISCO.lit && DISCO.n >= 2) key = null;   // room 12's disco has its own groove
   else if (A.act === 2) key = A.solved.has(FUN_LAST) && !A.funDone ? 'escape' : A.room && A.room.zone === 'fun' ? 'ride' : 'fun';
   else if (A.launching) key = 'cine';
   else if (A.launched) key = 'sky';
@@ -6162,6 +6256,29 @@ function underpantsRain(center){
     fxRoot.add(m); fx.push({g:m, t:0, kind:'pants', vx:(Math.random()-.5)*1.5, vy:-1 - Math.random()*2, vz:(Math.random()-.5)*1.5, spin:(Math.random()-.5)*8});
   }
 }
+// the MEGA ROBOT: a friendly tin robot with big glowing eyes and an antenna (everything with a face has eyes)
+const ROBOT_M = {};
+function makeRobot(){
+  const R = ROBOT_M; if (!R.body){ R.body = new THREE.MeshPhongMaterial({color:0x8d98a4, shininess:70}); R.dark = new THREE.MeshLambertMaterial({color:0x4e5862}); R.eye = new THREE.MeshBasicMaterial({color:0x7ff0ff}); R.red = new THREE.MeshBasicMaterial({color:0xff3b1f}); R.gold = new THREE.MeshBasicMaterial({color:0xffe14a}); }
+  const g = new THREE.Group(), b = (w, h, d, m, x, y, z, par) => { const q = new THREE.Mesh(cbox(w, h, d), m); q.position.set(x, y, z); q.raycast = () => {}; (par || g).add(q); return q; };
+  b(.14,.22,.16, R.dark, -.12,.11,0); b(.14,.22,.16, R.dark, .12,.11,0);   // legs
+  b(.5,.36,.34, R.body, 0,.4,0); b(.16,.08,.02, R.red, 0,.44,.175);   // body and its button
+  const head = new THREE.Group(); head.position.y = .72; g.add(head);
+  b(.4,.3,.32, R.body, 0,0,0, head); const eyes = [b(.1,.08,.02, R.eye, -.09,.03,.165, head), b(.1,.08,.02, R.eye, .09,.03,.165, head)]; b(.18,.03,.02, R.dark, 0,-.08,.165, head);
+  b(.03,.16,.03, R.dark, 0,.23,0, head); b(.07,.07,.07, R.gold, 0,.33,0, head);   // antenna
+  const arms = [-1, 1].map(sd => { const a = new THREE.Group(); a.position.set(sd*.3, .52, 0); g.add(a); b(.1,.3,.1, R.dark, 0,-.15,0, a); b(.13,.08,.13, R.body, 0,-.32,0, a); a.rotation.z = sd*.1; return a; });
+  g.userData = {eyes, arms, head}; return g;
+}
+// the robot's stomp: monkeys (and you) nearby go flying, happily, and land on their feet; nothing gets hurt
+function robotStomp(p){
+  if (!reduceMotion) shake = .45; sfx.boom ? sfx.boom() : noise(.5, .2, 300); burst(new THREE.Vector3(p.x, p.y + .2, p.z), 0xc8c8c8, 14); 
+  const near = m => m && m.parent && Math.hypot(m.position.x - p.x, m.position.z - p.z) < 4.5;
+  TROOP.list.filter(near).forEach(m => { const u = m.userData; if (u.fly) return; const dx = m.position.x - p.x, dz = m.position.z - p.z, d = Math.max(.3, Math.hypot(dx, dz)), T = 1.1;
+    u.fly = {vx:dx/d*2.2, vz:dz/d*2.2, vy:16*T/2, spin:6}; u.goal = null; if (Math.random() < .5) sayOn(m, bag('robot', ['WHEEEE!', 'BOING!', 'Again! AGAIN!', 'Best robot EVER!', 'I can fly!']), 1400); });
+  [A.monkey, ...(A.extras || [])].filter(near).forEach(m => { m.userData.hop = 3; });
+  if (A.monkey && near(A.monkey)) setTimeout(() => { if (A.on) monkeySay(bag('robotB', ['BOING! My bones went all jangly! Do it again!', 'Whoa! That robot is nearly as tall as a giant. Nearly.', 'I bounced! I actually BOUNCED!']), 4000); }, 600);
+  if (Math.hypot(P.x - p.x, P.z - p.z) < 3.2 && inFP() && !P.fling){ P.vy = 10; P.ground = false; showToast(bag('robotMe', ['BOING! The robot bounced you!', 'WHEEE! Robot stomp!'])); }
+}
 function makeFish(sc){
   const g = new THREE.Group(), o = new THREE.MeshPhongMaterial({color:0xff8a1c, shininess:80}), l = new THREE.MeshPhongMaterial({color:0xffb35c, shininess:80}), e = new THREE.MeshBasicMaterial({color:0x111111});
   const p = (w,h,d,m,x,y,z) => { const q = new THREE.Mesh(cbox(w,h,d), m); q.position.set(x,y,z); q.raycast = () => {}; g.add(q); return q; };
@@ -6174,7 +6291,7 @@ function toyGo(c){
   if (c.t === 'confetti'){ sfx.party(); confetti3D(p); monkeyCheer(p); }
   else if (c.t === 'firework'){ sfx.firework(); launchFirework(p); }
   else if (c.t === 'gong'){ sfx.gong(); fx.push({kind:'gong', cell:c, t:0}); monkeyCheer(p); }
-  else if (c.t === 'goldfish'){ sfx.blub(); c.away = true; syncVisuals(); const f = makeFish(.8); f.position.set(p.x, p.y + .5, p.z); fxRoot.add(f); fx.push({g:f, t:0, kind:'fish', cell:c, base:p.clone()}); }
+  else if (c.t === 'goldfish'){ if (c.away) return; c.away = true; syncVisuals(); const rb = makeRobot(); rb.position.set(p.x, p.y + .12, p.z); rb.rotation.y = Math.atan2(P.x - p.x, P.z - p.z); fxRoot.add(rb); fx.push({g:rb, t:0, kind:'robot', cell:c, base:p.clone(), stomped:false}); sfx.piston(); tone(110, .5, 'sawtooth', .08, 0, 440); }
   else if (c.t === 'spacetoilet'){ sfx.flush(); setTimeout(() => sfx.rocket(), 500); c.away = true; syncVisuals(); const t = makeToilet(); t.scale.setScalar(.45); t.position.set(p.x, p.y + .08, p.z); fxRoot.add(t); const fl = glow(M.glowRed, 1.2, -.2); t.add(fl); fx.push({g:t, t:0, kind:'stoilet', cell:c, base:p.clone()}); }
   else if (c.t === 'water'){ sfx.splash(); }
   else if (c.t === 'gate'){ sfx.creak(); }
@@ -7027,7 +7144,7 @@ function checkAdventure(){
     rt.seen = rt.seen || new Set();
     if (n === 0 && !lit) rt.darkSeen = true;
     if (n === 0 && lit && !rt.cheatShown){ rt.cheatShown = true; plogEvent('cheat'); sfx.nope(); monkeySay('The disco\'s on with nobody dancing! It should only start when someone steps on a plate.', 9000); }
-    if (n === 1 && lit){ const k = pressed.indexOf(true); if (!rt.seen.has(k)){ rt.seen.add(k); sfx.row(); renderCard(); if (rt.seen.size < r.inputs.length) monkeySay(`That plate works! ${r.inputs.length - rt.seen.size} to go.`, 3500); } }
+    if (n === 1 && lit){ const k = pressed.indexOf(true); if (!rt.seen.has(k)){ rt.seen.add(k); sfx.row(); renderCard(); if (rt.seen.size < r.inputs.length) monkeySay(DISCO_SAY[rt.seen.size - 1] || `That plate works! ${r.inputs.length - rt.seen.size} to go.`, 5000); } }
     if (rt.seen.size === r.inputs.length && rt.darkSeen){ TROOP.danceUntil = performance.now() + 15000; solveRoom(r); }
   } else if (r.check === 'delay'){
     // the output has to come on a moment AFTER the input, not at the same time: dark when you step on, lit a little later, with the same build all along
@@ -7142,9 +7259,18 @@ function checkBonus(r, rt){
   A.bonus.add(r.id); A.unlocked.add(b.reward);
   const it = ITEMS.find(i => i.id === b.reward);
   sfx.chime(); confetti(); if (b.reward === 'fart') setTimeout(() => sfx.fart(), 400);
-  monkeySay(`BONUS! You earned your own ${it.name}! It works in every room now.`, 9000);
-  showToast(`You earned: ${it.name}!`);
+  // say what he DID to earn it: a silent reward looks random
+  const toyNm = id => (ITEMS.find(i => i.id === id) || {name:id}).name, why = bonusWhy(r, b, rt, toyNm);
+  monkeySay(`${why} BONUS: your own ${it.name}! It works in every room now.`, 10000);
+  showToast(`${why} BONUS: ${it.name}!`);
   refreshHotbar(); renderCard(); advSaveSoon();
+}
+function bonusWhy(r, b, rt, toyNm){
+  if (b.kind === 'dust'){ const n = countDust(r); return `You used only ${n} dust!`; }
+  if (b.kind === 'pulses') return `You made it go ${b.n} ${b.unit || 'times'}!`;
+  if (b.kind === 'toyLit') return `You made the ${toyNm(b.toy)} go off with the ${r.out.length > 1 ? 'lamps' : 'lamp'}!`;
+  if (b.kind === 'toyOnInput') return `You made the ${toyNm(b.toy)} go off when someone stood on the plate!`;
+  return 'You did the bonus!';
 }
 function countIn(r, t){ const b = r.box; let n = 0; for (let x=b.x0;x<=b.x1;x++) for (let y=b.y0;y<=b.y1;y++){ const c = at(x,y); if (c && c.t === t && !c.locked) n++; } return n; }
 function countDust(r){ const b = r.box; let n = 0; for (let x=b.x0;x<=b.x1;x++) for (let y=b.y0;y<=b.y1;y++){ const c = at(x,y); if (c && c.t === 'dust') n++; } return n; }
@@ -8010,6 +8136,8 @@ function resetRoom(){
 /* ================= test hook ================= */
 window.goAct = goAct;
 window.__game = {
+  menuScene(){ return !!(MENU3D.g && MENU3D.g.visible); },
+  passwords(){ return PASSWORDS.map(p => p.words); }, tryPassword(t){ const pw = passMatch(t); return pw ? pw.words : null; },
   backup:{mirrorNow, makeSaveCode, loadSaveCode, IDB, restoreKeys, snapKeys},
   loadLesson(n, keep){ $('#menu').hidden = true; $('#hud').hidden = false; loadLesson(n, !keep); refreshHotbar(); },
   armCard(){ cardArmT = -1e9; $('#whyOk').disabled = false; }, dropCards(){ CARDQ.length = 0; $('#why').hidden = true; }, cardQueue(){ return CARDQ.map(c => c[0]); }, cardArmed,
@@ -8036,6 +8164,8 @@ window.__game = {
     tp(x, y){ const c = cellPos(x, y); P.x = c.x; P.z = c.z; P.y = c.y; stepFP(0); advFrame(0, 0); },
     room(){ return A.rt && A.rt.room ? A.rt.room.id : A.room; },
     playerY(){ return P.y; }, flinging(){ return !!P.fling; }, pitch(){ return P.pitch; },
+    cellNear(x, z){ return cellAtWorld(x, z); }, robotScale(){ const f = fx.find(q => q.kind === 'robot'); return f ? f.g.scale.x : 0; }, troopFlying(){ return TROOP.list.filter(m => m.userData.fly).length; }, itemName(id){ return (ITEMS.find(i => i.id === id) || {}).name; },
+    troopPoses(){ return TROOP.list.map(m => [m.position.x, m.position.y, m.position.z, m.rotation.y, m.rotation.z]); }, disco(){ return {n:DISCO.n, lit:DISCO.lit, shown:!!(DISCO.g && DISCO.g.visible), ballY:DISCO.ball ? DISCO.ball.position.y : null}; },
     bonus(id){ return A.bonus.has(id); },
     disc(){ return [...A.disc]; }, discList(){ return DISCOVERIES.map(d => d.id || d[0]); },
     monkeyPos(){ return A.monkey ? [...cellAtWorld(A.monkey.position.x, A.monkey.position.z)] : null; }, baroldXZ(){ return A.monkey ? [A.monkey.position.x, A.monkey.position.z, A.monkey.position.y] : null; }, doorStand(){ return A.doorTrapOff ? [ENTRANCE[0], ENTRANCE[1] + 2] : TRAP.stand; }, trapBlock(){ return TRAP.block; },
