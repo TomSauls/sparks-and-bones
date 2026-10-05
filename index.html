@@ -318,6 +318,9 @@ body.pad #topBtns .btn[data-pad]::after{content:attr(data-pad);position:absolute
 #movePanel textarea{width:100%;font:14px/1.3 ui-monospace,Menlo,monospace;padding:8px;border:2px solid #555;background:#f4f4f4;color:#222;resize:vertical;-webkit-user-select:text;user-select:text;}
 #movePanel .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;}
 #movePanel .msg{font-size:17px;font-weight:600;color:var(--night);}
+#hurt{position:fixed;inset:0;pointer-events:none;z-index:6;opacity:0;background:radial-gradient(circle, rgba(255,40,20,.35) 20%, rgba(200,0,0,.8) 100%);}
+#hurt.go{animation:hurt 1.1s ease-out 1;}
+@keyframes hurt{0%{opacity:1}100%{opacity:0}}
 #dead{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(60,10,0,.55);z-index:5;}
 #dead .soot{position:absolute;inset:0;background:radial-gradient(circle at 50% 50%, rgba(0,0,0,0) 30%, rgba(0,0,0,.75) 100%);}
 #dead .deadCard{position:relative;padding:18px 22px;text-align:center;max-width:min(460px,calc(100vw - 32px));}
@@ -491,7 +494,7 @@ body.dlgOn #hud > #toast{bottom:auto;top:44%;}   /* a toast never lands on top o
 <svg id="cross" viewBox="0 0 40 40" hidden aria-hidden="true"><path d="M20 8v24M8 20h24" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".85"/><path d="M20 8v24M8 20h24" stroke="#000" stroke-width="1" stroke-linecap="round" opacity=".5"/></svg>
 <img id="hand" class="px" alt="" hidden>
 <div id="touchPad" hidden><div id="stick"><div id="knob"></div></div><button id="jumpBtn" aria-label="Jump"><svg viewBox="0 0 24 24" fill="#fff"><path d="M12 4l8 9h-5v7H9v-7H4z"/></svg></button></div>
-<div id="dead" hidden><div class="soot"></div><div class="deadCard panel"><div class="deadHead">OOPS!</div><div id="deadMsg"></div><div class="deadSub">Back to the start of the room...</div></div></div>
+<div id="hurt" aria-hidden="true"></div><div id="dead" hidden><div class="soot"></div><div class="deadCard panel"><div class="deadHead">OOPS!</div><div id="deadMsg"></div><div class="deadSub">Back to the start of the room...</div></div></div>
 <div id="splash" hidden></div>
 <canvas id="confetti" hidden></canvas>
 <div id="nogl" class="panel" hidden>This game needs 3D graphics (WebGL). Try another browser.</div>
@@ -534,7 +537,18 @@ const ITEMS = [
   {id:'airhorn', name:'Air Horn', tip:'Give it power: HOOOONK!'},
   {id:'bananacannon', name:'Banana Cannon', tip:'Give it power: fires bananas the way you face'},
   {id:'lantern', name:'Lantern', tip:'Just light (not redstone). Put it anywhere that\'s too dark'},
-  {id:'gunge', name:'Gunge Tank', tip:'Give it power: SPLURT! Green gunge on anyone nearby'}
+  {id:'gunge', name:'Gunge Tank', tip:'Give it power: SPLURT! Green gunge on anyone nearby'},
+  // the sandbox's own (Free build): blast-proof blocks and toys, won through the game (SANDBOX_UNLOCKS)
+  {id:'steel', name:'Steel Block', tip:'Blast-proof! Boom Blocks can\'t break it'},
+  {id:'rglass', name:'Blast-proof Glass', tip:'See-through AND blast-proof. Build a wall to watch the booms from behind'},
+  {id:'monkeys', name:'Monkey Button', tip:'Tap it (or give it power): 5 capuchins come out to play!'},
+  {id:'banana', name:'Banana', tip:'Throw it! Your helper monkey runs over and stands there (great on pressure plates)'},
+  {id:'sheep', name:'Redstone Sheep', tip:'A sheep full of redstone! It powers whatever it stands next to'},
+  {id:'beacon', name:'Homing Beacon', tip:'Give it power, then STAND BACK. Something VERY big is coming...'},
+  {id:'bananabomb', name:'Banana Bomb', tip:'Give it power: a bunch of bananas goes POP, everywhere!'},
+  {id:'madcow', name:'Mad Cow Barn', tip:'Give it power: a stampede of cows charges out the way you faced. MOO!'},
+  {id:'skunk', name:'Skunk Hutch', tip:'Give it power: out comes a skunk. It leaves a stinky trail (and stink goes BANG near TNT)'},
+  {id:'groovitron', name:'Groovitron', tip:'Give it power: a disco ball goes up, and everyone nearby HAS to dance'}
 ];
 
 /* ================= lessons ================= */
@@ -640,7 +654,7 @@ const LESSONS = [
    why:'The two torches hold each other. One stays off because the other is on, and they stay that way after you let go. That is how a computer remembers!'},
   {id:13, name:'Free build', gate:'free', kind:'free', inputs:[], lamp:null, ghosts:[],
    goal:'Build anything you like!', tools:null,
-   intro:'Free build! Everything is unlocked.', hint:'Try a clock, a door, or a rocket.',}
+   intro:'Free build! Build anything you like. Win more toys in the temple.', hint:'Try a clock, a door, or a rocket.',}
 ];
 
 const BOOK = {
@@ -667,7 +681,7 @@ try { const raw = localStorage.getItem(SAVE_KEY); if (raw) { const p = JSON.pars
 const FREE_ID = 13, LAST_MISSION = 12;
 const UNLOCK_ITEM = {fart:1, tnt:3};
 const itemOpen = id => true;
-const lessonOpen = id => id !== FREE_ID || !!progress.act1 || LESSONS.every(l => l.id === FREE_ID || progress.done[l.id]);   // Free build opens after the 12 missions, or after Act 1
+const lessonOpen = id => id !== FREE_ID || !!progress.act1 || sbOpen() || LESSONS.every(l => l.id === FREE_ID || progress.done[l.id]);   // Free build opens after the 12 missions, or after Act 1
 function saveProgress(){ try { localStorage.setItem(SAVE_KEY, JSON.stringify(progress)); } catch (e) {} }
 const BUILD_KEY = id => 'redstone-academy.build.' + id;
 function readBuild(id){ try { const v = localStorage.getItem(BUILD_KEY(id)); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
@@ -834,28 +848,17 @@ function step(){
   runEvents();
 }
 function runEvents(){
-  const ev = S.events.splice(0);
+  const ev = S.events.splice(0), booms = sbTick();
   for (const [k, c] of ev){
-    if (k === 'fart'){ sfx.fart(); puff(c); }
+    if (k === 'fart'){ sfx.fart(); puff(c); toyFire('fart', 'power', c); }
     else if (k === 'toy') toyGo(c);
     else if (k === 'vein'){ syncVisuals(); if (typeof veinOpened === 'function') veinOpened(c); }
     else if (k === 'not'){ sfx.row(); showToast('You made a NOT gate! Power goes in, the torch flips it OFF.'); }
     else if (k === 'burn'){ smoke(c); sfx.fizz(); burnLine(); }
     else if (k === 'popoff'){ smoke(c); sfx.brk(c.t); syncVisuals(); saveBuildSoon(); }
-    else if (k === 'boom'){
-      if (at(c.x, c.y) !== c) continue;
-      setCell(c.x, c.y, null);
-      for (let dy=-2; dy<=2; dy++) for (let dx=-2; dx<=2; dx++){
-        if (dx*dx + dy*dy > 5) continue;
-        const n = at(c.x+dx, c.y+dy); if (!n) continue;
-        if (n.t === 'tnt'){ if (!n.fuse) n.fuse = TNT_CHAIN; continue; }   // Java: a blasted TNT goes off 0.5 to 1.5 s later
-        if (n.t === 'crackwall'){ setCell(n.x, n.y, null); A.shrineOpen = true; discover('shrine'); setTimeout(() => { monkeySay('KABOOM! The old shrine cracked open! Something\'s inside...', 6000); }, 600); continue; }
-        if (n.locked) continue;
-        setCell(n.x, n.y, null);
-      }
-      sfx.boom(); explode(c); saveBuildSoon();
-    }
+    else if (k === 'boom') booms.push({x:c.x, y:c.y, z:c.z || 0, c});   // every TNT that goes off in this step is ONE bang (tntBang)
   }
+  if (booms.length) tntBang(booms);
 }
 
 /* ================= audio ================= */
@@ -967,15 +970,23 @@ const sfx = {
   row(){ tone(988, .09, 'triangle', .08); tone(1319, .14, 'triangle', .08, .08); },
   chime(){ [523,659,784,1047,1319].forEach((f,i)=>tone(f, .35, 'triangle', .09, i*.11)); tone(1568, .6, 'sine', .06, .55); },
   blink(){ tone(vary(1760, .03), .05, 'sine', .04); },
-  // TNT: a sharp crack, a big filtered blast, a chest-thump, and a long rumbling tail
-  boom(){ const a = ac(); if (!a) return; const t0 = a.currentTime;
-    noise(.05, .35, 3500, 'highpass');
+  // TNT: a sharp crack, a big filtered blast, a chest-thump, LOADS of bass, and a long rumbling tail.
+  // n = how many went off in the same bang: the more, the deeper, longer and bassier (one sound per bang, never one per block)
+  boom(n){ const a = ac(); if (!a) return; const t0 = a.currentTime, k = Math.min(1, Math.log2(Math.max(1, n || 1))/6);   // 0 for one TNT, 1 for 64
+    noise(.05, .35, 3500 - k*1500, 'highpass');
     const s = a.createBufferSource(), lp = a.createBiquadFilter(), g = a.createGain(); s.buffer = noiseBuf(a); s.loop = true;
-    lp.type = 'lowpass'; lp.Q.value = 1; lp.frequency.setValueAtTime(vary(1400), t0); lp.frequency.exponentialRampToValueAtTime(110, t0 + 1.6);
-    g.gain.setValueAtTime(1, t0); g.gain.setTargetAtTime(.0001, t0 + .05, .5);
-    s.connect(lp).connect(g).connect(sfxOut(a)); sfxChain(a, s, [lp, g], t0 + 2.8);
+    lp.type = 'lowpass'; lp.Q.value = 1; lp.frequency.setValueAtTime(vary(1400 - k*500), t0); lp.frequency.exponentialRampToValueAtTime(110 - k*50, t0 + 1.6 + k*1.4);
+    g.gain.setValueAtTime(1, t0); g.gain.setTargetAtTime(.0001, t0 + .05, .5 + k*.7);
+    s.connect(lp).connect(g).connect(sfxOut(a)); sfxChain(a, s, [lp, g], t0 + 2.8 + k*2.5);
     tone(vary(85), .8, 'sine', .7, 0, 32);
-    noise(2.4, .25, vary(130), 'lowpass', .25, 2); },
+    sfx.thump(n);
+    noise(2.4 + k*2.5, .25 + k*.12, vary(130 - k*50), 'lowpass', .25, 2); },
+  // the bass you feel in your chest: deep sine drops (sub-bass), plus a low buzzy one that small speakers can play too
+  thump(n){ const k = Math.min(1, Math.log2(Math.max(1, n || 1))/6);
+    tone(vary(64, .05), 1.1 + k*1.6, 'sine', .55 + k*.35, 0, 24);
+    tone(vary(42, .04), 1.5 + k*2, 'sine', .4 + k*.45, .04, 19);
+    tone(vary(58, .05), .5 + k*.9, 'triangle', .16 + k*.16, 0, 30);
+    if (n > 2) tone(vary(110), .3 + k*.4, 'sawtooth', .05 + k*.06, .02, 45); },
   hiss(){ noise(.08, .04, vary(4000)); },
   fizz(){ noise(.45, .07, vary(5200), 'highpass'); tone(vary(900), .35, 'sine', .03, 0, 260); noise(.2, .05, 900, 'lowpass', .3); },
   // a proper whoopee-cushion PARP: a buzzy pulse wave (the rubber lips) flapping 15-35 times a second, through a low
@@ -1194,6 +1205,19 @@ const ICONS = {
     g.fillStyle = '#97a83a'; [[10,0],[9,1],[10,2],[9,3],[13,0],[12,1],[13,2],[12,3]].forEach(([x, y]) => g.fillRect(x, y, 1, 1)); })
 };
 
+// sandbox blocks: steel (blast-proof) and blast-proof glass (thick frame, rivets), plus toy icons
+CV.steel = cv16(g => { speckle(g, ['#9aa3ab','#a7b0b8','#8e979f']); g.fillStyle = '#6a737b'; g.fillRect(0,0,16,1); g.fillRect(0,15,16,1); g.fillRect(0,0,1,16); g.fillRect(15,0,1,16); g.fillStyle = '#d6dde3'; g.fillRect(1,1,14,1); g.fillRect(1,1,1,14); g.fillStyle = '#4a5258'; [[3,3],[12,3],[3,12],[12,12]].forEach(([x,y]) => g.fillRect(x,y,1,1)); g.fillStyle = '#c4ccd2'; [[2,2],[11,2],[2,11],[11,11]].forEach(([x,y]) => g.fillRect(x,y,1,1)); });
+CV.rglass = cv16(g => { g.clearRect(0,0,16,16); g.fillStyle = 'rgba(170,215,240,.3)'; g.fillRect(0,0,16,16); g.fillStyle = '#7d8a94'; g.fillRect(0,0,16,2); g.fillRect(0,14,16,2); g.fillRect(0,0,2,16); g.fillRect(14,0,2,16); g.fillRect(7,0,2,16); g.fillStyle = '#c4ccd2'; [[0,0],[14,0],[0,14],[14,14],[7,7]].forEach(([x,y]) => g.fillRect(x,y,2,2)); g.fillStyle = '#e9f7ff'; g.fillRect(3,4,1,1); g.fillRect(4,3,1,1); g.fillRect(10,4,1,1); g.fillRect(11,3,1,1); });
+ICONS.steel = CV.steel.toDataURL(); ICONS.rglass = CV.rglass.toDataURL();
+ICONS.monkeys = icon(g => { g.fillStyle = '#4a4a4a'; g.fillRect(2,11,12,4); g.fillStyle = '#d8261a'; g.fillRect(4,9,8,3); g.fillStyle = '#3b2616'; g.fillRect(4,1,8,7); g.fillStyle = '#f0d2a8'; g.fillRect(5,3,6,4); g.fillStyle = '#111'; g.fillRect(6,4,1,1); g.fillRect(9,4,1,1); g.fillStyle = '#1a0e08'; g.fillRect(4,1,8,1); });
+ICONS.banana = icon(g => { g.fillStyle = '#ffd83a'; [[3,11],[4,12],[5,12],[6,13],[7,13],[8,13],[9,12],[10,12],[11,11],[12,10],[12,9],[13,8],[13,7]].forEach(([x,y]) => g.fillRect(x,y,2,2)); g.fillStyle = '#f2b800'; [[4,13],[7,14],[10,13],[13,9]].forEach(([x,y]) => g.fillRect(x,y,1,1)); g.fillStyle = '#6b4a24'; g.fillRect(13,5,2,2); g.fillRect(2,10,2,2); });
+ICONS.sheep = icon(g => { g.fillStyle = '#eeeeee'; g.fillRect(3,5,9,6); g.fillStyle = '#ff3b1f'; [[4,6],[7,8],[10,6],[5,9],[9,9]].forEach(([x,y]) => g.fillRect(x,y,1,1)); g.fillStyle = '#3a2a22'; g.fillRect(11,3,4,5); g.fillStyle = '#fff'; g.fillRect(12,4,1,1); g.fillStyle = '#3a2a22'; g.fillRect(4,11,2,3); g.fillRect(9,11,2,3); g.fillStyle = '#ffd84a'; g.fillRect(1,2,1,1); g.fillRect(14,11,1,1); });
+ICONS.bananabomb = icon(g => { g.fillStyle = '#ffd83a'; g.fillRect(3,6,4,8); g.fillRect(7,5,3,9); g.fillRect(10,6,3,8); g.fillStyle = '#f2b800'; g.fillRect(6,7,1,7); g.fillRect(10,7,1,7); g.fillStyle = '#6b4a24'; g.fillRect(7,3,3,2); g.fillStyle = '#ff5a1c'; g.fillRect(9,1,1,2); g.fillStyle = '#ffe36b'; g.fillRect(10,0,1,1); });
+ICONS.madcow = icon(g => { g.fillStyle = '#a8322a'; g.fillRect(1,6,14,9); g.fillStyle = '#7a1e18'; g.fillRect(0,4,16,3); g.fillStyle = '#f2f2ee'; g.fillRect(5,9,6,6); g.fillStyle = '#222'; g.fillRect(6,10,2,2); g.fillStyle = '#f0a0b0'; g.fillRect(6,13,4,2); g.fillStyle = '#111'; g.fillRect(7,10,1,1); g.fillRect(9,10,1,1); });
+ICONS.skunk = icon(g => { g.fillStyle = '#1a1a1a'; g.fillRect(2,8,8,5); g.fillRect(9,7,4,4); g.fillRect(1,2,3,7); g.fillStyle = '#f2f2f2'; g.fillRect(4,8,5,1); g.fillRect(2,2,1,6); g.fillRect(11,7,1,2); g.fillStyle = '#97a83a'; g.fillRect(5,3,1,1); g.fillRect(6,2,1,1); g.fillRect(7,3,1,1); g.fillStyle = '#fff'; g.fillRect(12,8,1,1); });
+ICONS.groovitron = icon(g => { g.fillStyle = '#dfe6ee'; g.fillRect(4,3,8,8); g.fillStyle = '#ff7fb0'; g.fillRect(5,4,2,2); g.fillStyle = '#4fa3ff'; g.fillRect(9,6,2,2); g.fillStyle = '#ffd84a'; g.fillRect(6,8,2,2); g.fillStyle = '#6a6a6a'; g.fillRect(7,11,2,4); g.fillStyle = '#fff'; g.fillRect(1,1,1,1); g.fillRect(14,2,1,1); g.fillRect(13,12,1,1); });
+ICONS.beacon = icon(g => { g.fillStyle = '#4a4a4a'; g.fillRect(3,11,10,4); g.fillStyle = '#7a7a7a'; g.fillRect(5,8,6,3); g.fillStyle = '#ff3b1f'; g.fillRect(6,5,4,3); g.fillStyle = '#fff8a0'; g.fillRect(7,0,2,5); g.fillStyle = '#ffe36b'; g.fillRect(4,2,1,1); g.fillRect(11,2,1,1); });
+
 /* ================= three.js scene ================= */
 const canvas = $('#view');
 let renderer;
@@ -1219,7 +1243,7 @@ function lanternFrame(){
 function lightFrame(dt){
   if ((S.tick || 0) % 5 === 0) lanternFrame();
   if (!S.zone || S.mode !== 'adventure' || A.launching || A.launched) return;
-  const [x, y] = cellAtWorld(P.x, P.z), want = inb(x, y) && S.zone[y*NX + x] ? 1 : 0;
+  const [x, y] = cellAtWorld(P.x, P.z), want = inb(x, y) && S.zone[y*NX + x] ? 1 : inb(x, y) ? roofDim(x, y) : 0;   // (roofed rooms: half way)
   LIGHT.k += (want - LIGHT.k) * Math.min(1, dt/450);
   // under the jungle canopy: dim, green and misty; it lifts as you near the temple
   const jw = S.swamp && !A.launching ? Math.max(0, Math.min(1, (y - (JUNGLE_DEEP - 8))/10)) : 0;
@@ -1275,6 +1299,7 @@ M.lip = new THREE.MeshLambertMaterial({color:0x6e6c62});
 CV.vein = cv16(g => { g.drawImage(CV.brick, 0, 0); g.fillStyle = '#9a2a1c'; [[2,0],[2,1],[3,2],[3,3],[4,4],[5,5],[5,6],[6,7],[8,8],[9,8],[10,9],[11,10],[11,11],[12,12],[13,13],[13,14],[13,15],[7,6],[8,5],[9,4],[10,4]].forEach(([x,y]) => g.fillRect(x, y, 1, 1)); g.fillStyle = '#d83a22'; [[3,2],[6,7],[10,9],[12,12]].forEach(([x,y]) => g.fillRect(x, y, 1, 1)); });
 M.vein = new THREE.MeshLambertMaterial({map:tex(CV.vein, [1, 3], true)}); M.gold = lam(CV.gold); M.leaves = lam(CV.leaves); M.log = lam(CV.log); M.plank = lam(CV.plank);
 M.glass = new THREE.MeshLambertMaterial({map:tex(CV.glass), transparent:true, depthWrite:false, side:THREE.DoubleSide});
+M.steel = lam(CV.steel); M.rglass = new THREE.MeshLambertMaterial({map:tex(CV.rglass), transparent:true, depthWrite:false, side:THREE.DoubleSide});   // the sandbox's blast-proof blocks
 M.plate = lam(CV.plate);
 M.waterOff = new THREE.MeshLambertMaterial({color:0x2f7fd8, transparent:true, opacity:.75});
 M.waterOn = new THREE.MeshBasicMaterial({color:0x7fd0ff});
@@ -1349,7 +1374,8 @@ function buildMesh(c, ghost){
   const add = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x||0, y||0, z||0); g.add(m); return m; };
   switch (c.t){
     case 'stone': add(G.cube, M.stone); break;
-    case 'rblock': add(G.cube, M.rblock); break;
+    case 'rblock': if (c.sheep) sbMesh(c, g, add); else add(G.cube, M.rblock); break;   // a redstone sheep carries an invisible redstone block about
+    case 'steel': case 'rglass': case 'monkeys': case 'beacon': case 'bananabomb': case 'madcow': case 'skunk': case 'groovitron': sbMesh(c, g, add); break;
     case 'tnt': add(G.cube, (c.fuse > 0 && c.fuse % 4 < 2) ? M.tntFlash : M.tnt); break;
     case 'glass': add(G.cube, M.glass); break;
     case 'bridge': {
@@ -1610,6 +1636,7 @@ function setWorld(nx, ny, mode){
     cellGroups = new Array(NX*NY).fill(null); cellKeys = new Array(NX*NY).fill('');
   }
   S.walls = new Uint8Array(NX*NY); S.wallKind = new Uint8Array(NX*NY); S.elev = new Float32Array(NX*NY); S.pit = new Uint8Array(NX*NY);
+  S.up = null; S.upCol = null; S.upDirty = true;   // stacked blocks: the sandbox yard only (sbYard)
   buildFloorDecor(mode === 'lab');
 }
 
@@ -1675,7 +1702,7 @@ function clearWorld(){
 }
 function serializeBuild(){
   return {cells: S.grid.filter(c => c && !c.locked).map(c => [c.t, c.x, c.y, c.dir, c.delay, c.attach, onBit(c)]),
-    inputs: L.inputs.map(c => c.on ? 1 : 0), rows: (L.rows || []).map(Boolean), hint: L.hintLevel || 0};
+    inputs: L.inputs.map(c => c.on ? 1 : 0), rows: (L.rows || []).map(Boolean), hint: L.hintLevel || 0, up: S.up ? [...S.up.values()].map(b => [b.t, b.x, b.y, b.z]) : undefined};
 }
 let saveTimer = 0;
 function saveBuildSoon(){
@@ -1694,12 +1721,14 @@ function applyBuild(b){
   (b.inputs || []).forEach((v, i) => { if (L.inputs[i]) { L.inputs[i].on = !!v; } });
   if (L.rows && Array.isArray(b.rows)) b.rows.forEach((v, i) => { if (i < L.rows.length && v){ L.rows[i] = true; L.tested.add(rowInputs(i, L.def.inputs.length).join()); } });
   L.hintLevel = Math.min(3, b.hint || 0);
+  if (S.up && Array.isArray(b.up)) b.up.forEach(([t, x, y, z]) => { if (UP_OK.has(t) && inb(x, y) && z >= 1 && z <= UP_MAX) upSet(x, y, z, {t, fuse:0}); });   // free build's stacked blocks
   S.gridDirty = true; S.lastSnap = '';
   syncVisuals(); renderCard();
 }
 function loadLesson(n, fresh){
   const def = LESSONS.find(l => l.id === n); if (!def) return;
-  setWorld(16, 16, 'lab'); buildWalls();
+  if (def.kind === 'free') sbYard(); else { setWorld(16, 16, 'lab'); buildWalls(); }   // free build: its own walled yard
+  advRootsShow(false); sbClear();   // the temple's bits stay behind (they'd float about with nothing solid in them)
   clearWorld();
   L = {def, ghosts:def.ghosts.map(g => Object.assign({}, g)), rows:[], hints:0, done:false, comboKey:'', hinted:false, blinks:0, prevLamp:false, inputs:[], lampCell:null};
   def.inputs.forEach(([x,y], i) => {
@@ -1726,12 +1755,13 @@ function loadLesson(n, fresh){
   L.btns = S.grid.filter(c => c && c.t === 'button' && c.locked);
   syncVisuals();
   if (fresh) writeBuild(def.id, null); else applyBuild(readBuild(def.id));
-  focusCamera(def); spawnPlayer(def);
+  focusCamera(def); spawnPlayer(def); if (def.kind === 'free') sbSpawn();
   $('#lessonNum').textContent = (def.kind === 'free' ? 'Free build' : 'Mission ' + def.id) + (def.gate !== 'free' && def.gate !== 'wire' && def.gate !== 'buffer' && def.gate !== 'clock' ? ' · ' + def.gate.toUpperCase() : '');
   $('#lessonTitle').textContent = def.name;
   $('#goalText').textContent = def.intro || def.goal;
   renderCard();
   hideToast(); $('#why').hidden = true; CARDQ.length = 0;
+  if (def.kind === 'free') setTimeout(() => { if (isFree()) sbWelcome(); }, 500);
 }
 function combo(){ return L.inputs.map(c => c.on); }
 function rowIndex(cb){ return cb.reduce((a, v) => (a << 1) | (v ? 1 : 0), 0); }
@@ -2070,6 +2100,7 @@ function refreshHotbar(){
   [...hotbar.children].forEach((b, j) => { const id = ITEMS[j].id, ban = bannedHere(id); b.hidden = !!kit && !kit.has(id) || id === 'pick'; b.classList.toggle('locked', ban); b.querySelector('.lock').hidden = !ban; });
   let n = 0; [...hotbar.children].forEach(b => { if (!b.hidden){ n++; b.querySelector('.n').textContent = n <= 10 ? String(n % 10) : ''; } });
   if (hotbar.children[sel] && (hotbar.children[sel].hidden || hotbar.children[sel].classList.contains('locked'))) selectFirstVisible();
+  hbLayout();   // pages, so nothing is ever cut off
 }
 const visibleSlots = () => ITEMS.map((_, i) => i).filter(i => !hotbar.children[i].hidden && !hotbar.children[i].classList.contains('locked'));
 function selectFirstVisible(){ const v = visibleSlots(); if (v.length) select(v[0]); else { sel = 0; const hd = $('#hand'); if (hd) hd.src = ICONS.pick; } }
@@ -2079,7 +2110,7 @@ function select(i){
   sel = i;
   const hd = $('#hand'); if (hd) hd.src = ICONS[ITEMS[i].id];
   if (asking) toggleAsk(false);
-  [...hotbar.children].forEach((b, j) => b.classList.toggle('sel', j === i));
+  [...hotbar.children].forEach((b, j) => b.classList.toggle('sel', j === i)); hbLayout();
   const n = $('#itemName'); n.innerHTML = `${ITEMS[i].name}<small>${ITEMS[i].tip}</small>`; n.classList.add('show');
   n.classList.remove('rest'); clearTimeout(nameT); nameT = setTimeout(() => { n.classList.remove('show'); if (ITEMS[sel] && ITEMS[sel].id !== 'pick'){ n.textContent = ITEMS[sel].name; n.classList.add('rest'); } }, 2400);   // then the name stays, small, so you always know what's in your hand
   sfx.click(); updatePreview();
@@ -2166,12 +2197,12 @@ function topAt(px, pz){
   const f = floorAt(x, y);
   const w = S.walls[y*NX+x]; if (w) return f + 9; // temple walls can't be climbed
   if (S.lava && S.lava[y*NX + x]) return -60;
-  const c = at(x,y); if (!c) return f;
+  const c = at(x,y), ut = S.upCol ? S.upCol[y*NX + x] : 0; if (!c) return f + ut;   // ut: blocks stacked here (free build)
   if (c.t === 'door') return f + ((c.lit || c.latched) ? 0 : 9);
   if (c.t === 'gate') return f + (c.lit ? 0 : 9);
   if (c.t === 'vein') return f + (c.open ? 0 : 9);
   if (c.t === 'crackwall') return f + 9;
-  return f + (SOLID.has(c.t) ? 1 : 0);
+  return f + Math.max(ut, SOLID.has(c.t) ? 1 : 0);
 }
 function heightAt(px, pz){ let h = 0; for (const ox of [-RAD, RAD]) for (const oz of [-RAD, RAD]) h = Math.max(h, topAt(px+ox, pz+oz)); return h; }
 function playerOnCell(x, y){ if (!inFP() || P.y > floorAt(x, y) + .3) return false; const [cx, cy] = cellAtWorld(P.x, P.z); return cx === x && cy === y; }
@@ -2227,18 +2258,19 @@ function stepFP(dt){
     if (S.slide && S.slide[li] >= 0){ const [sx, sy] = DIRS[S.slide[li]]; P.x += sx*7*s; P.z += sy*7*s; if (!P.sliding){ P.sliding = true; sfx.boing(); showToast('WHEEEEEE!'); } } else P.sliding = false;
     if (P.ground && !S.deck[li] && !S.pit[li] && S.slide[li] < 0 && !S.ladder[li]) P.safe = [lx, ly];
   }
+  knockFrame(s);   // blasted: shoved away from the bang (never through a wall)
   const nx = Math.max(-walkX(), Math.min(walkX(), P.x + dx)); if (heightAt(nx, P.z) <= P.y + stepUp) P.x = nx;
   const nz = Math.max(-walkZ(), Math.min(walkZ(), P.z + dzz)); if (heightAt(P.x, nz) <= P.y + stepUp) P.z = nz;
   if (keys[' ']) jump();
   if (P.ground && S.mode === 'adventure' && (dx || dzz)){ P.stepD = (P.stepD || 0) + Math.hypot(dx, dzz); if (P.stepD > 1.15){ P.stepD = 0; const [sx, sy] = cellAtWorld(P.x, P.z); sfx.step(isQuick(sx, sy) || (S.swamp && inb(sx, sy) && S.swamp[sy*NX + sx]) ? 'sand' : inHall(sx, sy) ? 'gold' : 'grass'); } }
-  P.vy -= 28*s; P.y += P.vy*s;
+  chuteFrame(s); P.vy -= 28*s; if (P.chute) P.vy = Math.max(P.vy, -3); P.y += P.vy*s;
   let g = heightAt(P.x, P.z); if (g > P.y + 1.05){ g = 0; P.stuckT = (P.stuckT || 0) + s; if (P.stuckT > 1 && S.mode === 'adventure') unstick(); } else P.stuckT = 0; // stuck inside something tall: don't pop on top of it
   if (P.y <= g){ P.y = g; P.vy = 0; P.ground = true; } else P.ground = false;
   P.walk = (f || r) && P.ground ? P.walk + s*9 : 0;
   const bob = reduceMotion ? 0 : Math.sin(P.walk)*0.05;
   setFov(FP_FOV);
-  camera.position.set(P.x, P.y + EYE + Math.abs(bob) - (P.sink || 0) - (P.wade || 0), P.z);
-  camera.rotation.order = 'YXZ'; camera.rotation.set(P.pitch, P.yaw, 0);
+  camera.position.set(P.x, P.y + EYE + Math.abs(bob) - (P.sink || 0) - (P.wade || 0) - (P.duck || 0), P.z);
+  camera.rotation.order = 'YXZ'; camera.rotation.set(P.pitch, P.yaw, P.roll || 0);   // roll + duck: falling over when blasted
   camera.updateMatrixWorld();
   const hand = $('#hand'); if (hand) hand.style.transform = `translate(${bob*60}px, ${Math.abs(bob)*80}px) rotate(-14deg)`;
 }
@@ -2413,7 +2445,7 @@ function pick(cx, cy){
   const r = canvas.getBoundingClientRect();
   ndc.set(((cx - r.left)/r.width)*2-1, -((cy - r.top)/r.height)*2+1);
   ray.setFromCamera(ndc, camera);
-  const hits = ray.intersectObjects([cellRoot, wallRoot, terrainRoot, ground], true);
+  const hits = ray.intersectObjects(terrainRoot.visible ? [cellRoot, upRoot, wallRoot, terrainRoot, ground] : [cellRoot, upRoot, wallRoot, ground], true);   // (rays hit hidden things too: the temple's floors stay out of the sandbox)
   for (const h of hits){
     if (h.object.userData.wall) return null;
     if (inFP() && h.distance > REACH) return null;
@@ -2431,6 +2463,7 @@ function pick(cx, cy){
       if (!inb(x,y)) return null;
       return {x, y, cell:at(x,y), normal:null, point:h.point};
     }
+    if (h.object.userData.upKey !== undefined){ const b = S.up && S.up.get(h.object.userData.upKey); if (!b) continue; return {x:b.x, y:b.y, z:b.z, up:true, cell:b, normal:h.face ? h.face.normal.clone().transformDirection(h.object.matrixWorld) : null, point:h.point}; }   // a stacked block (free build)
     const idx = h.object.userData.idx;
     if (idx === undefined) continue;
     const c = S.grid[idx]; if (!c) continue;
@@ -2451,7 +2484,7 @@ function ghostAt(x,y){ return L ? L.ghosts.find(g => g.x===x && g.y===y && ghost
 function plan(item, x, y, clicked){
   if (!inb(x,y) || item === 'pick' || wallAt(x,y) || isPit(x,y)) return null;   // like Java: nothing goes down on thin air (dust can't cross a gap)
   const p = {t:item, x, y, dir:0, delay:1, attach:-1};
-  if (item === 'water' || item === 'bananacannon' || item === 'repeater') p.dir = camDir();
+  if (item === 'water' || item === 'bananacannon' || item === 'repeater' || item === 'madcow' || item === 'skunk') p.dir = camDir();
   if ((item === 'torch' || item === 'lever' || item === 'button') && clicked && clicked.t === 'stone') for (let d=0; d<4; d++) if (x+DIRS[d][0]===clicked.x && y+DIRS[d][1]===clicked.y) p.attach = d;
   return p;
 }
@@ -2462,6 +2495,7 @@ function place(item, x, y, clicked){
   if (SOLID.has(p.t) && overlapsPlayer(x, y)) return false;
   if (SOLID.has(p.t) && blocksWay(x, y)){ sfx.nope(); showToast('Not in a doorway! You\'d block the way.'); return false; }
   if (cur) return false;   // hints only SHOW where things go: they never replace a block
+  if (p.t === 'tnt' && !tntCapOK()) return false;   // at most 64 live TNT
   { const r = A.on && A.rt && A.rt.room, lim = r && r.only && r.only[p.t];
     if (lim && countIn(r, p.t) >= lim){ sfx.nope(); const it = ITEMS.find(i => i.id === p.t); showToast(`Only ${lim === 1 ? 'ONE' : lim} ${it ? it.name : p.t} in this room! Make ${lim === 1 ? 'it' : 'them'} do the whole job.`); return false; } }
   const c = makeCell(p.t, x, y, p);
@@ -2561,6 +2595,7 @@ function act(cx, cy, mode){
   const item = ITEMS[sel].id;
   const c = h.cell;
   if (asking){ explain(c, h); return; }
+  if (sbAct(h, mode, item)) return;   // free build: stacking, creatures, rides
   if (c){
     if (mode === 'use' && ['lever','button','repeater','plate'].includes(c.t) && interact(c)){ syncVisuals(); return; }
     if (mode === 'break' || item === 'pick'){ breakCell(c); return; }
@@ -2625,6 +2660,7 @@ function hover(cx, cy){
   if (asking){ hoverCell = null; previewRoot.clear(); previewKey = ''; outline.visible = false; return; }
   const h = pick(cx, cy);
   if (!h){ hoverCell = null; updatePreview(); return; }
+  if (sbHover(h)) return;
   if (h.cell && h.normal && Math.abs(h.normal.y) < .5 && ITEMS[sel].id !== 'pick' && !['lever','button','repeater'].includes(h.cell.t)){
     const tx = h.cell.x + Math.round(h.normal.x), ty = h.cell.y + Math.round(h.normal.z);
     hoverCell = {x:tx, y:ty}; hoverClicked = h.cell;
@@ -2653,7 +2689,8 @@ window.addEventListener('keydown', e => {
   if (DLG.on && (k === 'enter' || k === 'e')){ dlgAdvance(); return; }
   const hud = !$('#hud').hidden;
   if (hud && (k === ' ' || k.startsWith('arrow'))) e.preventDefault();
-  if (k >= '0' && k <= '9' && hud){ const v = visibleSlots(); const n = k === '0' ? 9 : +k - 1; if (v[n] !== undefined) select(v[n]); }
+  if ((k === 'e' && inFP() || k === 'i') && hud && $('#pane').hidden) openInventory();   // every item, by name (Minecraft's inventory key)
+  if (k >= '0' && k <= '9' && hud){ const v = pageSlots(); const n = k === '0' ? 9 : +k - 1; if (v[n] !== undefined) select(v[n]); }
   else if ((k === 'v' || k === 'f5') && hud){ e.preventDefault(); setView(!viewFP); }
   else if (k === '/' || k === '?'){ if (hud) toggleAsk(); }
   else if (k === 'escape'){ if (!$('#move').hidden) $('#move').hidden = true; else if (!$('#book').hidden) closeBook(); else if (!$('#cele').hidden) showMenu(); }
@@ -2847,7 +2884,7 @@ function buildTiles(){
   const labOpen = n >= TEMPLE_ROOMS.length || !!progress.act1;
   $('#playNote').textContent = progress.act1 && !act2 ? 'You finished Act 1! Continue to keep exploring the ship, or Free Build in the Puzzle Lab below.' : 'A jungle temple full of puzzle rooms. Win crystals. Find out what\'s at its heart...';
   $('.labHead small').textContent = labOpen ? 'harder puzzles: AND, XOR, adders, memory' : 'opens when you finish the temple';
-  t.hidden = !labOpen;
+  t.hidden = !labOpen; sbMenu();
   LESSONS.forEach(l => {
     const b = document.createElement('button'); b.className = 'tile panel';
     const st = progress.done[l.id] || 0, open = lessonOpen(l.id);
@@ -3214,22 +3251,6 @@ function burnLine(){
 }
 const burntIn = b => { for (let x=b.x0;x<=b.x1;x++) for (let y=b.y0;y<=b.y1;y++){ const c = at(x, y); if (c && c.t === 'torch' && c.burnt > 0) return true; } return false; };
 const bitGeo = new THREE.BoxGeometry(.18,.18,.18);
-function explode(c){
-  { const cp = cellPos(c.x, c.y); if (inFP() && Math.hypot(P.x - cp.x, P.z - cp.z) < 2.4 && P.y < 2){ discover('blasted'); setTimeout(() => die('KA-BOOM! You got blasted! Stand further back next time.'), 150); } }
-  if (A.on){ const cp = cellPos(c.x, c.y); [A.monkey, ...(A.extras || [])].forEach(m => { if (m && Math.hypot(m.position.x - cp.x, m.position.z - cp.z) < 6){ const a = Math.atan2(m.position.z - cp.z, m.position.x - cp.x); m.userData.fly = {vx:Math.cos(a)*3, vz:Math.sin(a)*3, vy:7 + Math.random()*2, spin:(Math.random() < .5 ? -1 : 1)*9}; } }); if ([A.monkey, ...(A.extras || [])].some(m => m && m.userData.fly)) discover('launch'); if (A.monkey && A.monkey.userData.fly) setTimeout(() => monkeySay('WHEEEEE!', 2200), 100); }
-  if (fx.length > 600) return;
-  const p = cellPos(c.x, c.y);
-  const fl = glow(M.glowGold, 1, .5); fl.position.add(p); fxRoot.add(fl); fx.push({g:fl, t:0, kind:'flash'});
-  const mats = [M.tnt[0], M.stone, M.hotOn, M.tntFlash];
-  for (let i=0;i<28;i++){
-    const m = new THREE.Mesh(bitGeo, mats[i%4]); m.position.copy(p); m.position.y = .5; m.raycast = () => {};
-    fxRoot.add(m);
-    const a = Math.random()*Math.PI*2, sp = 2 + Math.random()*4;
-    fx.push({g:m, t:0, kind:'bit', vx:Math.cos(a)*sp, vy:3 + Math.random()*5, vz:Math.sin(a)*sp});
-  }
-  if (!reduceMotion) shake = .5;
-  syncVisuals();
-}
 function runFx(dt){
   const s = dt/1000; stinkTintFrame(dt);
   for (let i=fx.length-1;i>=0;i--){
@@ -3289,11 +3310,12 @@ function frame(now){
   if (inFP()){ stepFP(dt); if (!lastTouch || padMode){ const [cx,cy] = centre(); hover(cx, cy); } else if (outline.visible){ outline.visible = false; previewRoot.clear(); previewKey = ''; } }
   else { setFov(TOP_FOV); keyMoveOverhead(dt); }
   advFrame(dt, now); sprayFrame(dt);
-  runFx(dt);
+  runFx(dt); sbFrame(dt);
   if (shake > 0){ shake = Math.max(0, shake - dt/1000); if (!inFP()) updateCam(); camera.position.x += (Math.random()-.5)*shake; camera.position.y += (Math.random()-.5)*shake; }
   const pulse = reduceMotion ? .5 : .42 + .16*Math.sin(now*0.004);
   for (const m of ghostMats) m.opacity = pulse;
   if (!reduceMotion) clouds.forEach((c,i) => { c.position.x += dt*0.0006*(1+i*.2); if (c.position.x > 45) c.position.x = -45; });
+  roomDecorFrame();
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
@@ -3916,7 +3938,7 @@ function makePirate(captain, k){
   add(.16, .12, .02, dark, -.12, .08, .26, head); add(.5, .03, .02, dark, 0, .12, .26, head);       // eye patch and its strap
   add(.08, .08, .02, wm(0x2a2a2a), .12, .08, .26, head);
   if (captain){ add(.9, .14, .6, dark, 0, .36, 0, head); add(.5, .3, .5, dark, 0, .5, 0, head); add(.12, .12, .02, wm(0xf2f2ee), 0, .52, .26, head);   // tricorn with a skull badge ("it's a happy face")
-    const parrot = new THREE.Group(); parrot.position.set(.38, 1.3, 0); g.add(parrot); add(.18, .28, .18, wm(0xe02020), 0, 0, 0, parrot); add(.16, .16, .16, wm(0xe02020), 0, .2, .04, parrot); add(.06, .06, .1, gold, 0, .2, .14, parrot); add(.06, .2, .2, wm(0x2a5ad8), .1, 0, -.02, parrot); g.userData.parrot = parrot; }
+    const parrot = new THREE.Group(); parrot.position.set(.38, 1.3, 0); g.add(parrot); add(.18, .28, .18, wm(0xe02020), 0, 0, 0, parrot); add(.16, .16, .16, wm(0xe02020), 0, .2, .04, parrot); add(.06, .06, .1, gold, 0, .2, .14, parrot); [-1, 1].forEach(sd => { add(.02, .06, .06, wm(0xffffff), sd*.085, .23, .07, parrot); add(.02, .03, .03, wm(0x111111), sd*.092, .23, .08, parrot); }); add(.06, .2, .2, wm(0x2a5ad8), .1, 0, -.02, parrot); g.userData.parrot = parrot; }
   else add(.56, .12, .56, [wm(0xc8281c), wm(0xf2ece0), wm(0x2a2a2a), wm(0x2a5ad8)][k || 0], 0, .33, 0, head);   // bandana
   g.userData.head = head; g.userData.pirate = true;
   return g;
@@ -4164,6 +4186,7 @@ function buildTemple(save){
   const area = (b, e, fk, zone, roof) => { for (let x=b.x0;x<=b.x1;x++) for (let y=b.y0;y<=b.y1;y++){ if (!inb(x, y)) continue; const i = I(x, y); S.elev[i] = e; carved[i] = 1; S.fkind[i] = fk; S.zone[i] = zone; if (roof && x > b.x0 && x < b.x1 && y > b.y0 && y < b.y1) S.roof[i] = roof; } };
   const ZK = {court:[0, 0, 0, 5, 2], tree:[2, 0, 0, 4, 2], crypt:[4, 1, 4, 4, 1], sky:[1, 0, 0, 3, 1]};   // floor, light (0 sun, 1 torch), roof height, wall height, wall kind
   ROOMS.forEach(r => { const [fk, zl, roof, wh, wk] = ZK[ZONE_OF(r.id)]; r.zone = ZONE_OF(r.id); r.elev = ROOM_ELEV[r.id]; area(r.box, r.elev, fk, zl, roof); wallRect(r.box, wh, wk); });
+  ROOMS.forEach(r => { const d = typeof ROOM_DECOR !== 'undefined' && ROOM_DECOR[r.id]; if (d && d.ceil === 0) for (let x = r.box.x0; x <= r.box.x1; x++) for (let y = r.box.y0; y <= r.box.y1; y++) S.roof[I(x, y)] = 0; });   // rooms that need the sky (a launch arc) get no roof (ROOM_DECOR)
   SECRETS.forEach(sc => { sc.elev = ROOM_ELEV[sc.from]; area(sc.box, sc.elev, 4, 1, 4); wallRect(sc.box, 4, 1); });
   area(HALL, HALL_ELEV, 1, 0, 0); wallRect(HALL, 6, 3);
   shipCarve(area);   // the Skull's four machine rooms, east of the chamber
@@ -4851,6 +4874,7 @@ function troopField(r, tx, ty){
 }
 function troopOnCell(x, y){
   if (baroldOnCell(x, y)) return true;
+  if (SBX.mobs.length && sbOnCell(x, y)) return true;   // free build's monkeys stand on plates too
   for (const m of (A.extras || [])){ if (m.userData.fly) continue; const [cx, cy] = cellAtWorld(m.position.x, m.position.z); if (cx === x && cy === y) return true; }
   if (!TROOP.list.length) return false;
   for (const m of TROOP.list){ const u = m.userData; if (u.fly) continue; const [cx, cy] = cellAtWorld(m.position.x, m.position.z); if (cx === x && cy === y) return true; }
@@ -5232,17 +5256,7 @@ function placeNotes(){
     const m = makeNote(), p = cellPos(...sp); m.position.set(p.x, p.y + .55, p.z); m.userData = {room:r.id, cell:sp};
     decorRoot.add(m); A.noteMeshes.push(m);
   });
-  // decrees: a wooden sign by the entrance of each sabotaged room
-  ROOMS.forEach(r => {
-    if (!DECREES[r.id]) return;
-    const [ex, ey] = r.entry, [ix, iy] = [ex + Math.sign(r.box.x0 + 5 - ex), ey + Math.sign(r.box.y0 + 4 - ey)];
-    const side = (ex === r.box.x0 || ex === r.box.x1) ? [0, -1] : [-1, 0];
-    const sx = ix + side[0], sy = iy + side[1], p = cellPos(sx, sy);
-    const g = new THREE.Group(); g.position.set(p.x, p.y + 0, p.z);
-    const post = new THREE.Mesh(cbox(.1, 1.9, .1), M.wood); post.position.y = .95; post.raycast = () => {}; g.add(post);
-    const t = textSprite(DECREES[r.id], {w:300, fs:20, bg:'#efe2b8', ink:'#5a1010', scale:.6, depth:true}); t.position.y = 1.9 + t.scale.y/2; g.add(t); t.userData.near = 7; A.nearLabels.push(t);
-    decorRoot.add(g);
-  });
+  // the Emperor's decrees are pinned flat to the wall by each sabotaged room's door (buildRoomDecor)
 }
 function labelsFrame(){
   (A.nearLabels || []).forEach(l => { const w = l.getWorldPosition(new THREE.Vector3()); l.visible = Math.hypot(w.x - P.x, w.z - P.z) < l.userData.near; });
@@ -6144,12 +6158,12 @@ function buildTempleArt(){
   { const x = -5.6, y = 2.6, z = F; B(.5, .5, .4, RGl, x, y, z + .2); B(.3, .3, .3, M.soot, x, y + .02, z + .45); fireAdd(g, x, y + .2, z + .55, .42);
     B(.46, .46, .06, wm(0x9a5a22), x + .1, y + .62, z + .78); B(.36, .34, .07, wm(0xe8c070), x + .1, y + .62, z + .79); B(.04, .5, .04, M.lip, x + .1, y + .2, z + .74); }
   // ---- signs (they only appear up close, so they never clutter the view)
-  const sign = (text, x, y, z) => { const s = textSprite(text, {w:240, fs:22, bg:'#efe2b8', ink:'#5a1010', scale:.62, depth:true}); s.position.set(x, y, z); s.userData.near = 8; g.add(s); (A.nearLabels = A.nearLabels || []).push(s); };
+  const sign = (text, x, y, z) => { const k = Object.keys(WALL_TEXTS).find(q => WALL_TEXTS[q] === text), b = boardSign('wall:' + k, 1.5, .94, .7); b.position.set(x, y + .1, z + .08); g.add(b); };   // a board nailed to a post (it used to float)
   { const c = cellPos(2, PLAZA.y0 + 5); B(.12, 1.2, .12, M.wood, c.x, 1.6, c.z); sign('SORRY ABOUT THE LAVA. - The Management', c.x, 2.4, c.z); }
   { const c = cellPos(24, PLAZA.y0 + 5); B(.12, 1.2, .12, M.wood, c.x, 1.6, c.z); sign('TOP OF THE TEMPLE: something VERY big. No peeking! - The Management', c.x, 2.4, c.z); }   // the reward at the top, mentioned before it arrives
   { const c = cellPos(16, PLAZA.y0 + 3), arm = new THREE.Group(); B(.7, .26, .7, RCo, c.x, 1.13, c.z); arm.position.set(c.x, 1.26, c.z); arm.rotation.z = 2.1; g.add(arm); B(.15, 1.1, .15, M.wood, 0, .55, 0, arm); B(.3, .3, .3, M.hotOn, 0, 1.15, 0, arm);   // the lever is DOWN
     sign('DO NOT PULL. (Oh. Somebody did.)', c.x, 2.2, c.z); }
-  sign('FIRE TRAP (out of order). Now a toaster.', -5.6, 4.4, F + 1);
+  { const b = boardSign('wall:firetrap', 1.5, .94); b.position.set(-5.6, 4.0, F + .05); g.add(b); }   // nailed to the wall over the toaster
   // ---- every rope bridge crosses a hot trench: a serpent at each end pours lava into a stone trough, high up, out of reach
   ROOMS.forEach((r, i) => { const nx = ROOMS[i + 1]; if (!nx || JOURNEY[r.id] !== 'bridge') return;
     const a = r.exit || r.toilet, b = nx.entry, horiz = a[1] === b[1], e = r.elev, mid = horiz ? (a[0] + b[0])/2 : (a[1] + b[1])/2, c = horiz ? cellPos(mid, a[1]) : cellPos(a[0], mid);
@@ -6197,6 +6211,391 @@ function buildTempleArt(){
   [A.facade, A.gate, A.crown, A.brazierRoot, g].forEach(collectFlames);
 }
 
+/* =====================================================================
+   ROOM PERSONALITY (decor only: nothing here changes a puzzle, a path or a check).
+   Before it was a temple, every room was a room in the giants' ship, and it shows: what it was FOR (ROOM_DECOR),
+   props on its walls, a ceiling with wall torches wherever nothing needs the sky, and the room's goal on a sign
+   painted ON the wall by the way in. Some rooms were the giants' (huge things, twice as tall), some were made for
+   the little ones (tiny doors, tiny furniture), some are plain ship workrooms (pipes, gauges, crates).
+   Rules: props hug the walls. Below head height they are thin (a hand's width); deeper things only go up high.
+   Never in a doorway, never in front of a puzzle part, never on a cell you walk or build on (test-decor.js).
+   Ceilings (and anything above the wall tops) hide in the overhead views and whenever the camera is above them.
+   Nobody says "ape" here: that's Act 2's surprise. The clues are hair, bananas, Tuesdays and very big feet.
+   ===================================================================== */
+// who: giant | small | work.  ceil: blocks from floor to ceiling (0 = open to the sky).  props: [kind, arg] (see DECOR_PROPS)
+const ROOM_DECOR = {
+  1:{who:'giant', use:'the giants\' boot room', ceil:8, sign:'Wake the sleepy lamp! Put your red block right next to it.',
+    props:[['pegs'], ['picture', 'foot'], ['poster', 'WIPE YOUR FEET!'], ['boots'], ['keys']]},
+  2:{who:'giant', use:'the giants\' sitting room', ceil:8, sign:'ONE red block. Wake up all FOUR things!',
+    props:[['fireplace'], ['clock'], ['picture', 'bananas'], ['shelf', 'books'], ['picture', 'planet']]},
+  3:{who:'giant', use:'the giants\' kitchen', ceil:8, sign:'Run dust from the red block all the way to the DOOR!',
+    props:[['shelf', 'jars'], ['spoon'], ['poster', 'BANANA JAM. Do NOT eat it all.'], ['pans']]},
+  4:{who:'work', use:'the wire workshop', ceil:5, sign:'Make the END of the wire point INTO the lamp!',
+    props:[['pipes'], ['spools'], ['gauge'], ['poster', 'WIRES: the end goes IN.'], ['picture', 'plan']]},
+  5:{who:'small', use:'the little ones\' clubhouse', ceil:4, sign:'Make the cushion go PARP two times!',
+    props:[['tinydoor'], ['tinydoor'], ['bunting'], ['tinyshelf', 'cushions'], ['poster', 'LITTLE ONES ONLY'], ['tinydoor']]},
+  6:{who:'work', use:'the control room', ceil:5, sign:'Press the button THREE times. Three PARPS!',
+    props:[['panel'], ['gauge'], ['pipes'], ['panel'], ['poster', 'DO NOT PRESS. (Except that one.)']]},
+  7:{who:'giant', use:'the giants\' laundry', ceil:8, sign:'ONE plate. Light ALL THREE lamps. Then stand on it!',
+    props:[['washline'], ['washer'], ['poster', 'WASHING DAY: TUESDAY'], ['washline']]},
+  8:{who:'giant', use:'the giants\' bathroom', ceil:8, sign:'Blast the toilet out of the doorway! Power the TNT.',
+    props:[['window', 'bath'], ['cabinet'], ['towel'], ['poster', 'BATH DAY: TUESDAY'], ['roll'], ['tiles'], ['tiles']]},
+  9:{who:'small', use:'the little ones\' canteen', ceil:4, sign:'Tempt the tamarins into the pen. Then shut the gate!',
+    props:[['tinydoor'], ['poster', 'MENU. Monday: bananas. Tuesday: bananas. Every day: BANANAS.'], ['tinyshelf', 'bowls'], ['bunting'], ['tinydoor']]},
+  10:{who:'work', use:'the cargo bay (open roof, for loading)', ceil:0, sign:'Make the capuchins launch THEMSELVES. 10 launches!',
+    props:[['crates'], ['poster', 'FRAGILE: BANANAS'], ['gauge'], ['crates']]},
+  11:{who:'giant', use:'the giants\' roof theatre', ceil:0, sign:'ONE button. All three fireworks at the SAME time!',
+    props:[['curtains'], ['bunting'], ['poster', 'SHOW TONIGHT! Bring your own banana.'], ['spots']]},
+  12:{who:'giant', use:'the giants\' ballroom', ceil:7, sign:'Wire ALL FOUR dance plates to the disco ball!',
+    props:[['speakers'], ['record'], ['bunting'], ['speakers'], ['poster', 'DANCE FLOOR. No sitting down.']]},
+  13:{who:'work', use:'the torch store', sign:'Wake the lamp AND the cushion with ONE torch!',
+    props:[['torchrack'], ['shelf', 'crates'], ['poster', 'SPARE TORCHES. Do not lick.'], ['torchrack']]},
+  14:{who:'small', use:'the little ones\' bedroom', sign:'Flip the lever. Watch the torch... and the lamp!',
+    props:[['bunks'], ['tinydoor'], ['poster', 'SHHH! Torches sleeping.'], ['bunks']]},
+  15:{who:'work', use:'the block store', sign:'Lever ON should turn the lamp OFF!',
+    props:[['shelf', 'blocks'], ['picture', 'plan'], ['pipes'], ['poster', 'BLOCKS: please put them back.']]},
+  16:{who:'giant', use:'the giants\' dressing room', sign:'Lever ON should turn the lamp OFF. One block is wrong!',
+    props:[['mirror'], ['comb'], ['poster', 'LOOKING GOOD!'], ['picture', 'foot']]},
+  17:{who:'giant', use:'the giants\' bedroom', sign:'Stand on the plate: lamp OFF. Step off: lamp ON!',
+    props:[['headboard'], ['picture', 'planet'], ['slippers'], ['poster', 'LIGHTS OUT! (Night-light allowed.)']]},
+  18:{who:'work', use:'the sand tank', sign:'Get over the quicksand. Then get Barold over too!',
+    props:[['pipes'], ['hopper'], ['gauge'], ['poster', 'SAND TANK. Do NOT paddle.']]},
+  19:{who:'small', use:'the little ones\' bouncy gym (open roof: mind your head)', ceil:0, sign:'Barold steps OFF his plate: the pad flings you over!',
+    props:[['bunting'], ['poster', 'NO BOUNCING. (Bounce anyway.)'], ['tinydoor'], ['tinyshelf', 'bowls']]},
+  20:{who:'work', use:'the measuring room', sign:'Light the lamp at the very END of the wire!',
+    props:[['ruler'], ['gauge'], ['poster', 'POWER GOES 15 STEPS. Then it gets tired.']]},
+  21:{who:'work', use:'the top deck', ceil:0, sign:'Make the lever switch the lamp, the long way round!',
+    props:[['flags'], ['telescope'], ['spools']]},
+  22:{who:'giant', use:'the giants\' sun deck', ceil:0, sign:'The wire is too long. Put a Repeater in it!',
+    props:[['deckchair'], ['poster', 'SUN CREAM. Giant size.'], ['flags']]},
+  23:{who:'work', use:'the sorting deck', ceil:0, sign:'Lever A lights BOTH lamps. Lever B lights only the bottom one!',
+    props:[['poster', 'ONE WAY -->'], ['pipes'], ['poster', '<-- ONE WAY'], ['flags']]},
+  24:{who:'work', use:'the power deck', ceil:0, sign:'Fix the power line! THREE things are broken.',
+    props:[['pylon'], ['spools'], ['poster', 'DANGER: SPARKS!'], ['gauge']]},
+  25:{who:'giant', use:'the lookout', ceil:0, sign:'Make the last bridge rise! Look at the machine.',
+    props:[['flags'], ['telescope'], ['picture', 'compass']]},
+  31:{sign:'Make the lever start BOTH engines!'}, 32:{sign:'Fold the legs only when BOTH clamps are OFF!'},
+  33:{sign:'Open the sky window: the lever OR the plate!'}, 34:{sign:'One press: open valve 1, then 2, then 3!'}
+};
+// other signs that are painted on walls or nailed to posts (they used to float in the air, a bit wonky)
+const WALL_TEXTS = {
+  name:'TEMPLE OF THE THUNDER MONKEY', closed:'CLOSED FOR REPAIRS. Please use the SIDE ENTRANCE -->', tuesday:'Back on Tuesday! - The Guide',
+  firetrap:'FIRE TRAP (out of order). Now a toaster.', lava:'SORRY ABOUT THE LAVA. - The Management', top:'TOP OF THE TEMPLE: something VERY big. No peeking! - The Management',
+  pull:'DO NOT PULL. (Oh. Somebody did.)', novisit:'BY ROYAL DECREE: NO VISITORS. This means YOU. Signed, Emperor Archibald Whiffington III',
+  wanted:'GUIDE WANTED. NO EXPERIENCE NEEDED. ASK INSIDE.'
+};
+const sideOf = (r, [x, y]) => y === r.box.y0 ? 'N' : y === r.box.y1 ? 'S' : x === r.box.x0 ? 'W' : 'E';
+const OPP = {N:'S', S:'N', W:'E', E:'W'}, LEFT = {N:'E', S:'W', W:'N', E:'S'};   // seen walking IN through a door on that side
+// a room whose way out is in the wall you face as you come in only has a narrow bit of wall either side of it: its sign is square (taller), so it still reads
+const signSquare = id => { const r = TEMPLE_ROOMS.find(q => q.id === id), out = r && (r.exit || r.toilet); return !!out && sideOf(r, out) === OPP[sideOf(r, r.entry)]; };
+// one canvas for every sign, poster and picture: drawn once, one texture, one material (so they all merge into one draw call)
+const DECOR_ART = (() => {
+  const items = [], W = 2048;
+  const add = (key, w, h, draw) => items.push({key, w, h, draw});
+  const SIGN = (r, text) => signSquare(r) ? add('sign' + r, 256, 256, (g, w, h) => signDraw(g, w, h, r, text)) : add('sign' + r, 320, 200, (g, w, h) => signDraw(g, w, h, r, text));
+  Object.keys(ROOM_DECOR).forEach(id => SIGN(+id, ROOM_DECOR[id].sign));
+  Object.keys(ROOM_DECOR).forEach(id => (ROOM_DECOR[id].props || []).forEach(([k, a]) => { if (k === 'poster') add('poster:' + a, 256, 160, (g, w, h) => posterDraw(g, w, h, a)); }));
+  ['foot', 'bananas', 'planet', 'plan', 'bath', 'compass'].forEach(k => add('pic:' + k, 128, 128, (g, w, h) => picDraw(g, w, h, k)));
+  add('tile', 64, 76, (g, w, h) => { g.fillStyle = '#eef6f8'; g.fillRect(0, 0, w, h); g.fillStyle = '#9ac8d8'; for (let y = 0; y < h; y += 19) g.fillRect(0, y, w, 3); for (let x = 0; x < w; x += 32) g.fillRect(x, 0, 3, h); g.fillStyle = '#5a9ab8'; g.fillRect(10, 8, 6, 6); g.fillRect(42, 46, 6, 6); });   // bathroom tiles
+  add('ruler', 512, 64, (g, w, h) => { g.fillStyle = '#e8c860'; g.fillRect(0, 0, w, h); g.fillStyle = '#5a3a10'; for (let i = 0; i < 16; i++){ const x = 8 + i*(w - 16)/15; g.fillRect(x|0, 0, 3, i % 5 === 0 ? 30 : 18); if (i){ g.font = '700 22px "Atkinson Hyperlegible", "Trebuchet MS", sans-serif'; g.textAlign = 'center'; g.fillText(String(i), x - (w - 16)/30, 54); } } });
+  Object.keys(WALL_TEXTS).forEach(k => add('wall:' + k, k === 'name' ? 512 : 320, k === 'name' ? 128 : 200, (g, w, h) => k === 'name' ? nameDraw(g, w, h, WALL_TEXTS[k]) : posterDraw(g, w, h, WALL_TEXTS[k], 'paper')));
+  Object.keys(DECREES).forEach(id => add('decree' + id, 256, 200, (g, w, h) => posterDraw(g, w, h, DECREES[id], 'decree')));
+  SHIP_ROOMS.forEach(r => add('decree' + r.id, 256, 200, (g, w, h) => posterDraw(g, w, h, r.decree, 'decree')));
+  SECRETS.forEach(sc => add('sec' + sc.slot, 256, 96, (g, w, h) => { g.fillStyle = '#6e6a5c'; g.fillRect(0, 0, w, h); g.fillStyle = '#efe2b8'; const f = fitWords(g, sc.name, w - 16, h - 12, 44, 16, '"Pixelify Sans", "Atkinson Hyperlegible", sans-serif'); drawLines(g, f, w/2, 6, h - 12); return {fs:f.fs, ok:f.ok, lines:f.lines.length, texH:h}; }));
+  // shelf-pack (tallest first), then the canvas is exactly as tall as it needs to be
+  items.sort((a, b) => b.h - a.h); let x = 0, y = 0, rowH = 0;
+  items.forEach(it => { if (x + it.w > W){ x = 0; y += rowH + 2; rowH = 0; } it.x = x; it.y = y; x += it.w + 2; rowH = Math.max(rowH, it.h); });
+  const H = Math.ceil((y + rowH) / 16) * 16, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const tex = new THREE.CanvasTexture(cv); tex.anisotropy = 4;
+  const mat = new THREE.MeshLambertMaterial({map:tex, emissive:0xffffff, emissiveMap:tex, emissiveIntensity:.32, polygonOffset:true, polygonOffsetFactor:-2, polygonOffsetUnits:-2});
+  const slots = {}; items.forEach(it => slots[it.key] = it);
+  const art = {cv, tex, mat, slots, H, W, fit:{}, drawn:0};
+  art.draw = () => { const g = cv.getContext('2d'); g.clearRect(0, 0, W, H); items.forEach(it => { g.save(); g.translate(it.x, it.y); g.beginPath(); g.rect(0, 0, it.w, it.h); g.clip(); const f = it.draw(g, it.w, it.h); g.restore(); if (f) art.fit[it.key] = f; }); tex.needsUpdate = true; art.drawn++; };
+  return art;
+})();
+// draws once the text font is in (and once straight away, so the signs are never blank)
+function decorArtReady(){ if (DECOR_ART.drawn) return; DECOR_ART.draw(); try { if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => DECOR_ART.draw()); } catch (e) {} }
+// words that fit their box: the biggest font size that fits, whole words only (never cut, never "...")
+function fitWords(g, text, w, h, max, min, font){
+  for (let fs = max; fs >= min; fs -= 2){
+    g.font = `700 ${fs}px ${font || '"Atkinson Hyperlegible", "Trebuchet MS", sans-serif'}`;
+    const words = String(text).split(' '), lines = []; let cur = '', ok = true;
+    for (const wd of words){ if (g.measureText(wd).width > w){ ok = false; break; } const t = cur ? cur + ' ' + wd : wd; if (g.measureText(t).width > w && cur){ lines.push(cur); cur = wd; } else cur = t; }
+    if (cur) lines.push(cur);
+    const lh = fs*1.12; if (ok && lines.length*lh <= h) return {fs, lines, lh, ok:true};
+  }
+  g.font = `700 ${min}px sans-serif`; return {fs:min, lines:[String(text)], lh:min*1.12, ok:false};
+}
+function pixFrame(g, w, h, bg, edge, inner){   // a blocky board: chunky pixel edge, speckled face
+  g.fillStyle = edge; g.fillRect(0, 0, w, h); g.fillStyle = inner || edge; g.fillRect(6, 6, w - 12, h - 12); g.fillStyle = bg; g.fillRect(12, 12, w - 24, h - 24);
+  g.fillStyle = 'rgba(0,0,0,.05)'; for (let y = 12; y < h - 12; y += 8) for (let x = 12; x < w - 12; x += 8) if (whash(x, y, 31) < .3) g.fillRect(x, y, 8, 8);
+  g.fillStyle = 'rgba(0,0,0,.45)'; [[0, 0], [w - 6, 0], [0, h - 6], [w - 6, h - 6]].forEach(([x, y]) => g.fillRect(x, y, 6, 6));   // dark corners, like a pixel sign
+}
+function drawLines(g, f, cx, top, h){ g.textAlign = 'center'; g.textBaseline = 'middle'; const y0 = top + (h - f.lines.length*f.lh)/2 + f.lh/2; f.lines.forEach((l, i) => g.fillText(l, cx, y0 + i*f.lh)); }
+function signDraw(g, w, h, id, text){
+  pixFrame(g, w, h, '#ecdcae', '#5b3a1c', '#8a5a2c');
+  const r = [...TEMPLE_ROOMS, ...SHIP_ROOMS].find(q => q.id === id), head = id > 30 ? 'THE ' + r.part.toUpperCase() : 'ROOM ' + id;
+  g.fillStyle = '#9a2a14'; g.font = '700 22px "Atkinson Hyperlegible", "Trebuchet MS", sans-serif'; g.textAlign = 'left'; g.textBaseline = 'top'; g.fillText(head, 20, 18);
+  g.fillStyle = '#2a1a08'; const f = fitWords(g, text, w - 36, h - 64, 46, 22); drawLines(g, f, w/2, 46, h - 60);
+  return {fs:f.fs, ok:f.ok, lines:f.lines.length, texH:h};
+}
+function nameDraw(g, w, h, text){   // carved into a gold plate
+  g.fillStyle = '#8a6a14'; g.fillRect(0, 0, w, h); g.fillStyle = '#d9a632'; g.fillRect(6, 6, w - 12, h - 12);
+  g.fillStyle = 'rgba(255,240,170,.35)'; for (let x = 6; x < w - 6; x += 8) if (whash(x, 3, 7) < .4) g.fillRect(x, 6, 8, 8);
+  g.fillStyle = '#3b2200'; const f = fitWords(g, text, w - 32, h - 20, 56, 24, '"Pixelify Sans", "Atkinson Hyperlegible", sans-serif'); drawLines(g, f, w/2, 10, h - 20);
+  return {fs:f.fs, ok:f.ok, lines:f.lines.length, texH:h};
+}
+const POSTER_LOOK = {paper:['#efe2b8', '#5a1010', '#c9b78a'], decree:['#f3e6c4', '#5a1010', '#b0182a'], plain:['#f4efe0', '#2a2a40', '#7a7a8a']};
+function posterDraw(g, w, h, text, look){
+  const pal = [['#fff1a8', '#3a2a10', '#c89a20'], ['#bfe8ff', '#103050', '#4a8ac0'], ['#ffd0d8', '#5a1020', '#c04a6a'], ['#d8f5c0', '#1c4010', '#5a9a3a']];
+  const [bg, ink, edge] = POSTER_LOOK[look] || pal[Math.floor(whash(text.length, text.charCodeAt(0), 5)*pal.length)];
+  pixFrame(g, w, h, bg, edge, edge);
+  if (look === 'decree'){ g.fillStyle = '#b0182a'; g.fillRect(w - 46, h - 46, 26, 26); g.fillStyle = '#ffd84a'; g.fillRect(w - 40, h - 40, 14, 14); }   // the royal (cardboard) seal
+  g.fillStyle = ink; const f = fitWords(g, text, w - 32, h - 28, 40, 14); drawLines(g, f, w/2, 14, h - 28);
+  return {fs:f.fs, ok:f.ok, lines:f.lines.length, texH:h};
+}
+// little pixel pictures (16 x 16, 8 px a pixel), each from a few rows of letters
+const PIC_ART = {
+  foot:{cap:'', pal:{'.':'#cfe2f0', f:'#8a5a3a', d:'#5a3a22', w:'#e8dcc0'}, rows:[
+    '................', '..ff............', '.ffff....d.d.d..', '.ffff..ffffffff.', '..ff..fffffffff.', '.....ffffffffff.', '....fffffffffff.', '....ffffffffff..',
+    '....ffffffffff..', '....fffffffff...', '.....ffffffff...', '.....ffffffff...', '......ffffff....', '......ffffff....', '.......ffff.....', '................']},   // a giant footprint. Look at that big toe: it sticks out sideways, like a thumb
+  bananas:{pal:{'.':'#f4e8c8', y:'#f5d23a', o:'#c89a20', b:'#7a4a22', B:'#a8683a', g:'#5a8a2a'}, rows:[
+    '................', '.......gg.......', '......yy........', '.....yyo...yy...', '....yyo...yyo...', '...yyo...yyo....', '...yyo..yyo.....', '...yyoyyyo......',
+    '....yyyyo.......', '.....yyo........', '..bbbbbbbbbbbb..', '..bBBBBBBBBBBb..', '...bBBBBBBBBb...', '....bbbbbbbb....', '................', '................']},
+  planet:{cap:'HOME', pal:{'.':'#0e1630', s:'#e8e8ff', g:'#4aa83a', b:'#8a6a3a', w:'#2a6ad8', m:'#c8c4b8'}, rows:[
+    '..s.........s...', '.......s.....mm.', '....gggwg....mm.', '...ggwwwgg......', '..gggwwbbgg.....', '..gwwwbbbgg..s..', '..gwwggbbwg.....', '..ggggggwwg.....',
+    '...gbbggwg......', '....gggwg...s...', '.s..............', '................', '................', '................', '................', '................']},
+  plan:{cap:'PLAN B?', pal:{'.':'#2a5ab0', l:'#cfe0ff', f:'#ffb02a', r:'#ff5a2a'}, rows:[
+    '................', '.......ll.......', '......llll......', '.....l....l.....', '....llllllll....', '...l........l...', '..llllllllllll..', '.l............l.',
+    '.llllllllllllll.', '....f..f..f.....', '....r..r..r.....', '...rfr.rfr.rfr..', '................', '................', '................', '................']},
+  bath:{pal:{'.':'#d8eef2', t:'#9ac8d8', W:'#f4f4f0', w:'#c8d0d8', o:'#c89a20', y:'#f5d23a', u:'#ffffff', k:'#1a1a1a', p:'#e85a8a', h:'#c8641e', d:'#ffd84a'}, rows:[
+    '.t.t.t.t.t.t.t.t', '.............p..', '............pp..', '.....uu.....pp..', '...uuuuu...hph..', '..uuuuuuu..hp.h.', '.WWWWWWWWWWWWW..', '.WwwwwwwwwwwwW..',
+    '.WwwwhhwwwwwwW..', '..WwwwwhwwwwW...', '...WWWWWWWWW....', '...W.......W....', '................', '..yyyyyo...dk...', '.yyyyyyyo.ddd...', '..yyyyyo..ddd...']},   // the giants' bath: hair in the plughole, banana soap, toothbrush, duck
+  compass:{cap:'N', pal:{'.':'#e8d8a8', r:'#c0281c', k:'#3a2a10', g:'#9a8a5a'}, rows:[
+    '................', '.......r........', '......rrr.......', '.....rrrrr......', '......rrr.......', '..g...rrr...g...', '.ggggkkkkkkgggg.', '..g...kkk...g...',
+    '......kkk.......', '.....kkkkk......', '......kkk.......', '.......k........', '................', '................', '................', '................']}
+};
+function picDraw(g, w, h, k){
+  const P = PIC_ART[k], s = w/16;
+  P.rows.forEach((row, y) => [...row].forEach((ch, x) => { g.fillStyle = P.pal[ch] || P.pal['.']; g.fillRect(x*s, y*s, s, s); }));
+  if (P.cap){ g.fillStyle = '#fff6d0'; g.font = '700 26px "Pixelify Sans", "Trebuchet MS", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(P.cap, w/2, h - 22); }
+  return null;
+}
+// a flat picture ON a surface: a plane mapped onto one slot of the shared canvas
+function artPlane(key, w, h){
+  decorArtReady();
+  const it = DECOR_ART.slots[key], geo = new THREE.PlaneGeometry(w, h);
+  if (it){ const u0 = it.x/DECOR_ART.W, u1 = (it.x + it.w)/DECOR_ART.W, v1 = 1 - it.y/DECOR_ART.H, v0 = 1 - (it.y + it.h)/DECOR_ART.H, uv = geo.attributes.uv;
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) ? u1 : u0, uv.getY(i) ? v1 : v0); }
+  const m = new THREE.Mesh(geo, DECOR_ART.mat); m.raycast = () => {}; m.userData.art = key; return m;
+}
+// a sign nailed flat to a post or a wall: a thin board with the words on its face (+z)
+function boardSign(key, w, h, post){
+  const g = new THREE.Group(), b = new THREE.Mesh(cbox(w + .12, h + .12, .08), M.wood); b.raycast = () => {}; g.add(b);
+  const f = artPlane(key, w, h); f.position.z = .045; g.add(f);
+  if (post){ const p = new THREE.Mesh(cbox(.12, post, .12), M.wood); p.position.set(0, -post/2, -.1); p.raycast = () => {}; g.add(p); }
+  return g;
+}
+// one palette texture for every plain-coloured prop box (so they all merge into one draw call)
+const DPAL = (() => { const cv = document.createElement('canvas'); cv.width = cv.height = 128; const t = tex(cv); return {cv, tex:t, mat:new THREE.MeshLambertMaterial({map:t}), idx:new Map(), geo:new Map()}; })();
+function dpalIdx(hex){ let i = DPAL.idx.get(hex); if (i !== undefined) return i; i = DPAL.idx.size % 256; DPAL.idx.set(hex, i);
+  const g = DPAL.cv.getContext('2d'); g.fillStyle = '#' + hex.toString(16).padStart(6, '0'); g.fillRect((i % 16)*8, ((i/16)|0)*8, 8, 8); DPAL.tex.needsUpdate = true; return i; }
+function pbox(w, h, d, hex){ const k = w + '_' + h + '_' + d + '_' + hex; let g = DPAL.geo.get(k); if (g) return g;
+  const i = dpalIdx(hex), u = ((i % 16) + .5)/16, v = 1 - (((i/16)|0) + .5)/16; g = new THREE.BoxGeometry(w, h, d); const uv = g.attributes.uv; for (let j = 0; j < uv.count; j++) uv.setXY(j, u, v); DPAL.geo.set(k, g); return g; }
+// The props. Each one is built against a wall in its own little frame: x along the wall, y up from the floor, z out of the wall.
+// w: cells of wall it needs ('flex' takes a whole run). band: low (thin, under head height), high (up out of reach), top (on the wall's top).
+// B(w, h, d, colour or material, x, y, z): a box whose BOTTOM is at y and BACK is z out from the wall. A(key, w, h, x, y, z): a picture. F(x, y, z, s): a flame.
+const WOOD = 0x8a5a2c, DARK = 0x3a2614, GOLDC = 0xe0b030, METAL = 0x8a9098, COPPER = 0xb8693a, RED = 0xc0281c, CREAM = 0xf0e6c8, BLACK = 0x1a1a1a, WHITE = 0xf4f4f0;
+const DECOR_PROPS = {
+  poster:{w:2, band:'low', build(B, A, F, o){ const h = 1.08; B(1.82, h + .12, .05, DARK, 0, 1.4, 0); A('poster:' + o.arg, 1.7, h, 0, 1.46, .06); }},
+  picture:{w:2, band:'low', build(B, A, F, o){ B(1.5, 1.5, .08, GOLDC, 0, 1.35, 0); A('pic:' + o.arg, 1.26, 1.26, 0, 1.47, .09); }},
+  pegs:{w:3, band:'high', h:3.6, build(B, A, F, o){ const t = o.top - .5; B(2.6, .2, .12, WOOD, 0, t, 0); [-1, 0, 1].forEach(x => B(.12, .12, .4, DARK, x*.9, t - .02, .1));
+    B(1.1, 2.6, .2, 0x2a4a8a, -.9, t - 2.7, .2); B(.5, .4, .2, 0x2a4a8a, -.9, t - .2, .2); B(.12, 2.2, .04, GOLDC, -.9, t - 2.4, .42);   // a giant blue coat
+    B(.9, .5, .9, 0x5a3a22, .9, t - .1, .15); B(1.3, .1, 1.1, 0x5a3a22, .9, t - .15, .05); B(.8, .14, .8, RED, .9, t + .1, .2); }},   // a giant hat
+  boots:{w:2, band:'high', h:2, build(B, A, F, o){ const t = o.top - .4; B(1.8, .14, .12, WOOD, 0, t, 0); [-.45, .45].forEach(x => { B(.55, 1.3, .7, 0x2a6a2a, x, t - 1.45, .12); B(.6, .14, 1.0, 0x1a3a1a, x, t - 1.6, .02); }); }},   // wellies, hung up to drip
+  keys:{w:1, band:'low', build(B, A, F, o){ B(.8, .5, .06, WOOD, 0, 1.7, 0); B(.14, .7, .06, GOLDC, -.1, 1.0, .07); B(.4, .4, .06, GOLDC, -.1, 1.65, .07); B(.2, .1, .06, GOLDC, .05, 1.1, .07); }},
+  fireplace:{w:3, band:'low', build(B, A, F, o){ B(2.7, 2.2, .24, 0x8a8478, 0, 0, 0); B(1.6, 1.3, .02, BLACK, 0, 0, .23); B(3, .16, .26, WOOD, 0, 2.2, 0); [-.3, .3].forEach(x => B(.7, .16, .16, 0x5a3a22, x, .05, .06)); F(0, .45, .14, .9); B(.5, .5, .08, GOLDC, -.9, 2.36, .08); B(.4, .4, .08, 0x5a9a3a, .9, 2.36, .08); }},
+  clock:{w:2, band:'high', h:2.4, build(B, A, F, o){ const y = Math.max(2.9, o.top - 2.6); B(1.6, 1.6, .3, WOOD, 0, y + .9, 0); B(1.3, 1.3, .04, CREAM, 0, y + 1.05, .3); B(.1, .5, .04, BLACK, 0, y + 1.7, .34); B(.4, .1, .04, BLACK, .2, y + 1.7, .34); B(.4, .9, .1, WOOD, 0, y, .05); B(.4, .4, .06, GOLDC, 0, y + .1, .15); }},
+  shelf:{w:3, band:'high', h:1.3, build(B, A, F, o){ const y = Math.max(2.95, Math.min(o.top - 1.6, 3.6)); B(2.8, .12, .8, WOOD, 0, y, 0); [-1.2, 1.2].forEach(x => B(.12, .5, .12, DARK, x, y - .5, 0));
+    const k = o.arg; for (let i = 0; i < 5; i++){ const x = -1.1 + i*.55;
+      if (k === 'books') B(.36, .9 + (i % 3)*.15, .6, [RED, 0x2a5aa8, 0x3a8a3a, GOLDC, 0x6a3a8a][i], x, y + .12, .1);
+      else if (k === 'jars'){ B(.42, .6, .42, 0xcfe8f0, x, y + .12, .2); B(.36, .4, .36, [0xf5d23a, 0xc0281c, 0xf08a2a, 0xf5d23a, 0x6aa83a][i], x, y + .14, .23); B(.46, .1, .46, RED, x, y + .72, .18); }
+      else if (k === 'crates' && i % 2 === 0){ B(.7, .6, .7, 0xa87e4a, x + .2, y + .12, .05); B(.72, .1, .72, 0x6a4a22, x + .2, y + .4, .04); }
+      else if (k === 'blocks' && i < 4) B(.5, .5, .5, [0x8a8a7e, GOLDC, 0xa87e4a, 0x6a6a6a][i], x + .2, y + .12, .15); } }},
+  spoon:{w:1, band:'high', h:3, build(B, A, F, o){ const t = o.top - .3; B(.16, 2.2, .12, 0xc89a5a, 0, t - 2.2, .05); B(.75, .95, .2, 0xc89a5a, 0, t - 3.1, .02); B(.2, .2, .2, DARK, 0, t, 0); }},
+  pans:{w:2, band:'high', h:1.6, build(B, A, F, o){ const t = o.top - .4; B(1.8, .1, .3, METAL, 0, t, 0); [-.5, .5].forEach((x, i) => { B(.1, .7, .06, BLACK, x, t - .7, .12); B(.8 - i*.15, .8 - i*.15, .1, 0x3a3a3a, x, t - 1.45 + i*.15, .1); }); }},
+  pipes:{w:'flex', min:3, band:'high', h:1, build(B, A, F, o){ const y = Math.max(2.95, o.top - 1.1), L = o.len - .2; B(L, .32, .32, COPPER, 0, y, .06); B(L, .26, .26, METAL, 0, y + .5, .08);
+    for (let x = -L/2 + .5; x < L/2; x += 1.6) B(.12, .9, .44, DARK, x, y - .05, 0); B(.6, .6, .08, RED, L/4, y - .1, .42); B(.36, .36, .4, COPPER, -L/4, y - .02, .02); }},
+  spools:{w:2, band:'high', h:1.4, build(B, A, F, o){ const y = Math.max(2.9, o.top - 1.5); B(1.8, .12, .5, DARK, 0, y + 1.1, 0); [-.45, .45].forEach((x, i) => { B(.8, .8, .3, [RED, BLACK][i], x, y + .2, .1); B(.9, .2, .34, WOOD, x, y + .5, .08); }); }},
+  gauge:{w:1, band:'low', build(B, A, F, o){ B(.74, .74, .1, BLACK, 0, 1.5, 0); B(.6, .6, .04, CREAM, 0, 1.57, .1); B(.06, .3, .04, RED, .06, 1.84, .14); B(.14, .14, .06, BLACK, 0, 1.84, .14); B(.2, .3, .2, COPPER, 0, 1.2, 0); }},
+  panel:{w:3, band:'low', build(B, A, F, o){ B(2.6, 1.3, .18, METAL, 0, .9, 0); const cols = [RED, 0x3ad84a, 0xf5d23a, 0x3a8ad8];
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 6; c++) B(.18, .14, .04, cols[(r*5 + c*3) % 4], -1 + c*.3, 1.05 + r*.32, .18); B(.5, .5, .04, CREAM, .85, 1.25, .18); B(.04, .22, .03, BLACK, .85, 1.48, .22); }},
+  tinydoor:{w:1, band:'low', build(B, A, F, o){ B(.66, 1.02, .06, DARK, 0, 0, 0); B(.52, .92, .04, 0xa8763a, 0, 0, .06); B(.08, .08, .06, GOLDC, .15, .42, .1); B(.2, .2, .03, 0xbfe8ff, 0, .62, .1); B(.3, .08, .05, RED, 0, 1.06, .02); }},   // knock knock: nobody fits through these but the little ones
+  bunting:{w:'flex', min:3, band:'high', h:.6, build(B, A, F, o){ const y = Math.min(o.top - .3, 3.6), L = o.len; B(L, .04, .04, WHITE, 0, y, .1); for (let x = -L/2 + .3, i = 0; x < L/2 - .1; x += .5, i++){ const q = B(.28, .28, .02, [RED, 0xf5d23a, 0x3a8ad8, 0x3ad84a, 0xff7fb0][i % 5], x, y - .3, .1); q.rotation.z = Math.PI/4; } }},
+  tinyshelf:{w:2, band:'low', build(B, A, F, o){ B(1.6, .08, .22, WOOD, 0, 1.0, 0); B(1.6, .08, .22, WOOD, 0, 1.6, 0); for (let i = 0; i < 4; i++){ const x = -.6 + i*.4;
+    if (o.arg === 'cushions'){ B(.3, .1, .18, 0xff7fb0, x, 1.08, .02); B(.3, .1, .18, 0xff7fb0, x - .05, 1.68, .02); } else { B(.26, .12, .18, [0x3a8ad8, RED, 0xf5d23a, 0x3ad84a][i], x, 1.08, .02); B(.1, .2, .1, 0xf5d23a, x, 1.68, .06); } } }},
+  washline:{w:'flex', min:4, band:'high', h:2.4, build(B, A, F, o){ const t = o.top - .4, L = o.len - .3; B(L, .05, .05, WHITE, 0, t, .45); [-L/2, L/2].forEach(x => B(.12, .12, .5, DARK, x, t - .04, 0));
+    const hang = [(x) => { B(.55, 1.5, .1, 0xc0281c, x, t - 1.5, .4); B(.9, .45, .1, 0xc0281c, x + .18, t - 1.95, .4); B(.55, .3, .1, WHITE, x, t - .3, .4); },   // a giant red sock
+      (x) => { B(1.6, .7, .1, WHITE, x, t - .7, .4); B(.6, .5, .1, WHITE, x - .5, t - 1.2, .4); B(.6, .5, .1, WHITE, x + .5, t - 1.2, .4); [-.4, .2, .5].forEach(d => B(.16, .16, .03, 0xff5a8a, x + d, t - .45, .46)); },   // giant underpants with hearts on
+      (x) => { B(1.2, 1.6, .1, 0x7ab8e8, x, t - 1.6, .4); B(.3, .4, .1, 0x7ab8e8, x - .45, t - .3, .4); B(.3, .4, .1, 0x7ab8e8, x + .45, t - .3, .4); }];   // a giant vest
+    for (let x = -L/2 + 1.1, i = o.i; x < L/2 - .7; x += 2, i++) hang[i % 3](x); }},
+  washer:{w:3, band:'low', build(B, A, F, o){ B(2.3, 2.3, .18, WHITE, 0, 0, 0); B(1.4, 1.4, .03, METAL, 0, .5, .18); B(1.1, 1.1, .03, 0x5aa8d8, 0, .65, .2); B(1.8, .3, .03, METAL, 0, 1.9, .18); B(.24, .24, .04, RED, .7, 1.93, .2); }},
+  window:{w:3, band:'low', build(B, A, F, o){ B(2.5, .16, .16, WOOD, 0, 1.0, 0); B(2.5, .16, .16, WOOD, 0, 3.0, 0); B(.16, 2.16, .16, WOOD, -1.17, 1.0, 0); B(.16, 2.16, .16, WOOD, 1.17, 1.0, 0); B(.08, 1.84, .1, WOOD, 0, 1.16, .02);
+    A('pic:' + o.arg, 2.2, 1.84, 0, 1.16, .02); B(2.2, .05, .05, 0xd8f0ff, 0, 1.95, .12); B(.05, .05, .05, 0xffffff, -.6, 2.6, .12); }},   // a window into the giants' bath: look at the hair in the plughole
+  cabinet:{w:3, band:'high', h:1.8, build(B, A, F, o){ const y = 3; B(2.6, .12, .8, WHITE, 0, y, 0); B(2.6, .12, .8, WHITE, 0, y + 1.6, 0); B(.12, 1.7, .8, WHITE, -1.24, y, 0); B(.12, 1.7, .8, WHITE, 1.24, y, 0); B(2.5, 1.6, .04, 0xc8e8f0, 0, y, 0);
+    B(1.9, .14, .14, 0x3aa8d8, -.2, y + .2, .3); B(.5, .3, .3, WHITE, .8, y + .2, .3); for (let i = 0; i < 6; i++) B(.04, .3, .04, 0x8a5a2a, .62 + i*.07, y + .5, .4);   // a giant toothbrush... with long brown hairs stuck in it
+    B(.24, .2, .3, 0xf5d23a, -.9, y + .12, .3); B(.5, .2, .3, 0xf5d23a, -.55, y + .16, .3); B(.24, .2, .3, 0xf5d23a, -.2, y + .12, .3);   // banana soap
+    B(.4, .34, .34, 0xffd84a, .5, y + .12, .12); B(.24, .24, .24, 0xffd84a, .62, y + .46, .14); B(.14, .08, .1, 0xf08a2a, .76, y + .52, .2); B(.05, .05, .03, BLACK, .66, y + .6, .27); B(.05, .05, .03, BLACK, .56, y + .6, .27);   // a rubber duck (with eyes)
+    B(2.5, .06, .06, 0xd8f0ff, 0, y + .8, .78); }},
+  towel:{w:2, band:'low', build(B, A, F, o){ B(1.6, .1, .16, METAL, 0, 2.3, 0); B(1.3, 1.6, .08, 0xe85a6a, 0, .8, .1); B(1.3, .2, .09, WHITE, 0, 1.0, .1); B(1.3, .2, .09, WHITE, 0, 1.3, .1); }},
+  roll:{w:2, band:'high', h:2.8, build(B, A, F, o){ const y = Math.max(4, Math.min(o.top - 1.8, 4.4)); B(.12, .9, .6, METAL, -.85, y + .3, 0); B(.12, .9, .6, METAL, .85, y + .3, 0); B(1.6, 1.2, 1.0, WHITE, 0, y, .05); B(1.62, .4, .4, 0xd8c8a8, 0, y + .4, .35); B(.6, 1.2, .04, WHITE, .3, y - 1.1, .9); }},   // the giants' toilet roll. It's the size of a sofa
+  tiles:{w:'flex', min:3, band:'low', build(B, A, F, o){ for (let k = 0; k < o.len; k++) A('tile', 1, 1.2, k - (o.len - 1)/2, 0, .01); }},
+  crates:{w:3, band:'top', build(B, A, F, o){ [[-.8, 0, 1], [.4, 0, 1], [-.2, 1, .9]].forEach(([x, y, w]) => { B(w, w, w, 0xa87e4a, x, y, -w/2); B(w + .02, .12, w + .02, 0x6a4a22, x, y + w*.45, -w/2 - .01); B(.12, w + .02, w + .02, 0x6a4a22, x, y - .01, -w/2 - .01); }); }},
+  curtains:{w:4, band:'low', build(B, A, F, o){ const h = Math.min(o.top, 4) - .3; B(3.8, .3, .24, GOLDC, 0, h, 0); [-1, 1].forEach(s => { B(1.5, h, .2, 0xa01828, s*1.1, 0, .02); B(.2, .2, .22, GOLDC, s*1.1, h*.45, .02); }); }},
+  spots:{w:2, band:'high', h:.8, build(B, A, F, o){ const y = Math.max(2.95, o.top - .9); B(1.8, .1, .2, BLACK, 0, y + .6, 0); [-.5, .5].forEach(x => { B(.4, .5, .5, BLACK, x, y, .2); B(.3, .3, .04, 0xfff0a0, x, y + .1, .7); }); }},
+  speakers:{w:1, band:'high', h:1.4, build(B, A, F, o){ const y = Math.max(2.95, o.top - 1.6); B(.9, 1.3, .6, BLACK, 0, y, 0); B(.6, .6, .04, 0x5a5a5a, 0, y + .2, .6); B(.3, .3, .04, 0x5a5a5a, 0, y + .9, .6); }},
+  record:{w:3, band:'high', h:2.1, build(B, A, F, o){ const y = Math.max(2.95, o.top - 2.2); [0, Math.PI/4].forEach(r => { const q = B(1.4, 1.4, .06, BLACK, 0, y + .3, .02); q.rotation.z = r; }); B(1.9, .8, .06, BLACK, 0, y + .6, .01); B(.8, 1.9, .06, BLACK, 0, y + .05, .01); B(.5, .5, .04, RED, 0, y + .75, .08); }},
+  torchrack:{w:2, band:'low', build(B, A, F, o){ B(1.6, .9, .06, WOOD, 0, 1.3, 0); for (let i = 0; i < 4; i++){ B(.08, .6, .08, 0x8a6a3a, -.54 + i*.36, 1.38, .06); B(.12, .14, .12, 0x2a2a2a, -.54 + i*.36, 1.98, .05); } }},
+  bunks:{w:2, band:'low', build(B, A, F, o){ [-.75, .75].forEach(x => B(.1, 1.6, .2, WOOD, x, 0, 0)); [.3, 1.0].forEach(y => { B(1.4, .12, .2, WOOD, 0, y, 0); B(1.3, .12, .14, 0x3a8ad8, 0, y + .12, .04); B(.3, .1, .14, WHITE, -.45, y + .24, .04); }); }},
+  mirror:{w:3, band:'low', build(B, A, F, o){ B(2.3, 2.6, .1, GOLDC, 0, .3, 0); B(2.0, 2.3, .04, 0xd8eef8, 0, .45, .1); [[-.4, .3], [.2, .5]].forEach(([x, k]) => { const q = B(.12, 1.4, .02, WHITE, x, .9, .14); q.rotation.z = k; }); }},
+  comb:{w:3, band:'high', h:1.4, build(B, A, F, o){ const y = Math.max(2.95, o.top - 1.6); B(2.6, .4, .14, 0xc8641e, 0, y + .9, 0); for (let i = 0; i < 12; i++) B(.08, .8, .1, 0xc8641e, -1.15 + i*.21, y + .1, .02);
+    [-.6, .1, .7].forEach((x, i) => B(.04, 1.2 + i*.2, .04, 0x8a4a1a, x, y - .3 - i*.1, .14)); }},   // long ginger hairs in the comb. Whose are THOSE?
+  headboard:{w:4, band:'low', build(B, A, F, o){ B(3.4, 2.4, .2, WOOD, 0, 0, 0); B(3.6, .2, .24, DARK, 0, 2.4, 0); B(1.4, .6, .25, WHITE, -.8, .7, .0); B(1.4, .6, .25, WHITE, .8, .7, .0); B(.6, .3, .06, GOLDC, 0, 1.8, .2); }},
+  slippers:{w:2, band:'high', h:1.2, build(B, A, F, o){ const y = Math.max(2.95, o.top - 1.4); B(1.8, .12, .14, DARK, 0, y + 1.1, 0); [-.45, .45].forEach(x => { B(.6, 1.0, .3, 0xb07a4a, x, y, .1); B(.62, .3, .34, 0xf0e0c0, x, y + .8, .08); }); }},
+  hopper:{w:2, band:'high', h:1.6, build(B, A, F, o){ const y = Math.max(2.95, o.top - 1.7); [[1.6, 1.1], [1.1, .7], [.6, .3]].forEach(([w, yy]) => B(w, .4, w*.5, 0xc8a25a, 0, y + yy, .05)); B(.3, .3, .3, METAL, 0, y, .15); B(1.7, .1, .9, METAL, 0, y + 1.5, 0); }},
+  ruler:{w:'flex', min:5, band:'low', build(B, A, F, o){ const L = Math.min(o.len - .2, 8); B(L + .1, .6, .04, DARK, 0, 1.75, 0); A('ruler', L, .5, 0, 1.8, .05); }},
+  flags:{w:'flex', min:3, band:'top', build(B, A, F, o){ const L = o.len; for (let x = -L/2 + .5, i = o.i; x < L/2; x += 2.5, i++){ B(.08, 1.6, .08, WOOD, x, 0, -.5); B(.6, .4, .04, [RED, 0xf5d23a, 0x3a8ad8, 0x3ad84a][i % 4], x + .34, 1.1, -.5); } }},
+  telescope:{w:1, band:'top', build(B, A, F, o){ B(.1, .9, .1, DARK, -.2, 0, -.6); B(.1, .9, .1, DARK, .2, 0, -.6); const t = B(.25, .25, 1.3, GOLDC, 0, .85, -1.1); t.rotation.x = -.35; }},
+  deckchair:{w:3, band:'low', build(B, A, F, o){ B(2.0, .1, .2, WOOD, 0, 1.6, 0); B(.1, 1.7, .2, WOOD, -.95, 0, 0); B(.1, 1.7, .2, WOOD, .95, 0, 0); for (let i = 0; i < 5; i++) B(.36, 1.5, .06, i % 2 ? WHITE : 0x2a6fd8, -.72 + i*.36, .1, .1); }},
+  pylon:{w:2, band:'low', build(B, A, F, o){ [-.5, .5].forEach(x => { const q = B(.1, 2.4, .1, METAL, x*.8, 0, .02); q.rotation.z = -x*.25; }); [.6, 1.2, 1.8].forEach(y => B(1.2 - y*.25, .08, .1, METAL, 0, y, .02)); B(1.4, .08, .1, METAL, 0, 2.3, .02); B(.14, .14, .14, 0xf5d23a, 0, 2.45, .02); }}
+};
+// ---- where things can go in a room: the wall cells, minus doorways and the cells in front of puzzle parts
+function puzzleCells(r){
+  const s = new Set(), k = (x, y) => y*NX + x, addXY = (p) => { if (p && p.length >= 2) s.add(k(p[0], p[1])); }, addO = o => { if (o && 'x' in o) s.add(k(o.x, o.y)); }, rect = q => { if (q) for (let x = q[0]; x <= q[2]; x++) for (let y = q[1]; y <= q[3]; y++) s.add(k(x, y)); };
+  [r.fixed, r.loose, r.sol].forEach(l => (l || []).forEach(addO)); (r.naive || []).forEach(l => (Array.isArray(l) ? l : [l]).forEach(addO));
+  [r.out, r.inputs, r.walls, r.bridge, r.after && r.after.map(a => a.slice(1))].forEach(l => (l || []).forEach(addXY));
+  (r.quick || []).forEach(rect); addXY(r.tntAt); addXY(r.requireOff);
+  (r.why || []).forEach(w => { addXY(w.at); (w.set || []).forEach(addXY); });
+  (r.chasm || []).forEach(rect); addXY(r.crystalAt); if (r.coop) Object.values(r.coop).forEach(v => { if (Array.isArray(v) && typeof v[0] === 'number') addXY(v); });
+  if (r.troop){ const t = r.troop; rect(t.pen); addXY(t.lure); addXY(t.food); addXY(t.danceAt); (t.labels || []).forEach(l => addXY(l.slice(1))); }
+  return s;
+}
+function roomSides(r){
+  const b = r.box, n = [], rg = (a, z) => { const o = []; for (let i = a; i <= z; i++) o.push(i); return o; };
+  n.push({k:'N', dir:[0, 1], cells:rg(b.x0 + 1, b.x1 - 1).map(x => [x, b.y0])}); n.push({k:'S', dir:[0, -1], cells:rg(b.x0 + 1, b.x1 - 1).map(x => [x, b.y1])});
+  n.push({k:'W', dir:[1, 0], cells:rg(b.y0 + 1, b.y1 - 1).map(y => [b.x0, y])}); n.push({k:'E', dir:[-1, 0], cells:rg(b.y0 + 1, b.y1 - 1).map(y => [b.x1, y])});
+  return n;
+}
+const roomDecorRoot = new THREE.Group(); world.add(roomDecorRoot);
+const RD = {lo:null, hi:null, off:false, items:[], signs:[], ceil:{}, ceilAt:null, dim:null, roof:null, stats:null};
+function roomDecorDrop(){
+  [RD.lo, RD.hi].forEach(g => { if (!g) return; artDrop(g); roomDecorRoot.remove(g); g.traverse(o => { if (o.isMesh && !o.userData.merged && o.geometry && !DPAL.geo.has(o.geometry) && !Object.values(tboxCache).includes(o.geometry)) o.geometry.dispose(); }); });
+  RD.lo = RD.hi = null; RD.items = []; RD.signs = []; RD.ceil = {}; RD.ceilAt = RD.dim = null;
+}
+function buildRoomDecor(){
+  roomDecorDrop();
+  if (RD.off || S.mode !== 'adventure' || ROOMS !== TEMPLE_ROOMS) return;
+  decorArtReady();
+  const lo = new THREE.Group(), hi = new THREE.Group(); roomDecorRoot.add(lo); roomDecorRoot.add(hi); RD.lo = lo; RD.hi = hi;
+  RD.ceilAt = new Float32Array(NX*NY); RD.dim = new Uint8Array(NX*NY);
+  [...ROOMS, ...SHIP_ROOMS].forEach(r => { const d = ROOM_DECOR[r.id]; if (d) decorRoom(r, d, lo, hi); });
+  mergeStatic(lo); mergeStatic(hi); collectFlames(lo);
+  if (window.__game) window.__game.decor = DECOR_HOOKS;
+}
+function decorRoom(r, d, lo, hi){
+  const b = r.box, e = floorAt(r.entry[0], r.entry[1]), ship = r.id > 30, ix = (x, y) => y*NX + x;
+  const wallH = Math.max(...roomSides(r).flatMap(s => s.cells.map(([x, y]) => S.walls[ix(x, y)]))) || 4;
+  const crypt = !ship && S.roof[ix(b.x0 + 2, b.y0 + 2)] > 0, ceil = ship ? 0 : crypt ? S.roof[ix(b.x0 + 2, b.y0 + 2)] : (d.ceil || 0);
+  const top = ceil || wallH;   // the highest a wall prop can reach
+  // doorways (and the carved blocks that frame them) are never touched
+  const door = new Set(); [r.entry, r.exit, r.toilet].forEach(dc => { if (!dc) return; doorSpan(dc, b).forEach(([x, y]) => door.add(ix(x, y))); const v = dc[0] === b.x0 || dc[0] === b.x1; (v ? [[dc[0], dc[1] - 2], [dc[0], dc[1] + 2]] : [[dc[0] - 2, dc[1]], [dc[0] + 2, dc[1]]]).forEach(([x, y]) => door.add(ix(x, y))); });
+  const puz = puzzleCells(r), sides = {};
+  roomSides(r).forEach(s => { s.free = s.cells.map(([x, y]) => S.walls[ix(x, y)] > 0 && !door.has(ix(x, y)));
+    s.inward = s.cells.map(([x, y]) => [x + s.dir[0], y + s.dir[1]]);
+    s.lowOk = s.cells.map((c, i) => s.free[i] && [-1, 0, 1].every(o => { const q = s.inward[i + o]; return !q || (!puz.has(ix(q[0], q[1])) && !door.has(ix(q[0], q[1]))); }));
+    s.usedLo = s.cells.map(() => false); s.usedHi = s.cells.map(() => false); sides[s.k] = s; });
+  const inSide = sideOf(r, r.entry), far = OPP[inSide], order = [LEFT[inSide], OPP[LEFT[inSide]], far, inSide];
+  // a frame on a wall: the middle of cells i..j of a side, on the inner face (or on top of the wall, or its outer face)
+  const frame = (s, i, j, where) => { const a = s.cells[i], z = s.cells[j], cx = (a[0] + z[0])/2, cy = (a[1] + z[1])/2, g = new THREE.Group();
+    const out = where === 'outer' ? -1 : 1, off = where === 'top' ? 0 : .5*out;
+    g.position.set(cx - NX/2 + .5 + s.dir[0]*off, e + (where === 'top' ? wallH : 0), cy - NY/2 + .5 + s.dir[1]*off); g.rotation.y = Math.atan2(s.dir[0]*out, s.dir[1]*out); return g; };
+  const rec = (kind, s, i, j, band, info) => { const cells = s.cells.slice(i, j + 1); RD.items.push(Object.assign({room:r.id, kind, side:s.k, band, cells, inward:s.inward.slice(i, j + 1)}, info)); };
+  const build = (g, fn) => { let lowD = 0, maxD = 0, y0 = 99, y1 = -99; const flames = [];
+    const B = (w, h, dd, m, x, y, z) => { const geo = typeof m === 'number' ? pbox(w, h, dd, m) : tbox(w, h, dd), q = new THREE.Mesh(geo, typeof m === 'number' ? DPAL.mat : m); q.position.set(x, y + h/2, (z || 0) + dd/2); q.raycast = () => {}; g.add(q);
+      const back = (z || 0) + dd; if (y < 2.6) lowD = Math.max(lowD, back); maxD = Math.max(maxD, back); y0 = Math.min(y0, y); y1 = Math.max(y1, y + h); return q; };
+    const A = (key, w, h, x, y, z) => { const q = artPlane(key, w, h); q.position.set(x, y + h/2, (z || 0) + .005); g.add(q); y0 = Math.min(y0, y); y1 = Math.max(y1, y + h); return q; };
+    const F = (x, y, z, s) => { const m = new THREE.Object3D(); m.position.set(x, y, z); m.scale.setScalar(s); m.userData.flame = true; g.add(m); flames.push(m); };
+    fn(B, A, F); return {lowDepth:+lowD.toFixed(3), depth:+maxD.toFixed(3), y0:+y0.toFixed(2), y1:+y1.toFixed(2)}; };
+  // find a run of n cells on a side that a band may use (nearest the middle of the wall)
+  const findRun = (s, n, band) => { const ok = i => s.free[i] && (band === 'low' ? s.lowOk[i] && !s.usedLo[i] : band === 'sign' ? !s.usedLo[i] : !s.usedHi[i]); let best = null;
+    for (let i = 0; i + n <= s.cells.length; i++){ let good = true; for (let k = i; k < i + n; k++) if (!ok(k)) { good = false; break; } if (!good) continue; const dm = Math.abs(i + n/2 - s.cells.length/2); if (!best || dm < best.dm) best = {i, j:i + n - 1, dm}; }
+    return best; };
+  const longest = (s, band, from) => { let best = null, run = 0; for (let i = 0; i <= s.cells.length; i++){ const ok = i < s.cells.length && s.free[i] && (band === 'low' ? s.lowOk[i] && !s.usedLo[i] : band === 'top' ? !s.usedHi[i] : !s.usedHi[i]);
+    if (ok) run++; else { if (run >= (from || 1) && (!best || run > best.j - best.i + 1)) best = {i:i - run, j:i - 1}; run = 0; } } return best; };
+  const use = (s, i, j, lo2, hi2) => { for (let k = Math.max(0, i - 1); k <= Math.min(s.cells.length - 1, j + 1); k++){ if (lo2) s.usedLo[k] = true; if (hi2 && k >= i && k <= j) s.usedHi[k] = true; } };
+  // 1. the room's goal, on the wall you face as you walk in (beside the way out if it's on that wall)
+  if (ship){ const s = sides[inSide], dx = r.entry[0], cand = s.cells.map((c, i) => i).filter(i => s.free[i] && Math.abs(s.cells[i][0] - dx) >= 3 && Math.abs(s.cells[i][0] - dx) <= 5 && s.cells[i][0] < dx);
+    if (cand.length >= 2){ const i = Math.min(...cand), j = Math.max(...cand), g = frame(s, i, j, 'outer'), w = Math.min(2.4, j - i + .7), h = w/1.6;
+      const info = build(g, (B, A) => { B(w + .16, h + .16, .05, DARK, 0, 2.1 - h/2 - .08, 0); A('sign' + r.id, w, h, 0, 2.1 - h/2, .06); });
+      lo.add(g); RD.signs.push({room:r.id, key:'sign' + r.id, side:inSide, outer:true, cells:s.cells.slice(i, j + 1), w, h, cy:e + 2.1, x:g.position.x, z:g.position.z, dir:[-s.dir[0], -s.dir[1]]}); rec('sign', s, i, j, 'low', info); } }
+  else for (const sk of [far, LEFT[inSide], OPP[LEFT[inSide]]]){ const s = sides[sk], sq = signSquare(r.id); let run = sq ? findRun(s, 2, 'sign') : findRun(s, 4, 'sign') || findRun(s, 3, 'sign') || findRun(s, 2, 'sign'); if (!run) continue;
+    const g = frame(s, run.i, run.j), w = sq ? 1.85 : Math.min(3, run.j - run.i + .9), h = sq ? 1.85 : w/1.6, cy = sq ? 1.9 : 2.05;
+    const info = build(g, (B, A) => { B(w + .16, h + .16, .05, DARK, 0, cy - h/2 - .08, 0); A('sign' + r.id, w, h, 0, cy - h/2, .06); });
+    lo.add(g); use(s, run.i, run.j, true, false); rec('sign', s, run.i, run.j, 'low', info);
+    RD.signs.push({room:r.id, key:'sign' + r.id, side:sk, cells:s.cells.slice(run.i, run.j + 1), w, h, cy:e + cy, x:g.position.x, z:g.position.z, dir:s.dir}); break; }
+  if (ship) return;
+  // 2. the Emperor's decree, pinned to the wall right by the way in
+  if (DECREES[r.id]){ const s = sides[inSide], dc = r.entry, run = [...s.cells.keys()].filter(i => s.free[i] && !s.usedLo[i]).sort((a, c) => Math.abs(s.cells[a][0] - dc[0]) + Math.abs(s.cells[a][1] - dc[1]) - Math.abs(s.cells[c][0] - dc[0]) - Math.abs(s.cells[c][1] - dc[1]))[0];
+    if (run !== undefined){ const g = frame(s, run, run), info = build(g, (B, A) => { A('decree' + r.id, .95, .74, 0, 1.45, .01); B(.08, .08, .04, RED, 0, 2.12, .01); }); lo.add(g); use(s, run, run, true, false); rec('decree', s, run, run, 'low', info); } }
+  // 3. the props: what this room was for
+  (d.props || []).forEach(([kind, arg], n) => { const P = DECOR_PROPS[kind]; if (!P) return;
+    if (P.band === 'high' && top - 2.95 < (P.h || 1)) return;   // no room up there (low ceilings, short walls)
+    if (P.band === 'top' && ceil) return;
+    const sk = [...order.slice(n % 4), ...order.slice(0, n % 4)];
+    for (const k of sk){ const s = sides[k], band = P.band === 'top' ? 'top' : P.band;
+      const run = P.w === 'flex' ? longest(s, band, P.min) : findRun(s, P.w, band); if (!run) continue;
+      const j = P.w === 'flex' ? Math.min(run.j, run.i + 8) : run.j, g = frame(s, run.i, j, P.band === 'top' ? 'top' : 'inner');
+      const info = build(g, (B, A, F) => P.build(B, A, F, {arg, top:Math.min(top, 7), len:j - run.i + 1, i:n}));   // (in the giants' tall rooms, things still hang where you can see them)
+      (P.band === 'low' ? lo : hi).add(g); use(s, run.i, j, P.band === 'low', P.band !== 'low'); rec(kind, s, run.i, j, P.band, info); return; }
+  });
+  // 4. a ceiling (unless the room needs the sky), wall torches round it, and twice-as-tall walls for the giants
+  if (ceil && !crypt){
+    const y = e + ceil, cx = (b.x0 + b.x1)/2 - NX/2 + .5, cz = (b.y0 + b.y1)/2 - NY/2 + .5, W = b.x1 - b.x0 + 1, D = b.y1 - b.y0 + 1;
+    const mat = repMat(CV.plank), wallMat = repMat(S.wallKind[ix(b.x0, b.y0 + 1)] === 2 ? CV.mossy : CV.brick);   // (few materials: every ceiling, beam and wall top merges into a handful of draw calls)
+    const C = (w, h, dd, m, x, yy, z) => { const q = new THREE.Mesh(tbox(w, h, dd), m); q.position.set(x, yy, z); q.raycast = () => {}; hi.add(q); return q; };
+    C(W, .3, D, mat, cx, y + .15, cz);
+    for (let k = 1; k < 4; k++) C(.4, .4, D - 2, repMat(CV.log), cx - W/2 + k*W/4, y - .2, cz);   // beams
+    if (ceil > wallH){ const h = ceil - wallH, ym = e + wallH + h/2;
+      C(W, h, 1, wallMat, cx, ym, b.y0 - NY/2 + .5); C(W, h, 1, wallMat, cx, ym, b.y1 - NY/2 + .5); C(1, h, D - 2, wallMat, b.x0 - NX/2 + .5, ym, cz); C(1, h, D - 2, wallMat, b.x1 - NX/2 + .5, ym, cz); }
+    RD.ceil[r.id] = {y, h:ceil, wallH, tall:ceil > wallH};
+    for (let x = b.x0; x <= b.x1; x++) for (let yy = b.y0; yy <= b.y1; yy++){ RD.ceilAt[ix(x, yy)] = y; if (x > b.x0 && x < b.x1 && yy > b.y0 && yy < b.y1) RD.dim[ix(x, yy)] = 1; }
+    // Minecraft wall torches: a few on every wall, clear of doors, signs and props
+    Object.values(sides).forEach(s => { let last = -9, n = 0; s.cells.forEach((c, i) => { if (n >= 2 || !s.free[i] || s.usedLo[i] || i - last < 4 || i < 1 || i > s.cells.length - 2) return;
+      last = i; n++; const g = frame(s, i, i), info = build(g, (B, A, F) => { B(.1, .6, .1, 0x6a4a2a, 0, 1.9, .1); B(.14, .14, .14, 0x3a2a1a, 0, 2.48, .08); F(0, 2.66, .15, .5); }); lo.add(g); s.usedLo[i] = true; rec('torch', s, i, i, 'low', info); }); });
+  } else if (crypt) RD.ceil[r.id] = {y:e + ceil, h:ceil, wallH, crypt:true};
+}
+// how much darker it is under a roof (the crypt's own torch-lit zones are darker still)
+function roofDim(x, y){ return RD.dim && ROOMS === TEMPLE_ROOMS && RD.dim[y*NX + x] ? .5 : 0; }
+// every frame: ceilings (and everything above the wall tops) show only in first person, and never when the camera is above them
+function roomDecorFrame(){
+  const on = S.mode === 'adventure' && ROOMS === TEMPLE_ROOMS; roomDecorRoot.visible = on; if (!on){ if (RD.lo && ROOMS !== TEMPLE_ROOMS) roomDecorDrop(); return; }   // (Act 2 has its own world: let the temple's decor go)
+  let show = viewFP; const c = camera.position, [x, y] = cellAtWorld(c.x, c.z);
+  if (show && inb(x, y)){ const i = y*NX + x, cy = (RD.ceilAt && RD.ceilAt[i]) || (S.roof && S.roof[i] ? S.elev[i] + S.roof[i] : 0); if (cy && c.y > cy - .2) show = false; }
+  if (RD.hi) RD.hi.visible = show;
+  if (!RD.roof || RD.roof.parent !== terrainRoot) RD.roof = terrainRoot.children.find(m => m.userData.roof) || null;
+  if (RD.roof) RD.roof.visible = show;
+}
+// test hooks (test-decor.js): what was put where, the signs, the ceilings, and the cost of drawing it all
+const DECOR_HOOKS = {
+  items:() => RD.items.map(it => Object.assign({}, it)), signs:() => RD.signs.map(s => Object.assign({}, s)), ceil:() => Object.assign({}, RD.ceil),
+  fits:() => Object.assign({}, DECOR_ART.fit), art:() => ({w:DECOR_ART.W, h:DECOR_ART.H, slots:Object.keys(DECOR_ART.slots).length}),
+  puzzle(id){ const r = [...ROOMS, ...SHIP_ROOMS].find(q => q.id === id); return r ? [...puzzleCells(r)].map(i => [i % NX, (i / NX) | 0]) : []; },
+  walk:(x, y) => passableCell(x, y), wall:(x, y) => S.walls[y*NX + x], way:(x, y) => blocksWay(x, y), door(id){ const r = [...ROOMS, ...SHIP_ROOMS].find(q => q.id === id); const o = []; [r.entry, r.exit, r.toilet].forEach(d => d && o.push(...doorSpan(d, r.box))); return o; },
+  set(off){ RD.off = !!off; buildRoomDecor(); }, hiShown:() => !!(RD.hi && RD.hi.visible), frame:roomDecorFrame, dim:(x, y) => roofDim(x, y),
+  cam(x, y, z, yaw, pitch){ camera.position.set(x, y, z); camera.rotation.set(pitch || 0, yaw || 0, 0, 'YXZ'); camera.updateMatrixWorld(); },
+  render(){ roomDecorFrame(); world.updateMatrixWorld(); renderer.render(scene, camera); const i = renderer.info; return {calls:i.render.calls, tris:i.render.triangles, geos:i.memory.geometries, texs:i.memory.textures}; }
+};
+
 function buildDecor(){
   freeKids(decorRoot);
   ['glove', 'cog', 'beacon', 'captain', 'funWheel', 'funCarousel', 'funShip', 'funDecor'].forEach(k => A[k] = null); A.crew = [];
@@ -6214,8 +6613,8 @@ function buildDecor(){
   A.bolts = [];
   ROOMS.forEach(r => { if (A.solved.has(r.id)) addRoomMonkey(r); });
   // entrance sign
-  const sign = textSprite('TEMPLE OF THE THUNDER MONKEY', {w:360, fs:30, bg:'#d9a632', ink:'#3b2200', scale:1.4});
-  sign.position.copy(cellPos(...ENTRANCE)); sign.position.y += 6.4; decorRoot.add(sign);
+  { const p = cellPos(...ENTRANCE), plate = new THREE.Group(), back = new THREE.Mesh(cbox(6.5, 1.6, .12), M.gold); back.raycast = () => {}; plate.add(back);   // a gold name plate fixed flat to the gatehouse (it used to float in the air)
+    const f = artPlane('wall:name', 6.2, 1.36); f.position.z = .065; plate.add(f); plate.position.set(p.x, p.y + 6.2, p.z + .88); decorRoot.add(plate); }
   // the Great Golden Toilet
   ROOMS.forEach(r => { if (r.toilet && !A.solved.has(r.id)){ const t = makeToilet(); t.position.copy(cellPos(...r.toilet)); const [x, y] = r.toilet, b = r.box; t.rotation.y = y === b.y0 ? -Math.PI/2 : y === b.y1 ? Math.PI/2 : x === b.x1 ? Math.PI : 0; decorRoot.add(t); A.toiletMesh = t; } });
   // the Crystal Skull
@@ -6224,6 +6623,7 @@ function buildDecor(){
   ROOMS.forEach(r => { if (A.solved.has(r.id) && !A.crystals.has(r.id)) spawnCrystal(r); });
   updateGauge();
   placeNotes(); placeManual(); placeReggie(); shipDecor(); placeBraziers(); placeShrineLoot(); buildCrown(); buildGate(); placeSecrets(); buildArches(); buildCrash(); buildFacade(); buildTempleArt();
+  buildRoomDecor();   // what each room was for, its ceiling and torches, and its goal on the wall
 }
 // a stepped gatehouse over the way in, so the temple looks grand from the clearing
 // pixel-art faces built from blocks: colossal carvings on the temple front
@@ -6253,8 +6653,8 @@ function buildFacade(){
     const q = new THREE.Mesh(G.cube, mats[ch]); q.scale.set(1.3, 1.3, 1); q.position.set(cxm + ox + (rx - 3)*1.3, 3 + (6 - ry)*1.3, front + .1); q.raycast = () => {}; g.add(q);
     if (ch === 'E') glowAdd(g, q.position.x, q.position.y + .65, front + 1.2, 2.6, 0xff7a1c, .25);   // the eyes smoulder
   })));
-  const sign = textSprite('CLOSED FOR REPAIRS. Please use the SIDE ENTRANCE -->', {w:340, fs:24, bg:'#efe2b8', ink:'#5a1010', scale:1.1, depth:true}); sign.position.set(cxm, 2.4, front + .8); g.add(sign);
-  { const note = textSprite('Back on Tuesday! - The Guide', {w:230, fs:20, bg:'#a29c8e', ink:'#4a443a', scale:.7, depth:true}); note.position.set(cxm + 6, 1.5, front + .7); g.add(note); }   // the old guide's note, gone grey and stony: it has NOT been a few days
+  { const b = boardSign('wall:closed', 3.2, 2); b.position.set(cxm, 2.6, front + .44); g.add(b); }   // nailed flat to the sealed door
+  { const note = artPlane('wall:tuesday', 1.4, .88); note.position.set(cxm + 3, 1.3, front + .42); g.add(note); }   // the old guide's note, ON the main door (Barold says so), gone grey and stony: it has NOT been a few days
   // braziers up both sides of the great stair, on top of the stepped walls (clear of the side door's lamp)
   for (let y = ENTRANCE[1] + 3; y < HUB.y0; y += 2) [ex - 4, ex + 4].forEach(x => { const i = y*NX + x, c = cellPos(x, y), b = makeBrazier(); b.scale.setScalar(1.4); b.position.set(c.x, S.elev[i] + S.walls[i], c.z); b.userData.lit = true; g.add(b); });
   // giant monkey-head statues guarding the plaza
@@ -6290,7 +6690,7 @@ function placeSecrets(){
     // the lore tablet
     const tab = new THREE.Group(), tp = cellPos(cx, b.y0 + 2); tab.position.copy(tp);
     const slab = new THREE.Mesh(cbox(1.6, 1.8, .3), M.glyph); slab.position.y = .9; tab.add(slab);
-    const label = textSprite(sc.name, {w:220, fs:24, bg:'#efe2b8', ink:'#3b2200', scale:.8, depth:true}); label.position.y = 2.3; tab.add(label); label.userData.near = 6; A.nearLabels.push(label);
+    const label = artPlane('sec' + sc.slot, 1.4, .52); label.position.set(0, 1.5, .16); tab.add(label);   // carved into the tablet's face
     tab.traverse(o => { if (o.isMesh) o.raycast = () => {}; }); tab.userData = {lore:sc, cell:[cx, b.y0 + 2]}; decorRoot.add(tab); sc.tablet = tab;
     // the treasure chest
     const ch = makeChest(A.chests.has(sc.slot)), cp = cellPos(cx, cy + 1); ch.position.copy(cp); ch.userData.secret = sc; ch.userData.cell = [cx, cy + 1]; decorRoot.add(ch); A.chestMeshes.push(ch);
@@ -6463,6 +6863,7 @@ function makeFish(sc){
   g.scale.setScalar(sc || 1); return g;
 }
 function toyGo(c){
+  toyFire(c.t, 'power', c); if (sbToy(c)) return;
   const p = cellPos(c.x, c.y);
   if (c.t === 'confetti'){ sfx.party(); confetti3D(p); monkeyCheer(p); }
   else if (c.t === 'firework'){ sfx.firework(); launchFirework(p); }
@@ -6612,7 +7013,7 @@ function doorTrapFrame(dt){
     // and the door's gear sits right ON the end of the door's wire
     const cog = new THREE.Group(), cm = wm(0xb08a2a); cog.add(new THREE.Mesh(cbox(.8, .8, .14), cm)); [0, 1, 2, 3].forEach(k => { const t = new THREE.Mesh(cbox(.22, .22, .14), cm), a = k*Math.PI/2 + Math.PI/4; t.position.set(Math.cos(a)*.5, Math.sin(a)*.5, 0); cog.add(t); }); cog.add(new THREE.Mesh(cbox(.2, .2, .2), wm(0x5a4310)));
     const gp = cellPos(...TRAP.gear); cog.position.set(gp.x, floorAt(...TRAP.gear) + .5, gp.z + .58); cog.traverse(o => o.raycast = () => {}); decorRoot.add(cog); A.cog = cog;
-    const sp = cellPos(4, 129), sign = textSprite('BY ROYAL DECREE: NO VISITORS. This means YOU. Signed, Emperor Archibald Whiffington III', {w:300, fs:20, bg:'#efe2b8', ink:'#5a1010', scale:.6, depth:true}); sign.position.set(sp.x, floorAt(5, 129) + 2.4, sp.z); decorRoot.add(sign); }
+    const sp = cellPos(4, 129), sign = boardSign('wall:novisit', 1.3, .82); sign.position.set(sp.x + .55, floorAt(5, 129) + 1.9, sp.z); sign.rotation.y = Math.PI/2; decorRoot.add(sign); }   // nailed to the wall by the stairs
   const on = trapOn(), gear = gearOn();
   if (A.cog && gear) A.cog.rotation.z += dt*.004;
   // while it has power, the glove keeps punching the air in front of the door (looks only: the knockback below never asks the glove)
@@ -6931,8 +7332,9 @@ function baroldDecor(){
   const art = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 2.6), new THREE.MeshLambertMaterial({map:pixTex(youngSign())})); art.position.set(0, 2.5, 0); g.add(art);
   g.position.set(p.x, fy, p.z); g.rotation.y = .55; g.traverse(o => o.raycast = () => {}); decorRoot.add(g); A.portrait = g;
   if (A.heart){ const way = textSprite('THE WAY HOME', {w:400, fs:46, bg:'#8a8474', ink:'#2e2a22', scale:1.5, depth:true}); way.position.set(A.heart.position.x, A.heart.position.y + 5.2, A.heart.position.z); decorRoot.add(way); }   // carved over the Crystal Skull: it looks like a signpost. It's really the ship's name.
-  const q = cellPos(hx + 3, hy + 1), sign = textSprite('GUIDE WANTED. NO EXPERIENCE NEEDED. ASK INSIDE.', {w:220, fs:20, bg:'#efe2b8', ink:'#3b2200', scale:.6, depth:true}); sign.position.set(q.x, floorAt(hx + 3, hy + 1) + 1.7, q.z); decorRoot.add(sign);
-  const rc = cellPos(hx + 3, hy - 1), rules = new THREE.Sprite(new THREE.SpriteMaterial({map:pixTex(rulesBoard())})); rules.scale.set(1.3, 1.25, 1); rules.position.set(rc.x, floorAt(hx + 3, hy - 1) + 2.2, rc.z); rules.raycast = () => {}; decorRoot.add(rules);
+  const q = cellPos(hx + 3, hy + 1), sign = boardSign('wall:wanted', 1.2, .75, .6); sign.position.set(q.x, floorAt(hx + 3, hy + 1) + (S.walls[(hy + 1)*NX + hx + 3] || 0) + 1, q.z); decorRoot.add(sign);
+  const rc = cellPos(hx + 3, hy - 1), rules = new THREE.Group(), rb = new THREE.Mesh(cbox(1.42, 1.37, .08), M.wood), rf = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 1.25), new THREE.MeshLambertMaterial({map:pixTex(rulesBoard())})), rp = new THREE.Mesh(cbox(.12, 1.2, .12), M.wood);   // a board on a post (it used to float, facing wherever you stood)
+  rf.position.z = .045; rp.position.set(0, -1.1, -.1); [rb, rf, rp].forEach(o => { o.raycast = () => {}; rules.add(o); }); rules.position.set(rc.x, floorAt(hx + 3, hy - 1) + (S.walls[(hy - 1)*NX + hx + 3] || 0) + 1.65, rc.z); decorRoot.add(rules);
   const r = ROOMS.find(x => x.id === 14);
   if (r){ const d = r.entry, [ix, iy] = entryOf(r), ox = 2*d[0] - ix, oy = 2*d[1] - iy, c = cellPos(ox, oy);
     const board = new THREE.Sprite(new THREE.SpriteMaterial({map:pixTex(monthBoard())})); board.scale.set(1.1, 1.65, 1); board.position.set(c.x, floorAt(ox, oy) + 1.5, c.z); board.raycast = () => {}; decorRoot.add(board); }
@@ -7169,7 +7571,7 @@ function bannedHere(id){
   return false;
 }
 function kitFor(){
-  if (!A.on) return null;
+  if (!A.on) return (L && L.def && L.def.kind === 'free') ? sandboxKit() : null;   // free build: the basics, plus what the temple has won
   const r = A.rt && A.rt.room;
   if (!A.gotKit && !A.solved.size) return new Set(['pick']);   // empty hands until Barold hands you redstone
   const all = new Set(['pick', ...(A.solved.size || r ? A.unlocked : [])]);
@@ -7472,7 +7874,7 @@ function solveRoom(r){
   if (r.ship) return shipSolved(r);   // one of the Skull's machines
   plogEvent('solved'); plogSave(); lightBraziers(r.id, true);
   { const pw = PASSWORDS.find(p2 => p2.after === r.id); if (pw && ROOMS.filter(q => q.id < r.id).every(q => A.solved.has(q.id))) showPassword(pw); }
-  A.solved.add(r.id);
+  A.solved.add(r.id); sbUnlockNote(r);
   if (r.gate || GATE_FROM[r.id]) earnGate(r.gate || GATE_FROM[r.id]);
   (r.unlock || []).forEach(u => A.unlocked.add(u));
   if (PREVIEW_LAST && r.id === PREVIEW_LAST) setTimeout(() => { if (A.on) previewEnd(); }, 7000);
@@ -7562,7 +7964,7 @@ function shipDecor(){
   // the LAUNCH lever, on a little post by the Skull
   { const [lx, ly] = HEART.levers[0], c = cellPos(lx, ly); box(.12, 1.7, .12, M.wood, c.x + .6, c.y + .85, c.z + .45); sign('LAUNCH', c.x + .6, c.y + 2, c.z + .45, {w:150, bg:'#c0281a', ink:'#fff3c0'}); }
   // the Emperor's decree in each machine room, by the door
-  SHIP_ROOMS.forEach(r => { const c = cellPos(r.X(1), r.Y(5)), post = box(.1, 1.9, .1, M.wood, c.x - .3, c.y + .95, c.z); const t = textSprite(r.decree, {w:300, fs:20, bg:'#efe2b8', ink:'#5a1010', scale:.6, depth:true}); t.position.set(c.x - .3, c.y + 1.9 + t.scale.y/2, c.z); t.userData.near = 7; A.nearLabels.push(t); g.add(t); });
+  SHIP_ROOMS.forEach(r => { const c = cellPos(r.X(1), r.Y(5)), post = box(.1, 1.9, .1, M.wood, c.x - .3, c.y + .95, c.z); const t = boardSign('decree' + r.id, 1.1, .86); t.position.set(c.x - .3, c.y + 2.3, c.z + .08*r.back*-1); t.rotation.y = r.back < 0 ? 0 : Math.PI; g.add(t); });   // nailed to the post
   const R = part => SHIP_ROOMS.find(r => r.part === part);
   // ENGINES: two great bells on the back wall, dark until they roar
   { const r = R('engines'), bells = []; [4, 6].forEach(x => {
@@ -7794,10 +8196,11 @@ function makeEmperor(){
   const tr = new THREE.Group(); tr.position.set(-.85, 0, .2); tr.rotation.y = .4; g.add(tr);
   add(tr, .6, .3, .7, wm(0x6b5a2a), 0, .3, 0); add(tr, .5, .12, .6, wm(0x8a7a3a), 0, .5, 0); add(tr, .3, .06, .4, wm(0x5a4a1a), 0, .58, 0);
   add(tr, .2, .2, .26, wm(0x8aa05a), 0, .28, .44); add(tr, .24, .14, .2, white, 0, .42, .42);   // head + powdered wig
+  [-.055, .055].forEach(x => { add(tr, .06, .05, .02, white, x, .31, .575); add(tr, .03, .035, .02, black, x, .305, .585); });   // sleepy, unimpressed eyes
   [[-.24, -.24], [.24, -.24], [-.24, .24], [.24, .24]].forEach(([x, z]) => add(tr, .14, .16, .14, wm(0x8aa05a), x, .08, z));
   // Duchess the snail, on the deckchair arm
   const sn = new THREE.Group(); sn.position.set(.4, .36, .3); g.add(sn);
-  add(sn, .26, .06, .1, wm(0x9ab07a), 0, .03, 0); add(sn, .14, .14, .12, wm(0xa06a3a), -.03, .12, 0); add(sn, .02, .08, .02, wm(0x9ab07a), .12, .1, .02); add(sn, .02, .08, .02, wm(0x9ab07a), .12, .1, -.02);
+  add(sn, .26, .06, .1, wm(0x9ab07a), 0, .03, 0); add(sn, .14, .14, .12, wm(0xa06a3a), -.03, .12, 0); add(sn, .02, .08, .02, wm(0x9ab07a), .12, .1, .02); add(sn, .02, .08, .02, wm(0x9ab07a), .12, .1, -.02); add(sn, .03, .03, .03, black, .12, .15, .02); add(sn, .03, .03, .03, black, .12, .15, -.02);   // eyes on stalks
   // a very small umbrella, for later
   const um = new THREE.Group(); um.visible = false; um.position.set(.28, 1.15, 0); sk.add(um);
   add(um, .03, .7, .03, black, 0, .35, 0); add(um, .7, .08, .7, wm(0xff7fb0), 0, .72, 0); add(um, .4, .08, .4, wm(0xffd84a), 0, .8, 0);
@@ -8176,7 +8579,7 @@ function advStart(given){
   cam.auto = false;
   const save = given || advLoad();
   if (save && save.layout !== LAYOUT){ save.player = null; save.cells = []; save.cellsAct = 0; save.levers = {}; }   // the map changed since this save: keep progress, drop positions
-  A.on = true; A.room = null; A.launching = false;
+  A.on = true; A.room = null; A.launching = false; advRootsShow(true); sbClear();
   A.act = (save && save.act) || 1; ROOMS = A.act === 2 ? FUN_ROOMS : TEMPLE_ROOMS; A.funMet = !!(save && save.funMet); A.whySeen = new Set((save && save.whySeen) || []); A.helloSeen = new Set(); A.funDone = !!(save && save.funDone); A.funIntroT = 0; A.funIntroI = -1;
   A.shrineOpen = !!(save && save.shrine); A.metBarold = !!(save && (save.met || (save.solved && save.solved.length))); A.gotKit = !!(save && (save.kit || save.met || (save.solved && save.solved.length))); A.gates = new Set(save && save.gates ? save.gates : []); A.found = new Set(save && save.found ? save.found : ['dust']); if (save && !save.found){ const top = Math.max(0, ...(save.solved || [])); ROOMS.filter(q => q.id <= top + 1).forEach(q => (q.give || []).forEach(t => A.found.add(t))); } A.doorTrapOff = !!(save && (save.trapOff || (save.solved && save.solved.length))); A.trapMet = !!(save && save.trapMet); A.leadToDoor = A.gotKit; document.body.classList.toggle('emptyHands', !A.gotKit); A.introAt = 0; A.introStarted = false; A.thief = null; A.revealed = A.metBarold; A.callK = undefined; A.callT = undefined; A.trapHint = 0; A.gapHint = false; A.bothSaid = false;
   A.disc = new Set(save && save.disc ? save.disc : []); A.notes = new Set(save && save.notes ? save.notes : []); A.secrets = new Set(save && save.secrets ? save.secrets : []); A.chests = new Set(save && save.chests ? save.chests : []);
@@ -8328,6 +8731,907 @@ function resetRoom(){
   S.lastSnap = ''; syncVisuals(); advSaveSoon(); enterArea(r, r.id);
 }
 
+/* ================= TNT: Java rules first, then fun on top =================
+   Java: a 4 s fuse with flashing, a power-4 blast, blasted TNT lights with a short random fuse (chains), knockback.
+   Fun (Tom's numbers): TNT going off in the SAME bang grow each other's blast, 10% more radius per extra one, compounding,
+   up to 4x (about 15 at once). At most 64 live TNT; one bang is worked out once and drawn with pooled meshes, so 64 never crawls.
+   A blast only breaks what the player built (never walls, floors or room parts); steel and blast-proof glass stop it like
+   Java's rays. Getting blasted is a tumble and a respawn. Creatures go flying (and land happily). A blast near a whoopee
+   cloud makes the gas go BANG. 60+ TNT in one chain: "For I am become Steve, destroyer of worlds". */
+const TNT_R = 4, TNT_LIVE_MAX = 64, TNT_GROW = 1.1, TNT_GROW_MAX = 4, TNT_ACH = 60;
+const BLASTPROOF = new Set(['steel', 'rglass']);
+const TNTS = {chains:{}, chainN:0, bangs:[], gas:0};
+const chainFuse = () => 5 + Math.floor(Math.random()*11);   // Java: a TNT lit by a blast goes off 0.5 to 1.5 s later
+const tntGrow = n => Math.min(TNT_GROW_MAX, Math.pow(TNT_GROW, Math.max(0, n - 1)));
+function tntLive(){ let n = 0; for (const c of S.grid) if (c && c.t === 'tnt') n++; return n + upCount('tnt'); }
+function tntCapOK(){
+  if (tntLive() < TNT_LIVE_MAX) return true;
+  sfx.nope(); showToast(`That's ${TNT_LIVE_MAX} Boom Blocks! That's the most you can have at once. Blow some up first!`, true); return false;
+}
+// the middle of a block (layer z: 0 is the floor layer) in the world
+const voxWorld = (x, y, z) => { const p = cellPos(x, y); p.y += (z || 0) + .5; return p; };
+// can a blast get through this block? Walls, closed doors, steel and blast-proof glass stop it
+function blastStops(x, y, z){
+  if (!inb(x, y)) return false;
+  if (S.walls[y*NX + x]) return true;
+  const c = z ? upAt(x, y, z) : at(x, y); if (!c) return false;
+  return BLASTPROOF.has(c.t) || c.t === 'door' || c.t === 'gate' || c.t === 'vein' || c.t === 'crackwall';
+}
+// a straight line from the blast to a block: does anything stop it on the way? (the two ends don't count)
+function blastRay(o, x, y, z){
+  const ax = o.x + .5, ay = o.y + .5, az = (o.z || 0) + .5, bx = x + .5, by = y + .5, bz = z + .5;
+  const d = Math.hypot(bx - ax, by - ay, bz - az), n = Math.ceil(d/.3);
+  let px = o.x, py = o.y, pz = o.z || 0;
+  for (let i = 1; i < n; i++){
+    const t = i/n, vx = Math.floor(ax + (bx - ax)*t), vy = Math.floor(ay + (by - ay)*t), vz = Math.max(0, Math.floor(az + (bz - az)*t));
+    if (vx === px && vy === py && vz === pz) continue; px = vx; py = vy; pz = vz;
+    if ((vx === o.x && vy === o.y && vz === (o.z || 0)) || (vx === x && vy === y && vz === z)) continue;
+    if (blastStops(vx, vy, vz)) return false;
+  }
+  return true;
+}
+// everything that can be thrown about by a blast: Barold, the temple's monkeys, the sandbox's creatures
+function creatures(){
+  const out = [];
+  if (A.on){ if (A.monkey) out.push(A.monkey); (A.extras || []).forEach(m => out.push(m)); if (typeof TROOP !== 'undefined') TROOP.list.forEach(m => out.push(m)); }
+  SBX.mobs.forEach(m => out.push(m.g));
+  return out.filter(m => m && m.parent && m.visible !== false);
+}
+// send a creature flying away from a point, happily (it spins, lands, and carries on). power ~ how hard (3 gentle, 14 huge)
+function flingCreature(m, from, power){
+  if (!m) return; const u = m.userData, dx = m.position.x - from.x, dz = m.position.z - from.z, h = Math.hypot(dx, dz) || 1;
+  if (A.on && !m.userData.sbx) power = Math.min(power, 6);   // in the temple: a short hop, so nobody lands in the next room
+  const sp = Math.max(2, Math.min(14, power)), k = sp*.6;
+  u.fly = {vx:dx/h*k + (Math.random() - .5), vz:dz/h*k + (Math.random() - .5), vy:4.5 + sp*.85 + Math.random()*2, spin:(Math.random() < .5 ? -1 : 1)*(6 + sp*.6), t:0};
+  if (m === A.monkey) setTimeout(() => { if (A.on) monkeySay(['WHEEEEE!', 'I CAN FLYYYY!', 'Not the sash!'][Math.floor(Math.random()*3)], 2200); }, 100);
+}
+// TNT that goes off in the same step: one bang. Bigger when there are more of them.
+function tntBang(list){
+  list = list.filter(o => (o.z ? upAt(o.x, o.y, o.z) : at(o.x, o.y)) === o.c);
+  if (!list.length) return;
+  const n = list.length, mult = tntGrow(n), R = TNT_R*mult;
+  list.forEach(o => { if (o.z) upSet(o.x, o.y, o.z, null); else setCell(o.x, o.y, null); toyFire('tnt', o.c.chain ? 'blast' : 'power', o); });
+  // a chain: TNT lit by redstone starts one; TNT lit by a blast joins the chain of the blast that lit it
+  const ch = (list.find(o => o.c.chain) || {c:{}}).c.chain || ++TNTS.chainN;
+  TNTS.chains[ch] = (TNTS.chains[ch] || 0) + n;
+  // a big bang is worked out from a few centres (TNT next to each other count as one), so 64 costs about what 15 do
+  const seen = new Set(), origins = [];
+  for (const o of list){ const k = (o.x >> 1) + ',' + (o.y >> 1) + ',' + (o.z >> 1); if (n > 8 && seen.has(k)) continue; seen.add(k); origins.push(o); }
+  blast(origins, R, {n, mult, chain:ch, destroy:true});
+  TNTS.bangs.push({n, R:+R.toFixed(2), chain:ch, total:TNTS.chains[ch]}); if (TNTS.bangs.length > 30) TNTS.bangs.shift();
+  if (TNTS.chains[ch] >= TNT_ACH) sbAchieve('sixtyfour');   // "TNTTT...T": one T for every TNT (Tom)
+  saveBuildSoon();
+}
+// what a blast does: lights TNT, breaks what you built, throws you and the creatures, sets off whoopee gas. o: grid spots {x, y, z}
+function blast(origins, R, opt){
+  const hit = new Map();
+  for (const o of origins){
+    const x0 = Math.max(0, Math.floor(o.x - R)), x1 = Math.min(NX - 1, Math.ceil(o.x + R)), y0 = Math.max(0, Math.floor(o.y - R)), y1 = Math.min(NY - 1, Math.ceil(o.y + R));
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++){
+      const c = at(x, y); if (!c) continue;
+      const k = y*NX + x; if (hit.has(k)) continue;
+      if ((x - o.x)**2 + (y - o.y)**2 + (o.z || 0)**2 > R*R) continue;
+      if (blastRay(o, x, y, 0)) hit.set(k, {x, y, z:0, c});
+    }
+    upEach((x, y, z, b) => { const k = 'u' + x + ',' + y + ',' + z; if (hit.has(k) || (x - o.x)**2 + (y - o.y)**2 + (z - (o.z || 0))**2 > R*R) return; if (blastRay(o, x, y, z)) hit.set(k, {x, y, z, c:b}); });
+  }
+  const cid = opt.chain || ++TNTS.chainN;   // like Java, each TNT a blast lights gets its own short random fuse, so a chain goes off one after another (only TNT lit at the SAME moment by wires makes one big bang)
+  for (const h of hit.values()){
+    const c = h.c;
+    if (c.t === 'tnt'){ if (!c.fuse){ c.fuse = chainFuse(); c.chain = cid; } continue; }
+    if (c.t === 'crackwall'){ setCell(c.x, c.y, null); A.shrineOpen = true; discover('shrine'); setTimeout(() => { monkeySay('KABOOM! The old shrine cracked open! Something\'s inside...', 6000); }, 600); continue; }
+    if (!opt.destroy || c.locked || BLASTPROOF.has(c.t) || c.sheep) continue;
+    if (h.z) upSet(h.x, h.y, h.z, null); else setCell(h.x, h.y, null);
+  }
+  const pts = origins.map(o => voxWorld(o.x, o.y, o.z));
+  // you: close = a tumble (red flash, fall over, back on your feet nearby); further = knocked back. Unless something blast-proof is in the way.
+  if (inFP() && !S.dead){
+    const [px, py] = cellAtWorld(P.x, P.z), pz = Math.max(0, Math.floor(P.y - floorAt(px, py) + .2));
+    let best = null;
+    origins.forEach((o, i) => { const w = pts[i], d = Math.hypot(w.x - P.x, w.y - (P.y + .9), w.z - P.z); if (d < R*1.6 && (!best || d < best.d) && blastRay(o, px, py, pz)) best = {d, w}; });
+    if (best){ if (best.d < Math.max(2.4, R*.55)) blastTumble(best.w); else knockPlayer(best.w, (1 - best.d/(R*1.6))*(7 + 5*Math.sqrt(opt.mult || 1))); }
+  }
+  // creatures go flying (happily)
+  for (const m of creatures()){
+    let best = null; pts.forEach(w => { const d = Math.hypot(w.x - m.position.x, w.y - (m.position.y + .5), w.z - m.position.z); if (d < R*1.6 && (!best || d < best.d)) best = {d, w}; });
+    if (best) flingCreature(m, best.w, (1 - best.d/(R*1.6))*12*Math.sqrt(opt.mult || 1) + 3);
+  }
+  if ([A.monkey, ...(A.extras || [])].some(m => m && m.userData.fly)) discover('launch');
+  // whoopee gas near the blast? It goes BANG
+  if (!opt.gas){ const g = stinkNear(pts, R*.8 + 1.2); if (g) setTimeout(() => gasBang(g), 140); }
+  bangFx(pts, R, opt.n || 1, !!opt.gas);
+  sfx.boom(opt.n || 1);
+  if (!reduceMotion) shake = Math.min(1.6, .5 + .22*Math.log2(opt.n || 1));
+  syncVisuals(); syncUp();
+}
+// a stink cloud still hanging about near one of these points? (it's used up: the gas is going BANG)
+function stinkNear(pts, r){
+  let found = null; const wp = new THREE.Vector3();
+  for (const f of fx){
+    if (f.kind !== 'stink' || f.line) continue; const u = f.t - f.d; if (u <= 0 || u > f.life - .3) continue;
+    f.g.getWorldPosition(wp); if (!pts.some(p => p.distanceTo(wp) < r)) continue;
+    if (!found) found = wp.clone();
+  }
+  if (found) for (const f of fx) if (f.kind === 'stink'){ f.g.getWorldPosition(wp); if (wp.distanceTo(found) < 4) f.t = f.d + f.life + 1; }   // gone in the bang
+  return found;
+}
+// the gas goes BANG: a huge green-and-orange fireball. It lights TNT and throws things about; in the sandbox it breaks what you built too
+function gasBang(p){
+  TNTS.gas++;
+  let puffs = 0; for (const f of fx) if (f.kind === 'stink' && !f.line && f.t > f.d) puffs++;
+  if (isFree() && (puffs >= 24 || SBX.mobs.some(m => m.kind === 'skunk' && m.power >= 3))){ mushroom(p); return; }   // the skunk's Mega mode
+  const [x, y] = cellAtWorld(p.x, p.z); if (!inb(x, y)) return;
+  const z = Math.max(0, Math.min(6, Math.floor(p.y - floorAt(x, y))));
+  blast([{x, y, z}], 8, {n:24, mult:2, destroy:S.mode !== 'adventure', gas:true});
+  tone(68, 1.6, 'sawtooth', .18, 0, 26); noise(1.2, .2, 260, 'lowpass', .05, 3);   // a deep, rude FWOOMPH
+  showToast(bag('gasbang', ['KA-PARP-BOOM! The whoopee gas went BANG!', 'FWOOOMPH! Stinky gas goes BANG!', 'The gas exploded! That was a REALLY big one!']));
+  sbAchieve('gasbang');
+}
+// the skunk's Mega mode: the whole sandbox's stink goes up at once, a GIANT green mushroom cloud
+function mushroom(p){
+  for (const f of fx) if (f.kind === 'stink') f.t = f.d + f.life + 1;
+  const [x, y] = cellAtWorld(p.x, p.z); if (inb(x, y)) blast([{x, y, z:0}], 16, {n:64, mult:4, destroy:true, gas:true});
+  sfx.boom(64); sfx.thump(64); tone(55, 3, 'sawtooth', .2, 0, 22); if (!reduceMotion) shake = 2.5;
+  const g = new THREE.Group(), gm = new THREE.MeshBasicMaterial({color:0x8fd04a, transparent:true, opacity:.85, depthWrite:false});
+  const col = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 2.5, 1, 8), gm), cap = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 6), gm);
+  col.position.y = .5; g.add(col, cap); g.position.set(p.x, 0, p.z); g.traverse(o => { o.raycast = () => {}; }); fxRoot.add(g);
+  SBX.mush = {g, col, cap, t:0, mat:gm};
+  showToast('KA-PARP-BOOOOM! A GIANT GREEN MUSHROOM CLOUD!'); sbAchieve('destroyer'); sbAchieve('gasbang');
+}
+function mushFrame(s){
+  const M2 = SBX.mush; if (!M2) return; M2.t += s; const k = Math.min(1, M2.t/1.5);
+  M2.col.scale.set(1 + k, 22*k, 1 + k); M2.col.position.y = 11*k; M2.cap.scale.set(3 + 9*k, 2 + 5*k, 3 + 9*k); M2.cap.position.y = 22*k + 2; M2.g.rotation.y += s*.3;
+  M2.mat.opacity = .85*Math.max(0, Math.min(1, (6 - M2.t)/2));
+  if (M2.t > 6){ fxRoot.remove(M2.g); M2.mat.dispose(); M2.col.geometry.dispose(); M2.cap.geometry.dispose(); SBX.mush = null; }
+}
+// a bang's pictures: flashes, a fireball, smoke, and flying bits (all from small pools, so 64 TNT costs the same as a few)
+const BANG = {flash:[], balls:[], smoke:[], meshes:null, data:[], per:64, cols:[0xc9281c, 0xe9e9e9, 0xff3b1f, 0x8a8a8a, 0xffd84a, 0x7ccf3a]};   // debris: one instanced mesh per colour, 64 bits each
+function bangFx(pts, R, n, gas){
+  const k = Math.min(6, pts.length), pick = pts.length <= k ? pts : [...Array(k)].map((_, i) => pts[Math.floor(i*pts.length/k)]);
+  pick.forEach((p, i) => {
+    let s = BANG.flash.find(q => !q.userData.busy);
+    if (!s && BANG.flash.length < 10){ s = new THREE.Sprite(new THREE.SpriteMaterial({map:M.glowGold.map, blending:THREE.AdditiveBlending, depthWrite:false, transparent:true})); s.raycast = () => {}; BANG.flash.push(s); }
+    let fb = BANG.balls.find(q => !q.userData.busy);   // a solid fireball too (a glow alone is lost against a bright sky)
+    if (!fb && BANG.balls.length < 8){ fb = new THREE.Mesh(geoCache.fireball || (geoCache.fireball = new THREE.IcosahedronGeometry(1, 0)), new THREE.MeshBasicMaterial({color:0xffa030, transparent:true, depthWrite:false})); fb.raycast = () => {}; BANG.balls.push(fb); }
+    if (fb){ fb.userData.busy = true; fb.userData.t = -i*.05; fb.userData.R = Math.min(R, 10)*(gas ? .9 : .55); fb.material.color.setHex(gas ? 0x9ad84a : 0xffa030); fb.position.copy(p); fb.scale.setScalar(.1); fxRoot.add(fb); }
+    if (!s) return; s.userData.busy = true; s.userData.t = -i*.05; s.userData.R = R*(gas ? 1.1 : .9); s.material.color.setHex(gas ? 0xb8ff6a : 0xffe0a0); s.position.copy(p); s.scale.set(.1, .1, 1); fxRoot.add(s);
+  });
+  for (let i = 0; i < Math.min(8, 2 + k*2); i++){
+    let s = BANG.smoke.find(q => !q.userData.busy);
+    if (!s && BANG.smoke.length < 24){ s = new THREE.Sprite(new THREE.SpriteMaterial({map:M.glowGreen.map, color:0x8a8a8a, transparent:true, depthWrite:false})); s.raycast = () => {}; BANG.smoke.push(s); }
+    if (!s) break; const p = pick[i % pick.length], a = Math.random()*6.28, r = Math.random()*R*.4;
+    s.userData.busy = true; s.userData.t = 0; s.userData.v = new THREE.Vector3(Math.cos(a)*.6, 1 + Math.random(), Math.sin(a)*.6); s.userData.size = 1.2 + R*.35*Math.random() + .6;
+    s.material.color.setHex(gas ? 0x8fae5a : 0x8a8a8a); s.position.set(p.x + Math.cos(a)*r, p.y + .2, p.z + Math.sin(a)*r); s.scale.set(.5, .5, 1); fxRoot.add(s);
+  }
+  if (!BANG.meshes){ BANG.meshes = BANG.cols.map(col => { const m = new THREE.InstancedMesh(bitGeo, new THREE.MeshLambertMaterial({color:col}), BANG.per); m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); m.frustumCulled = false; m.raycast = () => {}; m.count = 0; return m; });
+    BANG.data = BANG.cols.map(() => [...Array(BANG.per)].map(() => ({t:9, p:new THREE.Vector3(), v:new THREE.Vector3(), r:0, fl:0}))); }
+  BANG.meshes.forEach(m => { if (!m.parent) fxRoot.add(m); });
+  const want = Math.min(BANG.per*4, 24 + n*6), cols = gas ? [5, 4, 3, 1] : [0, 1, 2, 3, 4];
+  let made = 0;
+  for (let j = 0; j < BANG.per && made < want; j++) for (const k of cols){
+    if (made >= want) break; const b = BANG.data[k][j]; if (b.t < 1.3) continue;
+    const p = pick[made % pick.length], a = Math.random()*6.28, sp = (2 + Math.random()*4)*Math.min(2.2, Math.sqrt(R/TNT_R));
+    b.t = 0; b.p.copy(p); b.fl = p.y - .41; b.v.set(Math.cos(a)*sp, 3 + Math.random()*5*Math.min(2, Math.sqrt(R/TNT_R)), Math.sin(a)*sp); b.r = Math.random()*6; made++;
+  }
+}
+const _bm = new THREE.Matrix4(), _bq = new THREE.Quaternion(), _bs = new THREE.Vector3(1, 1, 1), _be = new THREE.Euler();
+function bangFrame(dt){
+  const s = Math.min(.05, dt/1000);
+  BANG.flash.forEach(f => { const u = f.userData; if (!u.busy) return; u.t += s; if (u.t < 0) { f.visible = false; return; } f.visible = true;
+    const k = u.t/.45, sc = .5 + u.R*2.2*Math.min(1, k*1.6); f.scale.set(sc, sc, 1); f.material.opacity = Math.max(0, 1 - k);
+    if (k >= 1){ u.busy = false; fxRoot.remove(f); } });
+  BANG.balls.forEach(f => { const u = f.userData; if (!u.busy) return; u.t += s; if (u.t < 0){ f.visible = false; return; } f.visible = true;
+    const k = u.t/.35, sc = .3 + u.R*Math.min(1, k*2); f.scale.setScalar(sc); f.rotation.y += s*3; f.material.opacity = Math.max(0, Math.min(1, 2.2*(1 - k))); f.material.color.lerp(BANG.dark || (BANG.dark = new THREE.Color(0x6a2a10)), s*4);
+    if (k >= 1){ u.busy = false; fxRoot.remove(f); } });
+  BANG.smoke.forEach(f => { const u = f.userData; if (!u.busy) return; u.t += s; f.position.addScaledVector(u.v, s); const k = u.t/2.6, sc = u.size*(.5 + k); f.scale.set(sc, sc, 1); f.material.opacity = .75*Math.max(0, 1 - k);
+    if (k >= 1){ u.busy = false; fxRoot.remove(f); } });
+  if (!BANG.meshes) return;
+  BANG.meshes.forEach((m, k) => {
+    const D = BANG.data[k]; let top = 0;
+    for (let i = 0; i < BANG.per; i++){ const b = D[i]; if (b.t >= 1.3) continue; b.t += s; top = i + 1; b.v.y -= 14*s; b.p.addScaledVector(b.v, s); if (b.p.y < b.fl){ b.p.y = b.fl; b.v.set(0, 0, 0); } b.r += s*6; }
+    if (!top){ m.count = 0; return; }
+    for (let i = 0; i < top; i++){ const b = D[i]; _bs.setScalar(b.t >= 1.3 ? 0 : 1); _bq.setFromEuler(_be.set(b.r, b.r*.7, 0)); _bm.compose(b.p, _bq, _bs); m.setMatrixAt(i, _bm); }
+    m.count = top; m.instanceMatrix.needsUpdate = true;
+  });
+}
+// getting blasted, Minecraft style: a red flash, you fall over sideways, then you're back on your feet nearby. No text box.
+function blastTumble(from){
+  if (S.dead) return;
+  plogEvent('death'); discover('blasted'); sbAchieve('blasted');
+  S.dead = true; S.tumble = {t:0, side:Math.random() < .5 ? -1 : 1, from:from.clone()}; for (const k in keys) keys[k] = false; stopMoving();
+  sfx.aww(); tone(180, .25, 'square', .08, 0, 90);
+  const h = $('#hurt'); if (h){ h.classList.remove('go'); void h.offsetWidth; h.classList.add('go'); }
+}
+function tumbleFrame(dt){
+  const T = S.tumble; if (!T) return;
+  T.t += Math.min(.05, dt/1000);
+  const k = Math.min(1, T.t/.45), e = 1 - Math.pow(1 - k, 3);
+  P.roll = T.side*1.4*e; P.duck = 1.15*e;
+  if (T.t > 1.5){
+    S.tumble = null; P.roll = 0; P.duck = 0; P.kb = null;
+    if (A.on) respawn();
+    else { S.dead = false; const [x, y] = safeSpotNear(T.from); const c = cellPos(x, y); P.x = c.x; P.z = c.z; P.y = Math.max(floorAt(x, y), upTop(x, y)); P.vy = 0; }
+    showToast(bag('blastBack', ['Ow! Too close to the boom!', 'KA-BOOM! Next time, stand further back!', 'Phew! Build a blast-proof wall to hide behind!']));
+  }
+}
+// a free spot, out of the blast, not too far away
+function safeSpotNear(from){
+  const [cx, cy] = cellAtWorld(from.x, from.z);
+  for (let r = 6; r < 30; r++) for (let k = 0; k < 16; k++){
+    const a = k/16*Math.PI*2 + r, x = Math.round(cx + Math.cos(a)*r), y = Math.round(cy + Math.sin(a)*r);
+    if (inb(x, y) && !S.walls[y*NX + x] && !at(x, y) && !upTop(x, y) && !isPit(x, y)) return [x, y];
+  }
+  return [Math.floor(NX/2), NY - 3];
+}
+// knocked back: a shove away from the blast (it slides you along the ground, never through a wall)
+function knockPlayer(from, power){
+  const dx = P.x - from.x, dz = P.z - from.z, h = Math.hypot(dx, dz) || 1, p = Math.min(16, power);
+  P.kb = {vx:dx/h*p, vz:dz/h*p}; P.vy = Math.max(P.vy, Math.min(9, p*.55)); P.ground = false;
+}
+// move the player by (dx, dz), in small steps, stopping at anything solid (used by knockback and rides)
+function moveP(dx, dz, stepUp){
+  const n = Math.max(1, Math.ceil(Math.hypot(dx, dz)/.2)); let hitX = false, hitZ = false;
+  for (let i = 0; i < n; i++){
+    const nx = Math.max(-walkX(), Math.min(walkX(), P.x + dx/n)); if (heightAt(nx, P.z) <= P.y + stepUp) P.x = nx; else hitX = true;
+    const nz = Math.max(-walkZ(), Math.min(walkZ(), P.z + dz/n)); if (heightAt(P.x, nz) <= P.y + stepUp) P.z = nz; else hitZ = true;
+  }
+  return [hitX, hitZ];
+}
+function knockFrame(s){
+  const K = P.kb; if (!K) return;
+  const [hx, hz] = moveP(K.vx*s, K.vz*s, P.ground ? .55 : .05);
+  if (hx) K.vx = 0; if (hz) K.vz = 0;
+  const dmp = Math.exp(-s*(P.ground ? 7 : 1.3)); K.vx *= dmp; K.vz *= dmp;
+  if (Math.hypot(K.vx, K.vz) < .25) P.kb = null;
+}
+/* ================= SANDBOX (Free build): the yard, building up, toys, achievements ================= */
+const SBX = {mobs:[], t:0};
+// building up (free build only): blocks above the floor layer. Redstone stays on the floor grid; these are building blocks
+const UP_OK = new Set(['stone', 'glass', 'steel', 'rglass', 'tnt']), UP_MAX = 8;
+const upRoot = new THREE.Group(); world.add(upRoot);
+const UPM = new Map();   // block key -> its mesh
+const upKey = (x, y, z) => (z*NY + y)*NX + x;
+function upAt(x, y, z){ return S.up && z >= 1 && inb(x, y) ? S.up.get(upKey(x, y, z)) || null : null; }
+function upTop(x, y){ return S.upCol && inb(x, y) ? S.upCol[y*NX + x] : 0; }   // the top of the highest block stacked here (0: none)
+function upSet(x, y, z, b){
+  if (!S.up || !inb(x, y) || z < 1) return; const k = upKey(x, y, z);
+  if (b){ b.x = x; b.y = y; b.z = z; S.up.set(k, b); } else S.up.delete(k);
+  let top = 0; for (let q = UP_MAX; q >= 1; q--) if (S.up.has(upKey(x, y, q))){ top = q + 1; break; }
+  S.upCol[y*NX + x] = top; S.upDirty = true;
+}
+function upEach(fn){ if (S.up) for (const b of [...S.up.values()]) fn(b.x, b.y, b.z, b); }
+function upCount(t){ let n = 0; if (S.up) for (const b of S.up.values()) if (b.t === t) n++; return n; }
+function syncUp(){
+  if (!S.upDirty) return; S.upDirty = false;
+  const keep = new Set();
+  if (S.up) for (const [k, b] of S.up){
+    keep.add(k); const vk = b.t + (b.fuse > 0 && b.fuse % 4 < 2 ? '!' : ''), old = UPM.get(k);
+    if (old && old.userData.vk === vk) continue;
+    if (old) upRoot.remove(old);
+    const g = buildMesh(b, false); g.position.copy(cellPos(b.x, b.y)); g.position.y += b.z; g.userData.vk = vk; g.traverse(o => { o.userData.upKey = k; });
+    upRoot.add(g); UPM.set(k, g);
+  }
+  for (const [k, g] of UPM) if (!keep.has(k)){ upRoot.remove(g); UPM.delete(k); }
+}
+// once per redstone step (from runEvents): stacked TNT burns down; returns the stacked TNT going off now
+function sbTick(){
+  const out = [];
+  if (S.up) for (const b of S.up.values()) if (b.t === 'tnt' && b.fuse > 0){ b.fuse--; S.upDirty = true; if (b.fuse <= 1) out.push({x:b.x, y:b.y, z:b.z, c:b}); }
+  return out;
+}
+// every frame
+function sbFrame(dt){
+  const s = Math.min(.05, dt/1000); SBX.t += s;
+  bangFrame(dt); tumbleFrame(dt);
+  if (isFree()){
+    mobFrame(s); grooveFrame(s); miniFrame(s); rideFrame(); donkeyFrame(s); mushFrame(s);
+    SBX.bananas.forEach(b => { if (b.landed){ if (b.eat !== undefined){ b.eat -= s; if (b.eat <= 0) b.g.visible = false; } return; } b.t = Math.min(1, b.t + s*1.6); b.g.position.lerpVectors(b.from, b.to, b.t); b.g.position.y += Math.sin(b.t*Math.PI)*2; b.g.rotation.y += s*12; if (b.t >= 1) b.landed = true; });
+    if ((SBX.fireT = (SBX.fireT || 0) - dt) <= 0){ SBX.fireT = 250; fireNearStink(); }
+  }
+  syncUp();
+}
+// sandbox achievements (kept with the Puzzle Lab's progress)
+const SB_ACH = {destroyer:{name:'For I am become Steve, destroyer of worlds', how:'The skunk\'s stink covered EVERYTHING, and then... KA-BOOM. A giant green mushroom cloud!'}, sixtyfour:{name:'TN' + 'T'.repeat(63), how:TNT_ACH + ' Boom Blocks in ONE chain!'}, gasbang:{name:'Big Stinky Bang', how:'You made whoopee gas explode!'}, toilet:{name:'Space Toilet Pilot', how:'You rode the Space Toilet into the sky!'}, donkey:{name:'The Donkey Has Landed', how:'A Giant Stone Donkey fell out of the sky. As you do.'}, blasted:null};
+function sbAchieve(id){
+  const a = SB_ACH[id]; if (!a) return;
+  progress.sbAch = progress.sbAch || {}; if (progress.sbAch[id]) return;
+  progress.sbAch[id] = Date.now(); saveProgress();
+  setTimeout(() => { sfx.chime(); musicCue && musicCue('fanfare'); showCard('ACHIEVEMENT!', `<b style="font-size:22px;word-break:break-all;overflow-wrap:anywhere">${a.name}</b><br>${a.how}`); }, 1600);
+}
+
+// ---- the yard: free build happens in a walled build yard of its own (no floating bits of temple, nothing to walk through) ----
+const FREE_N = 28;   // 26 x 26 blocks to build on, inside a stone wall
+['steel', 'rglass', 'monkeys', 'beacon'].forEach(t => SOLID.add(t));
+['monkeys', 'beacon'].forEach(t => { TOY_SET.add(t); PLUG_INTO.add(t); });
+const isFree = () => !!(L && L.def && L.def.kind === 'free');
+function advRootsShow(on){ [terrainRoot, decorRoot, floorRoot].forEach(r => { r.visible = on; }); if (!on){ FIRE_LIGHTS.forEach(l => { l.intensity = 0; }); const z = $('#zoneTitle'); if (z) z.classList.remove('show'); } }
+function sbYard(){
+  setWorld(FREE_N, FREE_N, 'lab');
+  for (let i = 0; i < FREE_N; i++) for (const [x, y] of [[i, 0], [i, FREE_N - 1], [0, i], [FREE_N - 1, i]]){ S.walls[y*NX + x] = 3; S.wallKind[y*NX + x] = 1; }
+  S.up = new Map(); S.upCol = new Uint8Array(NX*NY); S.upDirty = true;
+  buildWalls();
+}
+function sbSpawn(){ const c = cellPos(Math.floor(NX/2), NY - 5); P.x = c.x; P.z = c.z; P.y = 0; P.vy = 0; P.yaw = 0; P.pitch = -.25; P.kb = null; P.chute = false; P.ride = null; }
+// leaving the sandbox (or going into it): creatures and rides are put away
+function sbClear(){
+  SBX.mobs.forEach(m => { if (m.g.parent) m.g.parent.remove(m.g); if (m.cell && at(m.cell.x, m.cell.y) === m.cell) setCell(m.cell.x, m.cell.y, null); });
+  SBX.mobs = []; SBX.helper = null; SBX.minis.forEach(b => fxRoot.remove(b.g)); SBX.minis = []; if (SBX.mush){ fxRoot.remove(SBX.mush.g); SBX.mush = null; } if (SBX.groove){ fxRoot.remove(SBX.groove.ball); SBX.groove = null; } SBX.bananas.forEach(b => fxRoot.remove(b.g)); SBX.bananas = [];
+  if (SBX.donkey){ SBX.donkey.parts.forEach(p => fxRoot.remove(p)); if (SBX.donkey.beam) fxRoot.remove(SBX.donkey.beam); SBX.donkey = null; }
+  P.ride = null; P.chute = false; if (SBX.chute) SBX.chute.visible = false;
+}
+SBX.bananas = []; SBX.root = new THREE.Group(); world.add(SBX.root);
+
+// ---- building up: stack building blocks on top of blocks (redstone parts stay on the floor, like the lessons) ----
+// a player-sized box: does it overlap the block at (x, y, layer z)?
+function upOverlapsPlayer(x, y, z){
+  if (!inFP()) return false;
+  for (const ox of [-RAD, RAD]) for (const oz of [-RAD, RAD]){ const [cx, cy] = cellAtWorld(P.x + ox, P.z + oz); if (cx === x && cy === y && P.y < z + 1 && P.y + 1.8 > z) return true; }
+  return false;
+}
+function upPlace(item, x, y, z){
+  if (!inb(x, y) || S.walls[y*NX + x] || z < 1) return false;
+  if (!UP_OK.has(item)){ sfx.nope(); showToast('Only building blocks go up high. Redstone parts go on the floor.'); return true; }
+  if (z > UP_MAX){ sfx.nope(); showToast('That\'s as high as you can build!'); return true; }
+  if (upAt(x, y, z)) return false;
+  if (upOverlapsPlayer(x, y, z)){ nudge('Step back! You are standing there.'); return true; }
+  if (item === 'tnt' && !tntCapOK()) return true;
+  upSet(x, y, z, {t:item, fuse:0}); syncUp(); sfx.place(item); saveBuildSoon(); plogEvent('place');
+  const g = UPM.get(upKey(x, y, z)); if (g && !reduceMotion){ g.scale.setScalar(.4); fx.push({g, t:0, kind:'pop'}); }
+  return true;
+}
+// the sandbox's part of a click: returns true when it dealt with it
+function sbAct(h, mode, item){
+  if (!isFree()) return false;
+  const c = h.cell;
+  if (h.up){   // a stacked block: break it, or put another block against the face you clicked
+    if (mode === 'break' || item === 'pick'){ upSet(h.x, h.y, h.z, null); syncUp(); sfx.brk(c.t); saveBuildSoon(); return true; }
+    const n = h.normal; if (!n) return true;
+    const tx = h.x + Math.round(n.x), ty = h.y + Math.round(n.z), tz = h.z + Math.round(n.y);
+    if (tz === 0){ if (inb(tx, ty) && !at(tx, ty) && !upTop(tx, ty)) place(item, tx, ty, null); return true; }
+    if (item !== 'pick') upPlace(item, tx, ty, tz);
+    return true;
+  }
+  if (c && c.sheep){ if (mode === 'break' || item === 'pick'){ sheepGone(c.sheep, true); return true; } sayMob(c.sheep, 'Baaa-zzzt!'); return true; }
+  if (c && mode === 'use' && c.t === 'monkeys'){ releaseMonkeys(c); return true; }
+  if (c && mode === 'use' && c.t === 'beacon' && item !== 'pick'){ beaconGo(c); return true; }
+  if (c && mode === 'use' && c.t === 'spacetoilet' && item !== 'pick'){ rideToilet(c); return true; }
+  if (item === 'banana' && mode !== 'break'){ throwBanana(h); return true; }
+  if (item === 'sheep' && mode !== 'break'){ if (!c && h.x !== undefined && !upTop(h.x, h.y)) addSheep(h.x, h.y); else { sfx.nope(); showToast('The sheep needs an empty spot on the floor.'); } return true; }
+  // the top of a block on the floor: stack on it
+  if (c && h.normal && h.normal.y > .5 && SOLID.has(c.t) && mode !== 'break' && item !== 'pick' && UP_OK.has(item)){ upPlace(item, c.x, c.y, 1); return true; }
+  if (!c && mode !== 'break' && h.x !== undefined && upTop(h.x, h.y)) return true;   // (can't happen: the stack is in the way)
+  return false;
+}
+// the outline shows where a stacked block would go
+function sbHover(h){
+  if (!isFree() || !h) return false;
+  const item = ITEMS[sel].id;
+  let v = null;
+  if (h.up && h.normal){ v = item === 'pick' ? [h.x, h.y, h.z] : [h.x + Math.round(h.normal.x), h.y + Math.round(h.normal.z), h.z + Math.round(h.normal.y)]; }
+  else if (h.cell && h.normal && h.normal.y > .5 && SOLID.has(h.cell.t) && UP_OK.has(item)) v = [h.cell.x, h.cell.y, 1];
+  if (!v || v[2] < 1) return false;
+  hoverCell = null; previewRoot.clear(); previewKey = '';
+  if (!inb(v[0], v[1])){ outline.visible = false; return true; }
+  outline.position.copy(cellPos(v[0], v[1])); outline.position.y += v[2]; outline.visible = true;
+  return true;
+}
+
+// ---- the hotbar never cuts anything off: pages (arrows, or the bumpers / mouse wheel move on through them) and a bag with every item, named ----
+var HB = {page:0, per:10, pages:1, row:null};   // (var: select() can run before this line at boot)
+function hbSetup(){
+  const st = document.createElement('style');
+  st.textContent = `#hbRow{display:flex;align-items:stretch;gap:4px;pointer-events:none;max-width:calc(100vw - 12px);}
+.hbBtn{pointer-events:auto;min-width:42px;padding:0 6px;font-size:20px;font-weight:700;color:#fff;text-shadow:1px 1px 0 #000;background:rgba(20,20,20,.62);border:3px solid #2a2a2a;box-shadow:0 0 0 2px #8a8a8a;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;}
+.hbBtn small{font-size:11px;font-weight:600;margin-top:2px;}
+.hbBtn[hidden],.slot.pgOff{display:none!important;}
+#hbRow.paged .slot{--s:clamp(36px,calc((100vw - 190px) / 7),62px);}
+.invGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:5px;}
+.invItem{display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 3px;font-size:13px;line-height:1.15;min-height:72px;}
+.invItem img{width:34px;height:34px;image-rendering:pixelated;}
+.invItem.sel{outline:3px solid #ffd84a;}
+.invItem.lockd{opacity:.55;cursor:default;}
+.invItem.lockd small{font-size:11px;font-weight:400;line-height:1.1;}`;
+  document.head.appendChild(st);
+  const row = document.createElement('div'); row.id = 'hbRow'; hotbar.parentNode.insertBefore(row, hotbar);
+  const mk = (id, html, lbl, fn) => { const b = document.createElement('button'); b.id = id; b.className = 'hbBtn'; b.innerHTML = html; b.setAttribute('aria-label', lbl); b.title = lbl; b.addEventListener('click', e => { e.stopPropagation(); fn(); }); return b; };
+  HB.prev = mk('hbPrev', '&#9664;', 'Previous items', () => hbFlip(-1));
+  HB.next = mk('hbNext', '&#9654;<small></small>', 'More items', () => hbFlip(1));
+  HB.bag = mk('hbBag', '<svg viewBox="0 0 16 16" width="22" height="22" fill="#fff"><path d="M1 1h6v6H1zM9 1h6v6H9zM1 9h6v6H1zM9 9h6v6H9z"/></svg><small>All</small>', 'All items', openInventory);
+  row.append(HB.prev, hotbar, HB.next, HB.bag); HB.row = row;
+  window.addEventListener('resize', () => hbLayout());
+}
+const hbVisible = () => ITEMS.map((_, i) => i).filter(i => !hotbar.children[i].hidden);
+function hbLayout(){
+  if (!HB || !HB.row) return;
+  const v = hbVisible(), kids = hotbar.children;
+  for (const b of kids) b.classList.remove('pgOff');
+  HB.row.classList.remove('paged');
+  const one = v.length ? kids[v[0]] : null, W = Math.min(window.innerWidth, document.documentElement.clientWidth || 1e9) - 16;
+  let sw = one ? one.getBoundingClientRect().width + 2 : 64, per = Math.min(10, Math.max(1, Math.floor((W - 16)/sw)));
+  if (v.length > per){
+    HB.row.classList.add('paged'); sw = one ? one.getBoundingClientRect().width + 2 : 64;
+    per = Math.max(3, Math.min(10, Math.floor((W - 3*50 - 22)/sw)));
+  }
+  HB.per = per; HB.pages = Math.max(1, Math.ceil(v.length/per));
+  const si = v.indexOf(sel); if (si >= 0) HB.page = Math.floor(si/per);
+  HB.page = Math.max(0, Math.min(HB.page, HB.pages - 1));
+  v.forEach((i, k) => { const on = Math.floor(k/per) === HB.page; kids[i].classList.toggle('pgOff', !on); if (on) kids[i].querySelector('.n').textContent = String((k % per + 1) % 10); });
+  HB.prev.hidden = HB.next.hidden = HB.pages < 2;
+  HB.next.querySelector('small').textContent = HB.pages > 1 ? (HB.page + 1) + '/' + HB.pages : '';
+  HB.bag.hidden = v.length < 2;
+}
+const pageSlots = () => { const v = visibleSlots().filter(i => !hotbar.children[i].classList.contains('pgOff')); return v; };
+function hbFlip(d){ const v = hbVisible(); if (HB.pages < 2) return; HB.page = (HB.page + d + HB.pages) % HB.pages; const first = v.slice(HB.page*HB.per).find(i => !hotbar.children[i].classList.contains('locked')); if (first !== undefined) select(first); else hbLayout(); }
+// the bag: every item you have, with its name (and, in free build, what's still to win and how)
+function openInventory(){
+  if ($('#hud').hidden) return;
+  if (locked) try { document.exitPointerLock(); } catch (_) {}
+  const v = hbVisible();
+  let html = '<div class="invGrid">' + v.map(i => { const it = ITEMS[i], lk = hotbar.children[i].classList.contains('locked'); return `<button class="btn invItem${i === sel ? ' sel' : ''}${lk ? ' lockd' : ''}" data-i="${i}"><img src="${ICONS[it.id]}" alt="">${it.name}</button>`; }).join('') + '</div>';
+  if (isFree()){ const next = SANDBOX_UNLOCKS.filter(u => !unlockHave(u)); if (next.length) html += '<p style="margin:10px 0 4px"><b>Still to win:</b></p><div class="invGrid">' + next.map(u => u.items.map(id => { const it = ITEMS.find(q => q.id === id); return it ? `<button class="btn invItem lockd" disabled><img src="${ICONS[id]}" alt="" style="filter:grayscale(1) brightness(.5)">${it.name}<small>${u.how}</small></button>` : ''; }).join('')).join('') + '</div>'; }
+  if (isFree()) html += megaHTML(v.map(i => ITEMS[i].id));
+  openPane('Your items', html);
+  $('#paneBody').querySelectorAll('.invItem[data-i]').forEach(b => b.addEventListener('click', () => { const i = +b.dataset.i; if (!hotbar.children[i].classList.contains('locked')) select(i); $('#paneClose').click(); }));
+}
+
+// the "Mega mode" lines (Tom): ??? with the Gate Card's symbol greyed out until that card is earned, then the line, then a star when done
+function megaHTML(ids){
+  const sv = sbSave(), gates = new Set(sv && sv.gates || []), st = sbSolved(), done = progress.sbEggs || {};
+  const known = g => gates.has(g) || st.launched && g !== 'count' || (g === 'delay' && st.solved.has(BIG_BANG_ROOM));
+  const rows = []; ids.forEach(id => (TOY_EGGS[id] || []).forEach(e => { const k = known(e.gate), ok2 = done[id + ':' + e.gate];
+    rows.push(`<div class="megaRow" style="display:flex;gap:8px;align-items:center;margin:4px 0;font-size:15px"><img src="${ICONS[id]}" alt="" style="width:28px;height:28px;image-rendering:pixelated">${ok2 ? '<b style="color:#b38f00">&#9733;</b> ' : ''}<span>${k ? e.text + (ok2 ? ` <b>That was ${EGG_NAME[e.gate] || e.gate}!</b>` : '') : 'Mega mode: ???'}</span>${!k && GATE_CARDS[e.gate] ? `<svg viewBox="0 0 200 100" width="44" height="22" style="opacity:.3;filter:grayscale(1);flex:none">${gateSVG(e.gate)}</svg>` : ''}</div>`); }));
+  return rows.length ? '<p style="margin:12px 0 2px"><b>MEGA MODES</b> (build the right circuit and the toy goes HUGE):</p>' + rows.join('') : '';
+}
+// ---- unlocks: free build starts with the basics and wins more through the temple; each one is told when it's won ----
+const SANDBOX_BASE = ['pick', 'dust', 'lever', 'button', 'lamp', 'stone', 'torch', 'repeater', 'rblock', 'plate', 'glass', 'lantern', 'steel', 'rglass'];
+const SANDBOX_UNLOCKS = [
+  {id:'ch1', room:8, items:['tnt', 'fart', 'confetti'], how:'Finish the Golden Toilet room', say:'Boom Blocks and Whoopee Cushions'},
+  {id:'wing', room:12, items:['monkeys', 'banana', 'bananacannon', 'launcher', 'disco', 'bananabomb', 'groovitron'], how:'Finish the monkey rooms', say:'the Monkey Button, Bananas for your helper monkey, the Banana Bomb and the Groovitron'},
+  {id:'ch2', room:19, items:['sheep', 'skunk', 'gunge', 'water', 'airhorn'], how:'Finish the torch rooms (the crypt)', say:'the Redstone Sheep and the Skunk'},
+  {id:'ch3', room:25, items:['beacon', 'madcow', 'firework', 'gong', 'goldfish'], how:'Finish the power rooms (the sky rooms)', say:'the Homing Beacon (something VERY big comes down...), the Mad Cows and the MEGA ROBOT'},
+  {id:'top', launched:true, items:['spacetoilet'], how:'Get to the very top of the temple', say:'the SPACE TOILET (you can ride it!)'}
+];
+const BIG_BANG_ROOM = 22;   // the slowpoke: repeaters as a delay. That's the skill the REALLY big bang needs
+function sbSave(){ try { return advLoad() || null; } catch (e) { return null; } }
+function sbSolved(){ const sv = sbSave(); return {solved:new Set(sv && sv.solved || []), launched:!!(sv && sv.launched) || !!progress.act1}; }
+function unlockHave(u, st){ st = st || sbSolved(); return st.launched || (u.launched ? false : st.solved.has(u.room)); }
+function sandboxKit(){ const st = sbSolved(), k = new Set(SANDBOX_BASE); SANDBOX_UNLOCKS.forEach(u => { if (unlockHave(u, st)) u.items.forEach(i => k.add(i)); }); const sv = sbSave(); if (sv && Array.isArray(sv.unlocked)) sv.unlocked.forEach(i => { if (TOY_SET.has(i)) k.add(i); }); return k; }   // toys won as room bonuses (the MEGA ROBOT) come too
+function sbOpen(){ const st = sbSolved(); return st.launched || st.solved.has(8); }   // free build opens once the first Boom Blocks are won
+// how many temple rooms are still to do before this one (in the order you meet them)
+function roomsUntil(id, st){ const order = TEMPLE_ROOMS.map(r => r.id), k = order.indexOf(id); return order.slice(0, k + 1).filter(q => !st.solved.has(q)).length; }
+// coming into free build: say what's new since last time, what's next, and (once it's learned) the secret of the REALLY big bang
+function sbWelcome(){
+  const st = sbSolved(); progress.sbSeen = progress.sbSeen || []; const lines = [];
+  const fresh = SANDBOX_UNLOCKS.filter(u => unlockHave(u, st) && !progress.sbSeen.includes(u.id));
+  if (fresh.length) lines.push('<b>NEW:</b> ' + fresh.map(u => u.say).join('; ') + '!');
+  const next = SANDBOX_UNLOCKS.find(u => !unlockHave(u, st)); if (next) lines.push(`<b>Coming next:</b> ${next.say}. (${next.how}.)`);
+  if (unlockHave(SANDBOX_UNLOCKS[0], st)){
+    if (st.launched || st.solved.has(BIG_BANG_ROOM)){ if (!progress.sbBig){ progress.sbBig = 1; lines.push('<b>SECRET: the REALLY big bang!</b> Put a Whoopee Cushion on the same wire as your Boom Blocks, but make the cushion get its power a little LATER (put repeaters in front of it). The stinky gas goes BANG!'); } }
+    else { const n = roomsUntil(BIG_BANG_ROOM, st); lines.push(`Finish ${n} more temple room${n === 1 ? '' : 's'} and you'll learn how to make a REALLY big explosion...`); }
+  }
+  fresh.forEach(u => progress.sbSeen.push(u.id)); saveProgress();
+  if (lines.length) showCard('Free build', lines.join('<br>'));
+}
+// solving a room that wins something for free build: say so (short, the room's own lines come first)
+function sbUnlockNote(r){
+  const u = SANDBOX_UNLOCKS.find(q => q.room === r.id); if (!u) return;
+  setTimeout(() => { if (A.on) showToast(`NEW IN FREE BUILD: ${u.say}! (Menu, then Free Build.)`); }, 5000);
+}
+function sbMenu(){
+  let b = $('#btnFree');
+  if (!b){ b = document.createElement('button'); b.className = 'btn'; b.id = 'btnFree'; b.textContent = 'Free Build'; b.addEventListener('click', () => { sfx.click(); startLesson(FREE_ID); }); const n = $('#btnNew'); n.parentNode.insertBefore(b, n.nextSibling); }
+  b.hidden = !sbOpen();
+}
+
+// ---- how the sandbox's own blocks look ----
+function sbMesh(c, g, add){
+  if (c.t === 'steel') add(G.cube, M.steel);
+  else if (c.t === 'rglass') add(G.cube, M.rglass);
+  else if (c.t === 'monkeys'){ add(cbox(.9, .5, .9), M.stone, 0, .25, 0); add(cbox(.6, .14, .6), wm(c.lit ? 0xff6a4a : 0xd8261a), 0, .56, 0); const h = add(cbox(.34, .3, .1), wm(0x3b2616), 0, .3, .46); add(cbox(.24, .18, .03), wm(0xf0d2a8), 0, .29, .52); [-1, 1].forEach(sd => add(cbox(.05, .05, .02), wm(0x111111), sd*.06, .31, .54)); h.userData.face = true; }
+  else if (c.t === 'beacon'){ add(cbox(.9, .3, .9), M.smooth, 0, .15, 0); add(cbox(.5, .35, .5), wm(0x6a6a6a), 0, .45, 0); add(cbox(.3, .3, .3), c.lit ? M.hotOn : wm(0xd8261a), 0, .78, 0); }
+  else if (c.t === 'bananabomb'){ add(cbox(.8, .25, .8), M.wood, 0, .12, 0); [[-.2, 0], [0, .05], [.2, 0]].forEach(([x, z], i) => { const b = add(cbox(.22, .6, .22), M.banana, x, .55, z); b.rotation.z = (i - 1)*.3; }); add(cbox(.12, .2, .12), wm(0x6b4a24), 0, .95, 0); add(cbox(.05, .25, .05), wm(0xff5a1c), .05, 1.15, 0); }
+  else if (c.t === 'madcow'){ add(cbox(.9, .75, .9), wm(0xa8322a), 0, .38, 0); add(cbox(1, .3, 1), wm(0x7a1e18), 0, .9, 0); const [dx, dz] = DIRS[c.dir || 0]; const door = add(cbox(.5, .5, .04), wm(c.lit ? 0x2a1208 : 0xf2f2ee), dx*.47, .3, dz*.47); door.rotation.y = Math.atan2(dx, dz); }
+  else if (c.t === 'skunk'){ add(cbox(.85, .55, .85), M.wood, 0, .28, 0); add(cbox(.95, .12, .95), wm(0x5a3d22), 0, .62, 0); const [dx, dz] = DIRS[c.dir || 0]; add(cbox(dx ? .04 : .4, .3, dz ? .04 : .4), wm(0x111111), dx*.43, .25, dz*.43); add(cbox(.08, .3, .08), wm(0xf2f2f2), 0, .82, 0); }
+  else if (c.t === 'groovitron'){ add(cbox(.7, .2, .7), M.smooth, 0, .1, 0); add(cbox(.1, .3, .1), wm(0x6a6a6a), 0, .35, 0); add(cbox(.55, .55, .55), M.mirror, 0, .78, 0); }
+  else if (c.t === 'rblock' && c.sheep) add(cbox(.8, .9, .8), M.hidden || (M.hidden = new THREE.MeshBasicMaterial({visible:false})), 0, .45, 0);   // the sheep you see is drawn separately; this is what you click
+}
+
+// ---- creatures: capuchins from the Monkey Button, your banana helper monkey, redstone sheep. They wander the yard, get flung by blasts, land happily ----
+const MOB_MAX = 24;
+function yardFree(x, y){ return inb(x, y) && !S.walls[y*NX + x] && !upTop(x, y) && !(at(x, y) && SOLID.has(at(x, y).t)); }
+function addMob(kind, g, x, y){ const c = cellPos(x, y); g.position.set(c.x, 0, c.z); g.userData.sbx = true; SBX.root.add(g); const m = {kind, g, wait:Math.random()*1.5, tx:null, tz:null}; SBX.mobs.push(m); return m; }
+function releaseMonkeys(c, power){
+  power = power || 1; const n = SBX.mobs.filter(m => m.kind === 'capuchin').length; megaJuice(power);
+  if (n >= MOB_MAX){ sfx.nope(); showToast('That\'s LOTS of monkeys! Blast some out of the yard first.'); return; }
+  sfx.button(); setTimeout(() => sfx.ook(460), 150);
+  for (let i = 0; i < Math.min(5*power, MOB_MAX + (power > 1 ? 16 : 0) - n); i++){   // 5 a press (the MEGA version: a whole conga line)
+    const d = DIRS[i % 4], x = c.x + d[0], y = c.y + d[1], ok = yardFree(x, y);
+    const m = addMob('capuchin', makeWild('capuchin', 1), ok ? x : c.x, ok ? y : c.y); m.g.position.y = 1.2; m.g.userData.fly = {vx:(Math.random() - .5)*3, vz:(Math.random() - .5)*3, vy:5 + Math.random()*3, spin:0, t:0};
+  }
+  plogEvent('toy');
+}
+function throwBanana(h){
+  if (h.x === undefined || !inb(h.x, h.y) || !yardFree(h.x, h.y)){ sfx.nope(); showToast('Throw it onto the floor!'); return; }
+  const g = new THREE.Mesh(cbox(.36, .1, .12), M.banana); g.raycast = () => {}; const to = cellPos(h.x, h.y);
+  g.position.set(P.x, P.y + 1.3, P.z); fxRoot.add(g); sfx.pop();
+  SBX.bananas.forEach(b => { if (b.landed) fxRoot.remove(b.g); }); SBX.bananas = SBX.bananas.filter(b => !b.landed);
+  SBX.bananas.push({g, from:g.position.clone(), to:new THREE.Vector3(to.x, .06, to.z), t:0, cell:[h.x, h.y]});
+  if (!SBX.helper || !SBX.helper.g.parent){ const gx = Math.floor(NX/2), gy = NY - 2; SBX.helper = addMob('helper', makeWild('macaque', 1.1), gx, gy); SBX.helper.g.userData.helper = true; sayMob(SBX.helper, 'A BANANA? I\'m on it!'); }
+  SBX.helper.goal = [h.x, h.y]; SBX.helper.tx = to.x; SBX.helper.tz = to.z; SBX.helper.wait = 0;
+}
+function addSheep(x, y){
+  if (SBX.mobs.filter(m => m.kind === 'sheep').length >= 6){ sfx.nope(); showToast('Six sheep is plenty of sheep!'); return; }
+  const m = addMob('sheep', makeSheep(), x, y); sheepCell(m, x, y); sfx.place('stone'); tone(520, .25, 'square', .05, 0, 380); plogEvent('place');
+}
+// the sheep carries an invisible redstone block (that's what powers things next to it)
+function sheepCell(m, x, y){
+  if (m.cell && at(m.cell.x, m.cell.y) === m.cell) setCell(m.cell.x, m.cell.y, null);
+  m.cell = null; if (x === null || at(x, y)) return;
+  const c = makeCell('rblock', x, y, {locked:true}); c.sheep = m; setCell(x, y, c); m.cell = c; syncVisuals();
+}
+function sheepGone(m, said){ if (said){ sfx.pop(); tone(600, .2, 'square', .05, 0, 300); } sheepCell(m, null); SBX.root.remove(m.g); SBX.mobs = SBX.mobs.filter(q => q !== m); }
+function makeSheep(){
+  const g = new THREE.Group(), wool = wm(0xeeeeee), face = wm(0x3a2a22), red = wm(0xff3b1f);
+  const add = (w, h, d, m, x, y, z, p) => { const b = new THREE.Mesh(cbox(w, h, d), m); b.position.set(x, y, z); b.raycast = () => {}; (p || g).add(b); return b; };
+  add(.62, .5, .9, wool, 0, .62, 0);
+  [[-.2, .28], [.2, .28], [-.2, -.28], [.2, -.28]].forEach(([x, z]) => add(.14, .4, .14, face, x, .2, z));
+  const head = new THREE.Group(); head.position.set(0, .82, .5); g.add(head);
+  add(.36, .36, .3, face, 0, 0, 0, head); add(.42, .16, .32, wool, 0, .2, -.02, head);
+  [-1, 1].forEach(sd => { add(.08, .07, .02, wm(0xffffff), sd*.09, .04, .16, head); add(.04, .05, .02, wm(0x111111), sd*.09, .035, .17, head); });
+  for (let i = 0; i < 9; i++) add(.07, .07, .07, red, (Math.random() - .5)*.6, .5 + Math.random()*.4, (Math.random() - .5)*.85);   // redstone in its wool
+  const glowS = glow(M.glowRed, 1.3, .7); g.add(glowS); g.userData.glow = glowS; g.userData.head = head;
+  g.userData.legs = []; return g;
+}
+function sayMob(m, text){ try { sayOn(m.g, text, 2500); } catch (e) {} }
+// creatures standing on a pressure plate press it, like you do
+function sbOnCell(x, y){ for (const m of SBX.mobs){ if (m.g.userData.fly || m.kind === 'sheep') continue; const [cx, cy] = cellAtWorld(m.g.position.x, m.g.position.z); if (cx === x && cy === y) return true; } return false; }
+function mobFrame(s){
+  const half = NX/2 - .5;
+  for (const m of [...SBX.mobs]){
+    const g = m.g, u = g.userData, fl = 0;
+    if (u.fly){
+      const f = u.fly; f.t = (f.t || 0) + s; f.vy -= 16*s; if (u.chute) { f.vy = Math.max(f.vy, -2.4); f.vx *= Math.exp(-s); f.vz *= Math.exp(-s); }
+      g.position.x += f.vx*s; g.position.z += f.vz*s; g.position.y += f.vy*s; g.rotation.x += (u.chute ? 0 : f.spin)*s;
+      if (u.chute) g.rotation.x *= Math.exp(-s*6);
+      if (!u.chute && f.t > 1.4 && f.vy < 0 && g.position.y - fl < 7 && g.position.y - fl > 1.2) mobChute(g, true);   // a long flight: a little parachute pops out
+      if (Math.abs(g.position.x) > half + 1.5 || Math.abs(g.position.z) > half + 1.5 || g.position.y > 60){   // flung out of the yard: off they go, home
+        if (m.kind === 'sheep') sheepGone(m); else { SBX.root.remove(g); SBX.mobs = SBX.mobs.filter(q => q !== m); if (m === SBX.helper) SBX.helper = null; }
+        continue;
+      }
+      if (g.position.y <= fl && f.vy < 0){
+        g.position.y = fl; g.rotation.x = 0; u.fly = null; mobChute(g, false); u.hop = .8; m.wait = .6;
+        if (m.home){ SBX.root.remove(g); SBX.mobs = SBX.mobs.filter(q => q !== m); continue; }
+        let [x, y] = cellAtWorld(g.position.x, g.position.z);
+        if (!yardFree(x, y)){ const sp = nearFree(x, y); const c = cellPos(sp[0], sp[1]); g.position.x = c.x; g.position.z = c.z; [x, y] = sp; }
+        if (m.kind === 'sheep') sheepCell(m, x, y);
+        if (Math.random() < .4) sayMob(m, m.kind === 'sheep' ? 'BAAA-ZZZT!' : bag('landed', ['WHEEE!', 'Again! AGAIN!', 'I can FLY!', 'Ta-da!']));
+        if (m === SBX.helper && m.goal){ const c = cellPos(...m.goal); m.tx = c.x; m.tz = c.z; }
+      }
+      continue;
+    }
+    if (m.kind === 'sheep' && m.cell && !g.userData.fly){
+      // the sheep's power stays with the sheep: when it's sent flying, the block goes with it
+    }
+    if (toyMobFrame(m, s)) continue;   // cows charge, skunks stink
+    // walking
+    m.wait -= s;
+    if (m.tx === null || m.tx === undefined){
+      if (m.wait <= 0 && m !== SBX.helper){ const [x, y] = cellAtWorld(g.position.x, g.position.z);
+        for (let k = 0; k < 8; k++){ const d = DIRS[Math.floor(Math.random()*4)], r = m.kind === 'sheep' ? 1 : 1 + Math.floor(Math.random()*3), tx = x + d[0]*r, ty = y + d[1]*r;
+          let ok = true; for (let q = 1; q <= r; q++) if (!yardFree(x + d[0]*q, y + d[1]*q) || (m.kind === 'sheep' && at(x + d[0]*q, y + d[1]*q))) ok = false;
+          if (ok){ const c = cellPos(tx, ty); m.tx = c.x; m.tz = c.z; if (m.kind === 'sheep') sheepCell(m, tx, ty); break; } }
+        m.wait = m.kind === 'sheep' ? 1.2 + Math.random()*1.6 : .5 + Math.random()*2; }
+    } else {
+      const dx = m.tx - g.position.x, dz = m.tz - g.position.z, d = Math.hypot(dx, dz), sp = (m.kind === 'helper' ? 2.6 : m.kind === 'sheep' ? .9 : 1.7)*s;
+      g.rotation.y = Math.atan2(dx, dz);
+      if (d <= sp){ g.position.x = m.tx; g.position.z = m.tz; m.tx = m.tz = null; if (m === SBX.helper){ m.goal = null; sayMob(m, bag('helperHere', ['I\'ll stand RIGHT here.', 'Holding it!', 'Mmm, banana.'])); const b = SBX.bananas[SBX.bananas.length - 1]; if (b) b.eat = 1.2; } }
+      else { const nx = g.position.x + dx/d*sp, nz = g.position.z + dz/d*sp, [cx, cy] = cellAtWorld(nx, nz); if (yardFree(cx, cy) || (m.kind === 'sheep' && m.cell && m.cell.x === cx && m.cell.y === cy) || m === SBX.helper){ g.position.x = nx; g.position.z = nz; } else { m.tx = m.tz = null; } }
+    }
+    u.phase = (u.phase || 0) + s*9; const moving = m.tx !== null && m.tx !== undefined;
+    g.position.y = fl + (u.hop > 0 ? Math.abs(Math.sin(u.phase))*.35 : moving ? Math.abs(Math.sin(u.phase))*.06 : 0); if (u.hop > 0) u.hop -= s;
+    if (u.legs && u.legs.length) u.legs.forEach((l, i) => { l.rotation.x = moving ? Math.sin(u.phase + i*Math.PI)*.6 : 0; });
+    if (m.kind === 'sheep' && u.glow){ u.glow.material = M.glowRed; u.glow.scale.setScalar(1 + Math.sin(SBX.t*17 + u.phase)*.25); if (Math.random() < s*.6) noise(.12, .012, 5200, 'highpass'); }   // fizzing with redstone
+  }
+}
+function nearFree(x, y){ for (let r = 0; r < 12; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++){ if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue; if (yardFree(x + dx, y + dy) && !at(x + dx, y + dy)) return [x + dx, y + dy]; } return [Math.floor(NX/2), NY - 3]; }
+// a little parachute on a creature (shared bits)
+function mobChute(g, on){
+  const u = g.userData;
+  if (on && !u.chuteM){ const c = new THREE.Group(), cm = wm(0xff5a3c), wm2 = wm(0xffffff); [[-.45, cm], [-.15, wm2], [.15, cm], [.45, wm2]].forEach(([x, m]) => { const p = new THREE.Mesh(cbox(.3, .12, 1.1), m); p.position.set(x, 2.1 - Math.abs(x)*.4, 0); p.raycast = () => {}; c.add(p); }); [[-.5, -.4], [.5, -.4], [-.5, .4], [.5, .4]].forEach(([x, z]) => { const l = new THREE.Mesh(cbox(.02, 1.3, .02), wm(0x333333)); l.position.set(x*.8, 1.4, z*.8); c.add(l); }); u.chuteM = c; g.add(c); }
+  if (u.chuteM) u.chuteM.visible = on; u.chute = on;
+}
+
+// ---- you: an auto parachute after a long fall, and the rideable space toilet ----
+function chuteFrame(s){
+  if (P.ground){ P.airT = 0; if (P.chute){ P.chute = false; if (SBX.chute) SBX.chute.visible = false; sfx.pop(); } return; }
+  P.airT = (P.airT || 0) + s;
+  if (!P.chute && !P.ride && P.vy < -1 && P.airT > 2 && P.y - heightAt(P.x, P.z) < 8 && P.y - heightAt(P.x, P.z) > 1.5){   // only after about 2 s in the air, and just before you land
+    P.chute = true; P.vy = Math.max(P.vy, -6); noise(.25, .1, 900, 'bandpass'); tone(300, .2, 'triangle', .06, 0, 500);
+    if (!SBX.chute){ const g = new THREE.Group(); mobChute(g, true); g.scale.setScalar(2.2); SBX.chute = g; scene.add(g); }
+    SBX.chute.visible = true;
+  }
+  if (P.chute && SBX.chute){ SBX.chute.position.set(P.x, P.y - 1.6, P.z); SBX.chute.rotation.y = P.yaw; }
+}
+function rideToilet(c){
+  if (P.ride){ P.ride = null; showToast('You hopped off.'); return; }
+  const p = cellPos(c.x, c.y); P.x = p.x; P.z = p.z; P.y = .6; P.vy = 0; P.ride = {c, launched:false};
+  sfx.flush(); showToast('You\'re on the SPACE TOILET! Give it power (or tap it again) to BLAST OFF. Walk to hop off.');
+}
+function rideFrame(){
+  const R = P.ride; if (!R) return;
+  const f = fx.find(q => q.kind === 'stoilet' && q.cell === R.c);
+  if (!R.launched && !f){
+    const moving = touchMove.f || touchMove.r || padMove.f || padMove.r || keys.w || keys.a || keys.s || keys.d || keys.arrowup || keys.arrowdown;
+    if (moving || at(R.c.x, R.c.y) !== R.c){ P.ride = null; return; }
+    const p = cellPos(R.c.x, R.c.y); P.x = p.x; P.z = p.z; P.y = .6; P.vy = 0; return;
+  }
+  if (f && f.t < 2.6){ R.launched = true; P.x = f.g.position.x; P.z = f.g.position.z; P.y = f.g.position.y + .5; P.vy = 0; P.ground = false;
+    if (!R.jet){ R.jet = new THREE.Mesh(new THREE.ConeGeometry(.35, 1.6, 6), new THREE.MeshBasicMaterial({color:0xff8a1c, transparent:true, opacity:.85})); R.jet.rotation.x = Math.PI; R.jet.position.y = -.9; f.g.add(R.jet); discoverRide(); }
+    R.jet.scale.set(1 + Math.random()*.3, 1 + Math.random()*.6, 1 + Math.random()*.3);
+    return; }
+  P.ride = null; P.vy = 3; P.airT = 1.5;   // up in the sky: let go, and the parachute brings you down
+}
+function discoverRide(){ showToast('WHOOOOSH! Hold on to the seat!'); sbAchieve('toilet'); }
+
+// ---- the homing beacon: power it, a beam goes up... and an ENORMOUS stone donkey falls out of the sky and shatters ----
+function beaconGo(c, power){
+  if (SBX.donkey) return; power = power || 1;
+  const p = cellPos(c.x, c.y), beam = new THREE.Mesh(cbox(.5, 80, .5), new THREE.MeshBasicMaterial({color:0xfff3a0, transparent:true, opacity:.5, depthWrite:false}));
+  beam.position.set(p.x, 40, p.z); beam.raycast = () => {}; fxRoot.add(beam);
+  SBX.donkey = {c, t:0, beam, parts:[], at:p, power};
+  tone(500, 2, 'sine', .07, 0, 1600); showToast('BEEP BEEP BEEP! The beacon is calling something... STAND BACK!');
+}
+function makeDonkey(){
+  const g = new THREE.Group(), st = M.stone, sm = M.smooth, dk = wm(0x55524a), parts = [];
+  const add = (w, h, d, m, x, y, z) => { const b = new THREE.Mesh(cbox(w, h, d), m); b.position.set(x, y, z); b.raycast = () => {}; g.add(b); parts.push(b); return b; };
+  add(8, 1.6, 5, sm, 0, .8, 0);                      // the plinth
+  [[-2.4, -1.4], [2.4, -1.4], [-2.4, 1.4], [2.4, 1.4]].forEach(([x, z]) => add(1.3, 5, 1.3, st, x, 4.1, z));
+  add(7, 3.4, 3.6, st, 0, 8.2, 0);                   // body
+  add(1.8, 4.4, 1.8, st, 3.6, 11, 0).rotation.z = -.5;   // neck
+  add(3.8, 2, 2, st, 5.4, 13.2, 0);                  // head
+  add(1.2, 1.2, 1.9, sm, 7.1, 12.7, 0);              // nose
+  [-.6, .6].forEach(z => { add(.5, 2.2, .5, st, 4.4, 15.2, z); add(.3, .5, .1, dk, 6, 13.6, z*1.68); });   // ears, carved eyes
+  add(.5, 3, .5, st, -3.8, 7.6, 0).rotation.z = .3;   // tail
+  return {g, parts};
+}
+function donkeyFrame(s){
+  const D = SBX.donkey; if (!D) return;
+  D.t += s;
+  if (D.beam){ D.beam.material.opacity = .35 + .25*Math.sin(D.t*20); }
+  if (D.t > 1.6 && !D.g){ const d = makeDonkey(); D.g = d.g; D.parts = d.parts; D.g.scale.setScalar(D.power); megaJuice(D.power); D.g.position.set(D.at.x, 70, D.at.z); D.g.rotation.y = Math.random()*6; fxRoot.add(D.g); D.vy = -8; noise(2.2, .05, 600, 'bandpass', 0, 2); tone(1400, 2, 'sine', .05, 0, 200); }
+  if (D.g && !D.broke){
+    D.vy -= 30*s; D.g.position.y += D.vy*s;
+    if (D.g.position.y <= 0){
+      D.broke = true; D.g.position.y = 0; if (D.beam){ fxRoot.remove(D.beam); D.beam = null; }
+      const c = D.c; if (at(c.x, c.y) === c) setCell(c.x, c.y, null);
+      blast([{x:c.x, y:c.y, z:0}], Math.min(24, 7*D.power), {n:40*D.power, mult:2*D.power, destroy:true});   // the MEGA donkey's shockwave reaches everything
+      sfx.thump(64); if (!reduceMotion) shake = 2.2; sbAchieve('donkey');
+      D.g.updateMatrixWorld(true);
+      D.chunks = D.parts.map(b => { const w = b.getWorldPosition(new THREE.Vector3()); D.g.remove(b); fxRoot.add(b); b.position.copy(w); const a = Math.random()*6.28, sp = 2 + Math.random()*6; return {b, v:new THREE.Vector3(Math.cos(a)*sp, 4 + Math.random()*8, Math.sin(a)*sp), r:new THREE.Vector3(Math.random()*3, Math.random()*3, Math.random()*3)}; });
+      fxRoot.remove(D.g); D.end = D.t + 3.5;
+      showToast('KER-RUNCH! The Giant Stone Donkey has landed!');
+    }
+  }
+  if (D.chunks){ D.chunks.forEach(k => { k.v.y -= 20*s; k.b.position.addScaledVector(k.v, s); if (k.b.position.y < .3){ k.b.position.y = .3; k.v.multiplyScalar(.5); k.v.y = Math.abs(k.v.y)*.3; } k.b.rotation.x += k.r.x*s; k.b.rotation.z += k.r.z*s; const sc = Math.max(.01, Math.min(1, (D.end - D.t)/1.2)); k.b.scale.setScalar(sc); }); }
+  if (D.end && D.t > D.end){ (D.chunks || []).forEach(k => fxRoot.remove(k.b)); SBX.donkey = null; }
+}
+// redstone sets toys off too (from toyGo)
+function sbToy(c){
+  if (!isFree() && ['monkeys', 'beacon', 'bananabomb', 'madcow', 'skunk', 'groovitron'].includes(c.t)) return true;   // sandbox toys only work in the sandbox
+  const egg = eggCheck(c); c.power = egg ? egg.power : 0;   // wired to its Mega mode? It goes MEGA
+  if (sbToy2(c)) return true;
+  if (c.t === 'monkeys'){ releaseMonkeys(c, toyPower(c)); return true; }
+  if (c.t === 'beacon'){ beaconGo(c, toyPower(c)); return true; }
+  if (c.t === 'spacetoilet' && isFree()){ const p = cellPos(c.x, c.y); if (!P.ride && Math.hypot(P.x - p.x, P.z - p.z) < .7 && P.y < 1.6) P.ride = {c, launched:false}; }
+  return false;
+}
+// a lit torch or a lantern right in a whoopee cloud: FWOOMPH (free build)
+function fireNearStink(){
+  if (!isFree()) return; const wp = new THREE.Vector3();
+  for (const f of fx){ if (f.kind !== 'stink' || f.line) continue; const u = f.t - f.d; if (u <= 0 || u > Math.min(3.2, f.life - .1)) continue; f.g.getWorldPosition(wp); const [x, y] = cellAtWorld(wp.x, wp.z);
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++){ const c = at(x + dx, y + dy); if (c && ((c.t === 'torch' && c.lit) || c.t === 'lantern') && wp.y < 1.6){ const g = stinkNear([wp], 1); if (g) gasBang(g); return; } } }
+}
+// ---- more toys (from Worms and friends): banana bomb, mad cows, a skunk, the Groovitron. Each is set off by redstone, and each has a
+// power level (1 = normal; bigger = the MEGA version: more, bigger, longer) so the egg checker can blow it up to absurd size later ----
+['bananabomb', 'madcow', 'skunk', 'groovitron'].forEach(t => { TOY_SET.add(t); PLUG_INTO.add(t); SOLID.add(t); });
+// MEGA modes (Tom's table in docs/toys.md): {gate, text, power}. The item page shows "Mega mode: ???" until that Gate Card is earned.
+const TOY_EGGS = {
+  tnt:[{gate:'delay', text:'Mega mode: build wires that light three piles of TNT at the SAME moment, from far away, so they all go off in ONE giant bang.', power:4}],   // a natural chain staggers its fuses, so it never counts as one bang
+  fart:[{gate:'delay', text:'Mega mode: build a DELAY so the whoopee cushion parps after the TNT is lit, but before it goes BANG.', power:2}],
+  bananacannon:[{gate:'or', text:'Mega mode: build an OR gate so EITHER plate fires the banana cannon.', power:3}],
+  monkeys:[{gate:'count', text:'Mega mode: build a counting circuit to press the Monkey Button exactly 5 times.', power:4}],
+  banana:[{gate:'not', text:'Mega mode: build a NOT gate so your helper monkey only works when the lamp is OFF.', power:2}],
+  sheep:[{gate:'and', text:'Mega mode: build an AND gate so the sheep only fizzes when BOTH gates are open.', power:4}],
+  goldfish:[{gate:'memory', text:'Mega mode: build a MEMORY circuit so the robot stays big after you let go.', power:4}],
+  launcher:[{gate:'delay', text:'Mega mode: build a DELAY so the second pad fires just as you land.', power:2}],
+  spacetoilet:[{gate:'and', text:'Mega mode: build an AND gate so the space toilet only blasts off when BOTH flush handles are down.', power:3}],
+  beacon:[{gate:'and', text:'Mega mode: build an AND gate so the donkey only comes when BOTH levers are ON.', power:4}],
+  bananabomb:[{gate:'delay', text:'Mega mode: build a DELAY chain so every mini banana goes off again.', power:3}],
+  madcow:[{gate:'clock', text:'Mega mode: build a CLOCK to keep the barn door opening all by itself.', power:4}],
+  skunk:[{gate:'clock', text:'Mega mode: build a CLOCK to make the skunk spray again and again until the stink covers everything.', power:4}],
+  groovitron:[{gate:'memory', text:'Mega mode: build a MEMORY circuit so the disco ball stays on after you let go.', power:4}]
+};
+// what's driving a toy's input right now (so a later checker can trace the circuit back to its switches)
+function toyDrivers(c){
+  const out = []; if (!c || c.z) return out;
+  for (let d = 0; d < 4; d++){ const n = nb(c, d); if (!n) continue; if (srcPower(n, opp(d)) > 0 || dustInto(n, opp(d)) || (n.t === 'stone' && n.powered) || n.sheep) out.push({t:n.sheep ? 'sheep' : n.t, x:n.x, y:n.y}); }
+  return out;
+}
+// how big a toy goes: 1 normally. (The egg checker sets c.power, or SBX.power[id], when a real circuit earns the MEGA version.)
+const toyPower = c => Math.max(1, Math.min(8, (c && c.power) || (SBX.power && SBX.power[c && c.t]) || 1));
+SBX.power = {};
+function megaJuice(p){ if (p < 2) return; if (!reduceMotion) shake = Math.min(2.5, .6 + p*.3); try { musicCue('fanfare'); } catch (e) {} }
+
+// banana bomb: a fizzing bunch of bananas. BOOM: mini bananas fly everywhere and each goes pop (and the monkeys chase them)
+function bananaBomb(c, power){
+  const p = cellPos(c.x, c.y); setCell(c.x, c.y, null); syncVisuals(); sfx.pop(); noise(.4, .12, 2400, 'bandpass');
+  const n = Math.min(40, 6*power); megaJuice(power);
+  for (let i = 0; i < n; i++) miniBanana(new THREE.Vector3(p.x, p.y + .6, p.z), (i/n)*6.28 + Math.random()*.4, 2 + Math.random()*3 + power*.5, power - 1);
+  SBX.mobs.forEach(m => { if (m.kind === 'capuchin' && !m.g.userData.fly){ m.tx = p.x + (Math.random() - .5)*6; m.tz = p.z + (Math.random() - .5)*6; m.chase = 3; } });
+}
+function miniBanana(pos, a, sp, again){
+  if (SBX.minis.length > 120) return;
+  const g = new THREE.Mesh(cbox(.3, .09, .1), M.banana); g.raycast = () => {}; g.position.copy(pos); fxRoot.add(g);
+  SBX.minis.push({g, v:new THREE.Vector3(Math.cos(a)*sp, 5 + Math.random()*3, Math.sin(a)*sp), again, t:0});
+}
+function miniFrame(s){
+  for (const b of [...SBX.minis]){
+    b.t += s; b.v.y -= 14*s; b.g.position.addScaledVector(b.v, s); b.g.rotation.y += s*14; b.g.rotation.x += s*9;
+    if (b.g.position.y <= .1 || b.t > 4){
+      fxRoot.remove(b.g); SBX.minis = SBX.minis.filter(q => q !== b);
+      const [x, y] = cellAtWorld(b.g.position.x, b.g.position.z); if (!inb(x, y)) continue;
+      tone(500 + Math.random()*400, .08, 'square', .03, 0, 200); bangFx([new THREE.Vector3(b.g.position.x, .3, b.g.position.z)], .8, 1, false);
+      for (const m of creatures()){ const d = Math.hypot(m.position.x - b.g.position.x, m.position.z - b.g.position.z); if (d < 1.6) flingCreature(m, b.g.position, 4); }
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++){ const t = at(x + dx, y + dy); if (t && t.t === 'tnt' && !t.fuse) t.fuse = chainFuse(); }   // a pop lights TNT next to it
+      if (b.again > 0) for (let k = 0; k < 3; k++) miniBanana(b.g.position.clone().setY(.4), Math.random()*6.28, 1.5 + Math.random()*2, b.again - 1);   // the MEGA version: again, and again
+    }
+  }
+}
+// mad cows: the barn door opens and a little stampede trots out, bowling things over (moo!). They jump the wall and go home.
+function madCows(c, power){
+  const n = Math.min(14, 3*power), d = DIRS[c.dir || 0]; sfx.lever(true); megaJuice(power);
+  for (let i = 0; i < n; i++) setTimeout(() => { if (!isFree()) return;
+    const g = makeCow(i === n - 1 && power >= 4 ? 4 : 1), side = (i % 3) - 1, x = c.x + d[0] + (d[1] ? side : 0), y = c.y + d[1] + (d[0] ? side : 0);
+    const m = addMob('cow', g, inb(x, y) ? x : c.x, inb(x, y) ? y : c.y); m.dir = [d[0], d[1]]; m.speed = 4 + Math.random()*1.5; m.life = 9; g.rotation.y = Math.atan2(d[0], d[1]);
+    tone(140 + Math.random()*40, .6, 'sawtooth', .06, 0, 100); }, i*350);
+}
+function makeCow(k){
+  const g = new THREE.Group(), w = wm(0xf2f2ee), b = wm(0x222222), pink = wm(0xf0a0b0);
+  const add = (sx, sy, sz, m, x, y, z) => { const p = new THREE.Mesh(cbox(sx, sy, sz), m); p.position.set(x, y, z); p.raycast = () => {}; g.add(p); return p; };
+  add(.7, .55, 1.1, w, 0, .75, 0); add(.3, .25, .4, b, .2, .9, .1); add(.25, .2, .3, b, -.2, .7, -.3);
+  [[-.25, .35], [.25, .35], [-.25, -.35], [.25, -.35]].forEach(([x, z]) => add(.16, .5, .16, b, x, .25, z));
+  add(.45, .42, .4, w, 0, 1, .7); add(.3, .16, .1, pink, 0, .9, .92); [-1, 1].forEach(s => { add(.07, .07, .02, wm(0xffffff), s*.12, 1.08, .91); add(.04, .04, .02, b, s*.12, 1.08, .92); add(.06, .14, .06, wm(0xd8c8a0), s*.17, 1.26, .62); });
+  g.scale.setScalar(k); g.userData.big = k; return g;
+}
+// the skunk: waddles about leaving a stink trail (it's whoopee gas, so a blast or a flame near it goes BANG)
+function skunkGo(c, power){
+  const old = SBX.mobs.find(m => m.kind === 'skunk' && m.hutch === c);
+  if (old){ old.life = Math.max(old.life, 8 + power*3); old.power = Math.max(old.power, power); old.stinkT = 0; return; }   // pulsed again (a clock): the same skunk sprays again
+  if (SBX.mobs.filter(m => m.kind === 'skunk').length >= 4) return;
+  const d = DIRS[c.dir || 0], x = c.x + d[0], y = c.y + d[1];
+  const m = addMob('skunk', makeSkunk(power >= 3 ? 1.8 : 1), yardFree(x, y) ? x : c.x, yardFree(x, y) ? y : c.y); m.life = 10 + power*3; m.power = power; m.stinkT = 0; m.hutch = c;
+  tone(800, .15, 'square', .03, 0, 1200); megaJuice(power); sayMob(m, 'Sniff sniff...');
+}
+function makeSkunk(k){
+  const g = new THREE.Group(), bk = wm(0x1a1a1a), wh = wm(0xf2f2f2);
+  const add = (sx, sy, sz, m, x, y, z) => { const p = new THREE.Mesh(cbox(sx, sy, sz), m); p.position.set(x, y, z); p.raycast = () => {}; g.add(p); return p; };
+  add(.4, .3, .7, bk, 0, .3, 0); add(.12, .32, .72, wh, 0, .32, 0); add(.3, .26, .28, bk, 0, .36, .45); add(.08, .3, .05, wh, 0, .42, .6);
+  [-1, 1].forEach(s => { add(.07, .06, .02, wh, s*.08, .42, .6); add(.04, .04, .02, wm(0x111111), s*.08, .42, .61); add(.07, .14, .07, bk, s*.15, .1, .2); add(.07, .14, .07, bk, s*.15, .1, -.2); });
+  const tail = add(.3, .7, .25, bk, 0, .75, -.45); add(.1, .6, .26, wh, 0, .8, -.45); tail.rotation.x = -.3;
+  g.scale.setScalar(k); return g;
+}
+// the Groovitron: up it goes, spinning and sparkling, and everything nearby HAS to dance
+function groovitron(c, power){
+  const p = cellPos(c.x, c.y), ball = new THREE.Mesh(cbox(.8, .8, .8), M.mirror); ball.position.set(p.x, 1, p.z); ball.raycast = () => {}; fxRoot.add(ball);
+  SBX.groove = {ball, t:0, life:6*power, R:8*power, at:p}; megaJuice(power);
+  try { musicCue('disco', Math.min(4, 1 + power)); } catch (e) {} sfx.party && sfx.party(); showToast('GROOVITRON! Everybody DANCE!');
+}
+function grooveFrame(s){
+  const G = SBX.groove; if (!G) return;
+  G.t += s; G.ball.position.y = Math.min(4, 1 + G.t*2); G.ball.rotation.y += s*3; G.ball.rotation.x = Math.sin(G.t)*.2;
+  if (Math.random() < s*10) burst(G.ball.position.clone().add(new THREE.Vector3((Math.random() - .5)*2, (Math.random() - .5)*2, (Math.random() - .5)*2)), [0xff7fb0, 0x4fa3ff, 0xffd84a, 0xffffff][Math.floor(Math.random()*4)], 1);
+  for (const m of creatures()){ if (m.userData.fly || Math.hypot(m.position.x - G.at.x, m.position.z - G.at.z) > G.R) continue; m.userData.dance = .4; m.rotation.y += s*6; m.position.y = Math.abs(Math.sin(G.t*9 + m.id))*.3; }
+  if (inFP() && Math.hypot(P.x - G.at.x, P.z - G.at.z) < G.R && !reduceMotion) P.roll = Math.sin(G.t*6)*.06;   // even you sway a bit
+  if (G.t > G.life){ fxRoot.remove(G.ball); SBX.groove = null; P.roll = 0; }
+}
+SBX.minis = [];
+// the extra toys' movement (cows charge in a line; the skunk wanders and stinks)
+function toyMobFrame(m, s){
+  const g = m.g;
+  if (m.kind === 'cow'){
+    m.life -= s; const nx = g.position.x + m.dir[0]*m.speed*s, nz = g.position.z + m.dir[1]*m.speed*s, [cx, cy] = cellAtWorld(nx, nz);
+    g.position.y = Math.abs(Math.sin(SBX.t*12 + g.id))*.12;
+    for (const o of creatures()){ if (o === g || o.userData.fly || o.userData.big) continue; if (Math.hypot(o.position.x - nx, o.position.z - nz) < .8*(g.userData.big || 1)) flingCreature(o, g.position, 6); }
+    if (inFP() && !P.kb && Math.hypot(P.x - nx, P.z - nz) < .8*(g.userData.big || 1)) knockPlayer(g.position, 7);
+    if (!inb(cx, cy) || S.walls[cy*NX + cx] || m.life <= 0 || (at(cx, cy) && SOLID.has(at(cx, cy).t)) || upTop(cx, cy)){   // a wall or a block: MOO, and over the wall it goes, home
+      if (Math.random() < .5) tone(120, .5, 'sawtooth', .05, 0, 90);
+      g.userData.fly = {vx:m.dir[0]*2, vz:m.dir[1]*2, vy:9, spin:0, t:0}; m.home = true; return true;
+    }
+    g.position.x = nx; g.position.z = nz; return true;
+  }
+  if (m.kind === 'skunk'){
+    m.life -= s; m.stinkT -= s;
+    if (m.stinkT <= 0){ m.stinkT = .9; stinkCloud(new THREE.Vector3(g.position.x, .3, g.position.z), 0, 0, 3 + m.power, m.power >= 3); }
+    if (m.life <= 0){ SBX.root.remove(g); SBX.mobs = SBX.mobs.filter(q => q !== m); return true; }
+  }
+  return false;
+}
+function sbToy2(c){
+  const pw = toyPower(c);
+  if (c.t === 'bananabomb'){ setTimeout(() => { if (isFree() && at(c.x, c.y) === c) bananaBomb(c, pw); }, 900); noise(.9, .04, 5000, 'highpass'); return true; }
+  if (c.t === 'madcow'){ madCows(c, pw); return true; }
+  if (c.t === 'skunk'){ skunkGo(c, pw); return true; }
+  if (c.t === 'groovitron'){ if (!SBX.groove) groovitron(c, pw); return true; }
+  return false;
+}
+// ---- Mega modes, checked on the REAL circuit (Tom): when a sandbox toy fires, find the switches upstream of its input, then on
+// the grid (saved and put back, like the lessons' row checker) try every mix of them and read the toy input's truth table.
+// AND/OR/NOT/NAND/NOR/XOR need a real gate with real inputs; CLOCK = it keeps flipping by itself; MEMORY = same switches, different
+// answer depending on what came before; DELAY = it answers 4+ steps after the switch. Two things powered at once is NOT an AND.
+const EGG_WIRE = new Set(['dust', 'repeater', 'torch', 'stone', 'lever', 'button', 'plate']);
+function eggSwitches(c){
+  const seen = new Set([c.y*NX + c.x]), q = [c], sw = [];
+  while (q.length && seen.size < 600){
+    const n0 = q.shift();
+    for (let d = 0; d < 4; d++){ const n = nb(n0, d); if (!n || seen.has(n.y*NX + n.x) || !EGG_WIRE.has(n.t)) continue; seen.add(n.y*NX + n.x); if (n.t === 'lever' || n.t === 'button' || n.t === 'plate') sw.push(n); else q.push(n); }
+  }
+  return sw.slice(0, 4);
+}
+function eggSim(fn){
+  const saved = S.grid.map(c => c && Object.assign({}, c, {buf:c.buf ? c.buf.slice() : null, pts:c.pts ? c.pts.slice() : c.pts, offs:c.offs ? c.offs.slice() : c.offs}));
+  const keep = {tick:S.tick, lastSnap:S.lastSnap, stable:S.stable, ev:S.events.length}, was = S.simulating;
+  S.simulating = true;
+  try { return fn(); }
+  finally { S.simulating = was; S.grid.forEach((c, i) => { if (c && saved[i]) Object.assign(c, saved[i]); }); S.tick = keep.tick; S.lastSnap = keep.lastSnap; S.stable = keep.stable; S.events.length = keep.ev; }
+}
+function eggSet(sw, v){ if (sw.t === 'lever') sw.on = v; else { sw.timer = v ? 999 : 0; sw.on = false; } }
+function eggGate(c){
+  const sw = eggSwitches(c);
+  return eggSim(() => {
+    const run = n => { const seq = []; for (let t = 0; t < n; t++){ step(); seq.push(!!c.lit); } return seq; };
+    // a clock: nothing touched, and the toy's input keeps flipping on its own
+    { const seq = run(60); let flips = 0; for (let i = 1; i < seq.length; i++) if (seq[i] !== seq[i - 1]) flips++; if (flips >= 4) return {gate:'clock', n:sw.length}; }
+    if (!sw.length) return null;
+    const k = sw.length, rows = [];
+    for (let r = 0; r < (1 << k); r++){ sw.forEach((s, i) => eggSet(s, !!((r >> (k - 1 - i)) & 1))); const seq = run(40); rows.push(seq[seq.length - 1]); }
+    // memory: all off, then each switch on and off again: does the answer stay changed?
+    { sw.forEach(s => eggSet(s, false)); run(30); const before = !!c.lit; for (const s of sw){ eggSet(s, true); run(20); eggSet(s, false); run(20); if (!!c.lit !== before) return {gate:'memory', n:k}; } }
+    // which switches matter at all
+    const used = [...Array(k).keys()].filter(i => rows.some((v, r) => v !== rows[r ^ (1 << (k - 1 - i))]));
+    if (!used.length) return null;
+    const tab = []; for (let r = 0; r < (1 << used.length); r++){ let full = 0; used.forEach((i, j) => { if ((r >> (used.length - 1 - j)) & 1) full |= 1 << (k - 1 - i); }); tab.push(rows[full]); }
+    const key = tab.map(v => v ? 1 : 0).join(''), m = used.length;
+    let gate = m === 1 ? (key === '10' ? 'not' : 'wire') : null;
+    if (m >= 2){ const all = tab.every((v, r) => v === (r === tab.length - 1)), any = tab.every((v, r) => v === (r > 0)), none = tab.every((v, r) => v === (r === 0)), notAll = tab.every((v, r) => v === (r !== tab.length - 1));
+      const odd = tab.every((v, r) => v === (r.toString(2).split('1').length % 2 === 0));
+      gate = all ? 'and' : any ? 'or' : none ? 'nor' : notAll ? 'nand' : odd ? 'xor' : null; }
+    // a delay: from everything off to the switches that fire it, how long until the toy gets power?
+    if (gate === 'wire' || gate === 'and' || gate === 'or'){ const r = tab.findIndex(Boolean); if (r >= 0){ sw.forEach(s => eggSet(s, false)); run(30); used.forEach((i, j) => eggSet(sw[i], !!((r >> (m - 1 - j)) & 1))); const seq = run(20), at = seq.indexOf(true); if (at >= 4 && gate === 'wire') gate = 'delay'; } }
+    return gate ? {gate, n:m} : null;
+  });
+}
+// a toy is going off: is it wired to its Mega mode? Then it goes MEGA (and the item page can tick it later)
+const EGG_NAME = {and:'AND', or:'OR', not:'NOT', nor:'NOR', nand:'NAND', xor:'XOR', clock:'a CLOCK', memory:'a MEMORY', delay:'a DELAY'};
+SBX.eggT = {};
+function eggCheck(c){
+  const eggs = TOY_EGGS[c.t]; if (!eggs || !isFree() || c.z) return null;
+  const now = SBX.t; if (SBX.eggT[c.y*NX + c.x] && now - SBX.eggT[c.y*NX + c.x].t < 1.5) return SBX.eggT[c.y*NX + c.x].egg;   // a clock fires it often: check once a beat
+  let g = null; try { g = eggGate(c); } catch (e) { g = null; }
+  const egg = g && eggs.find(e => e.gate === g.gate) || null;
+  SBX.eggT[c.y*NX + c.x] = {t:now, egg};
+  TOYLOG.length && (TOYLOG[TOYLOG.length - 1].gate = g ? g.gate : null);
+  if (egg){
+    progress.sbEggs = progress.sbEggs || {}; const id = c.t + ':' + egg.gate, first = !progress.sbEggs[id];
+    progress.sbEggs[id] = progress.sbEggs[id] || Date.now(); saveProgress();
+    if (first) setTimeout(() => { sfx.chime(); showCard('MEGA MODE!', `That was ${EGG_NAME[egg.gate] || egg.gate}! ${egg.text.replace(/^Mega mode: /, '')}`); }, 2500);
+  }
+  return egg;
+}
+hbSetup();
+// every toy that goes off, and what set it off (redstone, a click, a blast...), so circuits that combine toys can be spotted later
+const TOYLOG = [];
+function toyFire(id, src, c, opt){ TOYLOG.push({id, src, x:c ? c.x : null, y:c ? c.y : null, tick:S.tick, t:Math.round(SBX.t*1000), power:(opt && opt.power) || toyPower(c), by:src === 'power' ? toyDrivers(c) : []}); if (TOYLOG.length > 200) TOYLOG.shift(); }
+
 /* ================= test hook ================= */
 window.goAct = goAct;
 window.__game = {
@@ -8347,7 +9651,7 @@ window.__game = {
   fp(){ return {on:inFP(), x:P.x, y:P.y, z:P.z, yaw:P.yaw, pitch:P.pitch}; },
   setView, keyDown(k, on){ keys[k] = on; },
   tp(x, y){ const c = cellPos(x, y); P.x = c.x; P.z = c.z; P.y = c.y; stepFP(0); },
-  frames(ms){ for (let t=0; t<ms; t+=16){ stepFP(16); if (A.on) advFrame(16, t); runFx(16); } },
+  frames(ms){ for (let t=0; t<ms; t+=16){ stepFP(16); if (A.on) advFrame(16, t); runFx(16); sbFrame(16); } },
   aimAt(x, y){ const c = cellPos(x, y); camera.position.set(P.x, P.y + EYE, P.z); const dx = c.x - P.x, dz = c.z - P.z; P.yaw = Math.atan2(-dx, -dz); P.pitch = -Math.atan2(EYE, Math.hypot(dx, dz)); stepFP(0); },
   monkeysNear(){ return TROOP.list.map(m => { const v = new THREE.Vector3(m.position.x, m.position.y + .3, m.position.z).sub(camera.position); return +v.length().toFixed(2); }).filter(d => d < 3).sort(); },
   aimHit(){ const [cx,cy] = centre(); const h = pick(cx, cy); return h ? {x:h.x, y:h.y, t:h.cell && h.cell.t, p:[P.x.toFixed(1), P.z.toFixed(1)], me:cellAtWorld(P.x, P.z)} : {none:true, me:cellAtWorld(P.x, P.z)}; },
@@ -8501,6 +9805,28 @@ window.__game.opening = {
   aimCell(x, y){ const c = cellPos(x, y), dx = c.x - P.x, dz = c.z - P.z; P.yaw = Math.atan2(-dx, -dz); P.pitch = Math.atan2(floorAt(x, y) + .02 - (P.y + EYE), Math.hypot(dx, dz)); stepFP(0); },
   me(){ return {x:P.x, y:P.y, z:P.z, cell:cellAtWorld(P.x, P.z), vy:P.vy}; }, setY(y){ P.y = y; P.vy = 0; },
   pick(){ const [cx, cy] = centre(); world.updateMatrixWorld(); const h = pick(cx, cy); return h ? [h.x, h.y, h.cell ? h.cell.t : null] : null; }
+};
+// test hooks for TNT and the sandbox (test-tnt.js, test-freebuild.js)
+window.__game.sbx = {
+  tnts:TNTS, live:tntLive, grow:tntGrow, R:TNT_R, MAX:TNT_LIVE_MAX, ach(){ return Object.assign({}, progress.sbAch || {}); },
+  me(){ return {x:P.x, y:P.y, z:P.z, cell:cellAtWorld(P.x, P.z), dead:!!S.dead, tumble:!!S.tumble, roll:P.roll || 0, kb:!!P.kb, deadBox:!$('#dead').hidden}; },
+  put(x, y){ const c = cellPos(x, y); P.x = c.x; P.z = c.z; P.y = Math.max(floorAt(x, y), upTop(x, y)); P.vy = 0; P.kb = null; stepFP(0); },
+  cell(x, y){ const c = at(x, y); return c ? {t:c.t, lit:c.lit, fuse:c.fuse || 0, on:c.on, sheep:!!c.sheep} : null; },
+  roots(){ return [terrainRoot.visible, decorRoot.visible, floorRoot.visible]; }, hasUp(){ return !!S.up; },
+  aim(x, y, h){ const c = cellPos(x, y), dx = c.x - P.x, dz = c.z - P.z; P.yaw = Math.atan2(-dx, -dz); P.pitch = Math.atan2(h - (P.y + EYE), Math.hypot(dx, dz)); stepFP(0); world.updateMatrixWorld(); },
+  walk(yaw, ms, speedMul){ P.yaw = yaw; keys.w = true; for (let t = 0; t < ms; t += 16) stepFP(16*(speedMul || 1)); keys.w = false; return {x:P.x, z:P.z, y:P.y, cell:cellAtWorld(P.x, P.z)}; },
+  jumpWalk(yaw, ms){ P.yaw = yaw; keys.w = true; for (let t = 0; t < ms; t += 16){ if (P.ground) jump(); stepFP(16); } keys.w = false; return {x:P.x, z:P.z, y:P.y, cell:cellAtWorld(P.x, P.z)}; },
+  inSolid(){ for (const ox of [-RAD, RAD]) for (const oz of [-RAD, RAD]){ if (topAt(P.x + ox, P.z + oz) > P.y + .6) return true; } return false; },
+  drop(x, y, h){ const c = cellPos(x, y); P.x = c.x; P.z = c.z; P.y = h; P.vy = 0; P.ground = false; P.airT = 0; P.kb = null; P.chute = false; },
+  knock(vx, vz){ P.kb = {vx, vz}; },
+  stink(x, y){ puff({x, y}); }, size(){ return [NX, NY]; }, wall(x, y){ return wallAt(x, y); },
+  up(x, y, z){ const b = upAt(x, y, z); return b ? {t:b.t, fuse:b.fuse || 0} : null; }, upTop, upPut(t, x, y, z){ if (!S.up) return false; upSet(x, y, z, {t, fuse:0}); syncUp(); return true; },
+  fling:flingCreature, creatures, bits(){ return BANG.meshes ? BANG.meshes.reduce((n, m) => n + m.count, 0) : 0; },
+  mobs(){ return SBX.mobs.map(m => ({kind:m.kind, x:m.g.position.x, y:m.g.position.y, z:m.g.position.z, cell:cellAtWorld(m.g.position.x, m.g.position.z), fly:!!m.g.userData.fly, chute:!!m.g.userData.chute})); },
+  release(x, y){ const c = at(x, y); if (c) releaseMonkeys(c); }, sheep(x, y){ addSheep(x, y); }, banana(x, y){ throwBanana({x, y}); },
+  ride(x, y){ const c = at(x, y); if (c) rideToilet(c); }, riding(){ return !!P.ride; }, chute(){ return !!P.chute; }, beacon(x, y){ const c = at(x, y); if (c) beaconGo(c); }, donkey(){ return SBX.donkey ? {t:SBX.donkey.t, y:SBX.donkey.g ? SBX.donkey.g.position.y : null, broke:!!SBX.donkey.broke, power:SBX.donkey.power} : null; }, skunk(x, y, power){ const c = at(x, y); if (c) skunkGo(c, power || 1); },
+  act(mode){ const [cx, cy] = centre(); world.updateMatrixWorld(); act(cx, cy, mode || 'use'); }, hb(){ return {page:HB.page, per:HB.per, pages:HB.pages, shown:[...hotbar.children].filter(b => !b.hidden && !b.classList.contains('pgOff')).length, all:hbVisible().length}; }, flip:hbFlip, inventory:openInventory,
+  kit(){ return [...sandboxKit()]; }, eggGate(x, y){ const c = at(x, y); return c ? eggGate(c) : null; }, eggsDone(){ return Object.assign({}, progress.sbEggs || {}); }, mush(){ return !!SBX.mush; }, unlocks:SANDBOX_UNLOCKS, eggs:TOY_EGGS, power:SBX.power, groove(){ return !!SBX.groove; }, minis(){ return SBX.minis.length; }, open:sbOpen, toylog:TOYLOG, gas(){ return TNTS.gas; }
 };
 refreshHotbar(); select(1);
 BOOT_IDS = [new THREE.BufferGeometry().id, new THREE.Material().id, new THREE.Texture().id];   // everything made so far is shared (see freeKids)
