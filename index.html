@@ -312,6 +312,49 @@ body.pad #topBtns .btn[data-pad]::after{content:attr(data-pad);position:absolute
 .labHead{margin:10px 0 0;color:#fff;text-shadow:2px 2px 0 #222;font-size:24px;align-self:flex-start;}
 .labHead small{font-size:15px;font-weight:500;}
 .saveNote{font-size:15px;color:#fff;text-shadow:1px 1px 0 #222;text-align:center;}
+/* save slots: a Minecraft-style Select Save screen (dirt background, dark list, stone buttons) and the little "Saving..." in the corner */
+.menuRow{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;}
+#slotNote{font-size:17px;margin-top:-8px;}
+#saves{background:#5b3d26 center/64px 64px;image-rendering:pixelated;z-index:20;}
+#savesPanel{width:100%;max-width:640px;display:flex;flex-direction:column;gap:12px;padding-top:6px;image-rendering:auto;}
+#svHead{margin:0;text-align:center;font:600 30px/1.1 var(--f-display);color:#fff;text-shadow:3px 3px 0 #2a1a0e;}
+#svBody{display:flex;flex-direction:column;gap:12px;}
+.svList{display:flex;flex-direction:column;gap:4px;padding:6px;background:rgba(0,0,0,.6);border-top:2px solid #000;border-bottom:2px solid #000;max-height:min(52vh,460px);overflow-y:auto;}
+.svRow{appearance:none;display:flex;gap:12px;align-items:center;text-align:left;padding:6px 8px;background:transparent;border:3px solid transparent;color:#fff;cursor:pointer;font-family:inherit;min-height:72px;}
+.svRow:hover{background:rgba(255,255,255,.08);}
+.svRow.sel{border-color:#c6c6c6;background:rgba(0,0,0,.35);}
+.svRow:focus-visible{outline:3px solid var(--gold);outline-offset:1px;}
+.svIcon{flex:0 0 56px;width:56px;height:56px;box-shadow:0 0 0 2px #000;}
+.svIcon svg{width:100%;height:100%;display:block;}
+.svTxt{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.svTxt b{font:600 21px/1.15 var(--f-display);color:#fff;overflow-wrap:anywhere;}
+.svTxt span{font-size:16px;line-height:1.25;color:#b8b8b8;}
+.svBtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.svBtns .btn:first-child{grid-column:1 / -1;}
+.svBtns .btn:disabled{opacity:.5;cursor:default;}
+.svBtns.svTwo .btn:first-child{grid-column:auto;}
+#svBody > .svBtns:only-child .btn,.svBtns .btn:only-child{grid-column:1 / -1;}
+.svP,.svBig,.svLbl{margin:0;color:#fff;text-shadow:2px 2px 0 #2a1a0e;font-size:19px;text-align:center;}
+.svBig{font:600 24px/1.2 var(--f-display);}
+.svLbl{text-align:left;color:#d8d8d8;font-size:17px;}
+.svIn{font:600 22px/1.2 var(--f-body);padding:10px;background:#000;color:#fff;border:2px solid #a0a0a0;width:100%;-webkit-user-select:text;user-select:text;}
+.svIn:focus{outline:none;border-color:#fff;}
+.svMsg{min-height:0;color:#ffe14a;font-size:17px;font-weight:700;text-align:center;text-shadow:2px 2px 0 #2a1a0e;}
+.svMsg:empty{display:none;}
+.cloud{display:flex;flex-direction:column;gap:8px;}
+.cloud p{margin:0;}
+.cloud label{font-weight:700;font-size:16px;margin-top:4px;}
+.cloud .row{display:flex;flex-wrap:wrap;gap:10px;}
+.cloud code{overflow-wrap:anywhere;word-break:break-all;font-size:14px;}
+.cloudIn{box-sizing:border-box;font:16px/1.3 var(--f-body);padding:8px;width:100%;max-width:100%;border:2px solid #555;background:#fff;color:#222;-webkit-user-select:text;user-select:text;}
+.cloudSmall{font-size:15px;}
+.cloudMsg{font-weight:700;min-height:1.2em;}
+#movePanel select{font:600 17px/1.2 var(--f-body);padding:6px;max-width:100%;}
+#saving{position:fixed;right:calc(12px + env(safe-area-inset-right,0px));bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:65;display:flex;align-items:center;gap:8px;padding:5px 10px 5px 8px;background:rgba(0,0,0,.5);color:#fff;font:600 15px/1 var(--f-display);text-shadow:2px 2px 0 #222;pointer-events:none;transition:opacity .25s;}
+#saving.out{opacity:0;}
+#saving i{width:16px;height:16px;background:linear-gradient(#6fb04f 0 30%,#5d9c3a 30% 40%,#8a5a33 40%);box-shadow:inset -3px -3px 0 rgba(0,0,0,.28),0 0 0 1px #000;animation:svSpin .9s steps(8) infinite;}
+@keyframes svSpin{to{transform:perspective(40px) rotateY(360deg)}}
+@media (prefers-reduced-motion: reduce){ #saving i{animation:none;} #saving{transition:none;} }
 #movePanel{max-width:560px;width:100%;margin-top:6vh;padding:18px;display:flex;flex-direction:column;gap:10px;}
 #movePanel h2{margin:0;font-size:28px;color:var(--night);}
 #movePanel p{margin:0;font-size:18px;}
@@ -417,6 +460,7 @@ body.dlgOn #hud > #toast{bottom:auto;top:44%;}   /* a toast never lands on top o
   </div>
 </div>
 
+<div id="saving" hidden aria-hidden="true"><i></i>Saving...</div>
 <div id="loader" hidden aria-live="polite"><div class="ldInner"><div class="ldTitle">Loading...</div><div class="ldBar"><i></i></div><div class="ldLine" id="ldLine"></div></div></div>
 <div id="menu" class="overlay">
   <div class="menuInner">
@@ -424,7 +468,8 @@ body.dlgOn #hud > #toast{bottom:auto;top:44%;}   /* a toast never lands on top o
     <div class="splash">Now with Boom Blocks!</div>
     <div class="tag">A redstone adventure. Find out how computers think.</div>
     <button class="btn red playBtn" id="btnPlay">New game</button>
-    <button class="btn" id="btnNew" hidden>Start a new game</button>
+    <div class="tag" id="slotNote" hidden></div>
+    <div class="menuRow"><button class="btn" id="btnNew" hidden>Start a new game</button><button class="btn" id="btnSaves" hidden>Saves</button></div>
     <div class="tag" style="font-size:17px;color:#ffe14a" id="menuNote" role="status" hidden></div>
     <div class="tag" style="font-size:17px" id="playNote">A jungle temple full of puzzle rooms. Win crystals. Find out what's at its heart...</div>
     <h2 class="labHead">Puzzle Lab <small>harder puzzles, for after the temple</small></h2>
@@ -432,7 +477,6 @@ body.dlgOn #hud > #toast{bottom:auto;top:44%;}   /* a toast never lands on top o
     <div class="menuBtns">
       <button class="btn" id="btnBook"><svg viewBox="0 0 24 24" fill="#fff"><path d="M3 4h7a3 3 0 0 1 2 1 3 3 0 0 1 2-1h7v15h-7a2 2 0 0 0-2 1 2 2 0 0 0-2-1H3z" opacity=".9"/><path d="M12 5v15" stroke="#555" stroke-width="1.5"/></svg>Logic Book</button>
       <button class="btn" id="btnSound">Music &amp; Sounds...</button>
-      <button class="btn" id="btnMove">Back up my save</button>
       <button class="btn" id="btnGates">Gate Cards</button>
       <button class="btn" id="btnPass">Passwords</button>
       <button class="btn" id="btnTips">Minecraft tips</button>
@@ -470,6 +514,7 @@ body.dlgOn #hud > #toast{bottom:auto;top:44%;}   /* a toast never lands on top o
   <div class="page panel" id="movePanel">
     <h2>Back up my save</h2>
     <p>Your game is stored in this browser. Browsers sometimes forget things (clearing history can wipe it), so keep a <b>backup file</b> somewhere safe, like your photos, iCloud or Google Drive, or email it to a grown-up.</p>
+    <p id="moveWhich" style="font-size:16px"></p>
     <p id="backupWhen" style="font-size:14px"></p>
     <div class="row"><button class="btn red" id="btnSaveFile">Save my game to a file</button><button class="btn" id="btnLoadFile">Load from a file</button><input type="file" id="loadFile" accept=".json,.txt,application/json,text/plain" hidden></div>
     <span id="fileMsg" class="msg" role="status"></span>
@@ -481,8 +526,12 @@ body.dlgOn #hud > #toast{bottom:auto;top:44%;}   /* a toast never lands on top o
     <textarea id="saveIn" rows="3" aria-label="Paste a save code" placeholder="RA2:..."></textarea>
     <div class="row"><button class="btn" id="btnLoadCode">Load this save</button><span id="loadMsg" class="msg" role="status"></span></div>
     </details>
+    <div id="impAsk" hidden></div>
     <div class="row"><button class="btn" id="btnMoveClose">Done</button></div>
   </div>
+</div>
+<div id="saves" class="overlay" hidden>
+  <div id="savesPanel" role="dialog" aria-labelledby="svHead"><h2 id="svHead">Select Save</h2><div id="svBody"></div></div>
 </div>
 <div id="pane" class="overlay dim" hidden>
   <div class="page panel"><h2 id="paneHead"></h2><div id="paneBody"></div><div class="row"><button class="btn" id="paneClose">Done</button></div></div>
@@ -1986,7 +2035,7 @@ function quizPick(b){
     fb.className = 'gqFb ok'; fb.textContent = 'YES! ' + o.why;
     (A.quizDone = A.quizDone || new Set()).add(k);
     if (A.on) advSaveSoon();
-    else { const sv = advLoad(); if (sv){ sv.quiz = [...new Set([...(sv.quiz || []), k])]; try { localStorage.setItem(ADV_KEY, JSON.stringify(sv)); } catch (e) {} } }   // answered on the menu's Gate Cards page
+    else { const sv = advLoad(); if (sv){ sv.quiz = [...new Set([...(sv.quiz || []), k])]; advWrite(sv); } }   // answered on the menu's Gate Cards page (written to the save you're on)
     sfx.chime(); if (A.on && A.monkey) A.monkey.userData.hop = 1.5;
     if (!box.closest('#why')){ const G = GATE_CARDS[k]; box.insertAdjacentHTML('beforeend', `<p style="margin:4px 0"><b>Spot it in real life:</b> ${G.home}</p><p style="margin:4px 0;font-size:13px"><i>${G.spot}</i></p>`); }   // the menu's card shows its example once you've spotted one
     else { const ok = $('#whyOk'); ok.hidden = false; $('#why').classList.remove('quiz'); cardArmT = performance.now(); ok.disabled = true; setTimeout(() => { ok.disabled = false; }, CARD_ARM_MS);   /* Got it! arms too: the tap on the answer can't also close the card */ if (padMode) padFocus(ok); else if (box.contains(document.activeElement)) ok.focus(); }
@@ -2507,7 +2556,7 @@ function place(item, x, y, clicked){
   // the hint wanted it stuck on a block, or facing another way: say how to aim it (the rules stay Minecraft's)
   if (gh && gh.t === p.t && ['torch','lever','button'].includes(p.t) && (gh.attach ?? -1) !== p.attach) showToast((gh.attach ?? -1) < 0 ? 'Tap the FLOOR to stand it up on its own.' : 'To stick it on the block, tap the SIDE of the block.');
   else if (gh && gh.t === 'repeater' && p.t === 'repeater' && (gh.dir || 0) !== p.dir) showToast('A repeater points the way YOU look. Stand behind it and look along the wire.');
-  if (L && L.def.kind === 'free'){ S.freePlaced = (S.freePlaced || 0) + 1; if (S.freePlaced === 60 && !S.backupNudged){ S.backupNudged = true; let t = 0; try { t = +localStorage.getItem(KEY_PREFIX + 'backedUp') || 0; } catch (e) {} if (Date.now() - t > 3*864e5) showToast('Building something great? Save a backup file: Menu, then Back up my save.'); } }
+  if (L && L.def.kind === 'free'){ S.freePlaced = (S.freePlaced || 0) + 1; if (S.freePlaced === 60 && !S.backupNudged){ S.backupNudged = true; let t = 0; try { t = +localStorage.getItem(KEY_PREFIX + 'backedUp') || 0; } catch (e) {} if (Date.now() - t > 3*864e5) showToast('Building something great? Ask a grown-up to save a backup file: Menu, then Grown-ups.'); } }
   return true;
 }
 // solid blocks can't go in doorways or the corridors between rooms (so nobody can wall themselves out of the game)
@@ -2790,7 +2839,7 @@ function padRun(dt, now, press, lx, ly, rx, ry){
   else if (!padEat && !DLG.on){ if (fp) jump(); else if (press(PB.jump)) act(cx, cy, 'use'); }   // hold to keep jumping
 }
 /* menus and panes by pad: a gold box moves between the buttons, OK clicks, back closes */
-function padLayer(){ if (!$('#hud').hidden && cardQuiz()) return $('#why'); for (const q of ['#pane', '#move', '#book', '#cele', '#endCard', '#menu']){ const el = $(q); if (el && !el.hidden) return el; } return null; }
+function padLayer(){ if (!$('#hud').hidden && cardQuiz()) return $('#why'); for (const q of ['#pane', '#saves', '#move', '#book', '#cele', '#endCard', '#menu']){ const el = $(q); if (el && !el.hidden) return el; } return null; }
 const padItems = layer => [...layer.querySelectorAll('button,input:not([type=file]),textarea,summary,select')].filter(el => !el.disabled && el.getClientRects().length);
 function padFocus(el){
   if (padFocusEl === el) return;
@@ -2801,7 +2850,7 @@ function padFocus(el){
 function padMenu(layer, now, press, lx, ly, dt){
   const items = padItems(layer); if (!items.length) return;
   if (!items.includes(padFocusEl)){
-    const pref = {pane:'#paneClose', book:'#bkNext'}[layer.id], mem = padMem[layer.id];   // a pane starts on the safe "Done"
+    const pref = {pane:'#paneClose', book:'#bkNext', saves:'[data-pad-first]'}[layer.id], mem = padMem[layer.id];   // a pane starts on the safe "Done"
     padFocus(items.includes(mem) ? mem : items.find(el => pref && el.matches(pref)) || items.find(el => el.classList.contains('red')) || items[0]);
   }
   padMem[layer.id] = padFocusEl;
@@ -2822,11 +2871,16 @@ function padNudge(items, dir){   // on a slider (Music & Sounds), left and right
 function padStep(items, dir){
   const r0 = padFocusEl.getBoundingClientRect(), x0 = r0.left + r0.width/2, y0 = r0.top + r0.height/2, [ux, uy] = [[0,-1],[0,1],[-1,0],[1,0]][dir];
   let best = null, bs = Infinity;
-  for (const el of items){
-    if (el === padFocusEl) continue;
-    const r = el.getBoundingClientRect(), dx = r.left + r.width/2 - x0, dy = r.top + r.height/2 - y0, along = dx*ux + dy*uy;
-    if (along <= 4) continue;
-    const s = along + 2*Math.abs(dx*uy - dy*ux); if (s < bs){ bs = s; best = el; }
+  // a button in the same row (or column) wins over a nearer one off to the side, so left/right never hop up a row and back
+  const lined = r => uy ? r.left < r0.right - 2 && r.right > r0.left + 2 : r.top < r0.bottom - 2 && r.bottom > r0.top + 2;
+  for (const pass of [true, false]){
+    for (const el of items){
+      if (el === padFocusEl) continue;
+      const r = el.getBoundingClientRect(), dx = r.left + r.width/2 - x0, dy = r.top + r.height/2 - y0, along = dx*ux + dy*uy;
+      if (along <= 4 || (pass && !lined(r))) continue;
+      const s = along + 2*Math.abs(dx*uy - dy*ux); if (s < bs){ bs = s; best = el; }
+    }
+    if (best) break;
   }
   if (best){ padFocus(best); sfx.click(); }
 }
@@ -2834,6 +2888,7 @@ function padClose(layer){
   sfx.click();
   if (layer.id === 'pane') $('#paneClose').click();
   else if (layer.id === 'move') $('#btnMoveClose').click();
+  else if (layer.id === 'saves') svBack();
   else if (layer.id === 'book') closeBook();
   else if (layer.id === 'cele') ($('#celeStay').hidden ? $('#celeMenu') : $('#celeStay')).click();
 }
@@ -2878,11 +2933,12 @@ function buildTiles(){
   const act2 = sv && sv.act === 2, list = act2 ? FUN_ROOMS : TEMPLE_ROOMS, done = sv ? list.filter(r => (sv.solved || []).includes(r.id)).length : 0;
   $('#btnPlay').textContent = started ? `Continue (${done}/${list.length} ${act2 ? 'rides' : 'rooms'})` : 'New game';
   $('#btnNew').hidden = !started;
-  { const n = $('#menuNote'); n.textContent = menuMsg || (storeOK ? '' : 'This browser can\'t remember your game. Use passwords or Back up my save.'); n.hidden = !n.textContent; }
+  { const x = slotIdx(), e = slotEntry(x.cur, x), sn = $('#slotNote'); sn.textContent = e && started ? `${e.name} · last played ${slotWhen(e.played).replace(/^T|^Y/, c => c.toLowerCase())}` : ''; sn.hidden = !sn.textContent; $('#btnSaves').hidden = !x.slots.length; }
+  { const n = $('#menuNote'); n.textContent = menuMsg || (storeOK ? '' : 'This browser can\'t remember your game. Use passwords, or ask a grown-up to back up your save.'); n.hidden = !n.textContent; }
   const t = $('#tiles'); t.innerHTML = '';
   if (sv && sv.launched && !progress.act1){ progress.act1 = true; saveProgress(); }
   const labOpen = n >= TEMPLE_ROOMS.length || !!progress.act1;
-  $('#playNote').textContent = progress.act1 && !act2 ? 'You finished Act 1! Continue to keep exploring the ship, or Free Build in the Puzzle Lab below.' : 'A jungle temple full of puzzle rooms. Win crystals. Find out what\'s at its heart...';
+  $('#playNote').textContent = sv && sv.launched && !act2 ? 'You finished Act 1! Continue to keep exploring the ship, or Free Build in the Puzzle Lab below.' : 'A jungle temple full of puzzle rooms. Win crystals. Find out what\'s at its heart...';
   $('.labHead small').textContent = labOpen ? 'harder puzzles: AND, XOR, adders, memory' : 'opens when you finish the temple';
   t.hidden = !labOpen; sbMenu();
   LESSONS.forEach(l => {
@@ -3005,65 +3061,274 @@ $('#paneClose').addEventListener('click', () => $('#pane').classList.remove('mcP
 /* move my save: a copy-paste code, since saves live on each device */
 // ---- saves that survive: every key is mirrored to a second store (IndexedDB), can be written to a FILE, or carried as a code ----
 const KEY_PREFIX = 'redstone-academy.';
-// some browsers won't store anything (private mode, full, blocked): the save also lives in memory, so this visit still works
-let advMem = null, storeOK = (() => { try { localStorage.setItem(KEY_PREFIX + 'probe', '1'); localStorage.removeItem(KEY_PREFIX + 'probe'); return true; } catch (e) { return false; } })(), menuMsg = '';
-function snapKeys(){ const o = {}; try { for (let i = 0; i < localStorage.length; i++){ const k = localStorage.key(i); if (k && k.startsWith(KEY_PREFIX)) o[k] = localStorage.getItem(k); } } catch (e) {} if (!storeOK && advMem) o[ADV_KEY] = advMem; return o; }
-function restoreKeys(o){ let n = 0; try { for (const [k, v] of Object.entries(o || {})) if (k.startsWith(KEY_PREFIX) && typeof v === 'string'){ localStorage.setItem(k, v); n++; } } catch (e) {} return n; }
-const SETTING_KEYS = /\.(sound|music|bright|placed|tut|backedUp|log)$/;
+// some browsers won't store anything (private mode, full, blocked): every save key also lives in memory, so this visit still works
+const MEM = {};
+let storeOK = (() => { try { localStorage.setItem(KEY_PREFIX + 'probe', '1'); localStorage.removeItem(KEY_PREFIX + 'probe'); return true; } catch (e) { return false; } })(), menuMsg = '';
+function kvGet(k){ if (!storeOK && k in MEM) return MEM[k]; try { return localStorage.getItem(k); } catch (e) { return MEM[k] == null ? null : MEM[k]; } }
+function kvSet(k, v){ MEM[k] = v; try { localStorage.setItem(k, v); } catch (e) { storeOK = false; } }
+function kvDel(k){ MEM[k] = null; try { localStorage.removeItem(k); } catch (e) {} }
+function snapKeys(){ const o = {}; try { for (let i = 0; i < localStorage.length; i++){ const k = localStorage.key(i); if (k && k.startsWith(KEY_PREFIX)) o[k] = localStorage.getItem(k); } } catch (e) {} if (!storeOK) for (const [k, v] of Object.entries(MEM)){ if (typeof v === 'string') o[k] = v; else delete o[k]; } return o; }
+function restoreKeys(o){ let n = 0; for (const [k, v] of Object.entries(o || {})) if (k.startsWith(KEY_PREFIX) && typeof v === 'string'){ kvSet(k, v); n++; } return n; }
+const SETTING_KEYS = /\.(sound|music|bright|placed|tut|backedUp|log|sync)$/;
 function hasProgress(o){ return Object.keys(o).some(k => !SETTING_KEYS.test(k)); }
 const IDB = { db:null, open(){ return new Promise(res => { try { const rq = indexedDB.open('sparks-and-bones', 1); rq.onupgradeneeded = () => rq.result.createObjectStore('kv'); rq.onsuccess = () => { IDB.db = rq.result; res(IDB.db); }; rq.onerror = () => res(null); } catch (e) { res(null); } }); },
   async get(k){ const db = IDB.db || await IDB.open(); if (!db) return null; return new Promise(res => { try { const rq = db.transaction('kv').objectStore('kv').get(k); rq.onsuccess = () => res(rq.result || null); rq.onerror = () => res(null); } catch (e) { res(null); } }); },
   async put(k, v){ const db = IDB.db || await IDB.open(); if (!db) return; try { db.transaction('kv', 'readwrite').objectStore('kv').put(v, k); } catch (e) {} } };
 let lastMirror = '';
 function mirrorNow(){ const o = snapKeys(), j = JSON.stringify(o); if (j === lastMirror || !hasProgress(o)) return; lastMirror = j; IDB.put('snap', {t:Date.now(), keys:o}); }
-setInterval(mirrorNow, 15000); addEventListener('pagehide', mirrorNow); document.addEventListener('visibilitychange', () => { if (document.hidden) mirrorNow(); });
+setInterval(mirrorNow, 15000);
+// an iPad app can be put to sleep at any moment: save where you are, copy it to the backup store, send it to the family server (if there is one)
+function saveAllNow(){ try { if (A.on) advSaveNow(); } catch (e) {} mirrorNow(); syncFlush(); }
+addEventListener('pagehide', saveAllNow); document.addEventListener('visibilitychange', () => { if (document.hidden) saveAllNow(); });
+
+// ---- save slots, like Minecraft's worlds: a list (the index) plus one key per save. The first save keeps the old key, so an older single save simply becomes save 1 ----
+const IDX_KEY = KEY_PREFIX + 'saves', SLOT_KEY0 = KEY_PREFIX + 'adventure', SLOT_MAX = 8, SLOT_RE = new RegExp('^' + SLOT_KEY0.replace(/\./g, '\\.') + '(\\.s[a-z0-9]+)?$'), SLOT_ID = /^s[a-z0-9]{1,24}$/;
+const slotId = () => 's' + Date.now().toString(36).slice(-6) + Math.random().toString(36).slice(2, 6);
+const slotClean = t => String(t || '').replace(/[\u0000-\u001f<>"]/g, '').replace(/\s+/g, ' ').trim().slice(0, 32);
+function slotName(x){ const used = new Set(x.slots.map(e => e.name)); for (let n = 1; ; n++){ const nm = n === 1 ? 'Max\'s Adventure' : 'Adventure ' + n; if (!used.has(nm)) return nm; } }
+function slotKeysHere(){ const ks = new Set(); try { for (let i = 0; i < localStorage.length; i++){ const k = localStorage.key(i); if (SLOT_RE.test(k)) ks.add(k); } } catch (e) {} for (const [k, v] of Object.entries(MEM)) if (SLOT_RE.test(k)){ if (typeof v === 'string') ks.add(k); else if (!storeOK) ks.delete(k); } return [...ks]; }
+function slotIdx(){
+  let x = null; try { x = JSON.parse(kvGet(IDX_KEY)); } catch (e) {}
+  if (!x || typeof x !== 'object' || !Array.isArray(x.slots)) x = {v:1, cur:'', slots:[], gone:{}};
+  if (!x.gone || typeof x.gone !== 'object') x.gone = {};
+  x.slots = x.slots.filter(e => e && typeof e === 'object' && SLOT_ID.test(e.id) && SLOT_RE.test(e.key));
+  let add = false;
+  for (const k of slotKeysHere()) if (!x.slots.some(e => e.key === k)){   // a save that isn't on the list: the old single save (first run after the update), or the list got lost
+    const id = k === SLOT_KEY0 ? slotId() : k.slice(SLOT_KEY0.length + 1); if (x.gone[id]) continue;
+    const e = {id, key:k, name:slotName(x), created:Date.now(), updatedAt:0, played:0, tut:0};
+    if (k === SLOT_KEY0 && kvGet(KEY_PREFIX + 'tut') === '1'){ e.tut = 1; kvDel(KEY_PREFIX + 'tut'); }   // 'tutorial done' was for the whole device; it belongs to this game
+    x.slots.push(e); add = true;
+  }
+  x.slots.forEach(e => { e.name = slotClean(e.name) || slotName(x); });
+  if (!x.slots.some(e => e.id === x.cur)) x.cur = x.slots.length ? x.slots.reduce((a, b) => (b.played || 0) > (a.played || 0) ? b : a).id : '';
+  if (add) slotIdxPut(x);
+  return x;
+}
+function slotIdxPut(x){ kvSet(IDX_KEY, JSON.stringify(x)); }
+function slotEntry(id, x){ return (x || slotIdx()).slots.find(e => e.id === id) || null; }
+function slotCur(make){ const x = slotIdx(); return x.cur || (make ? (slotNew() || {}).id || '' : ''); }
+function slotUse(id){ const x = slotIdx(); if (!slotEntry(id, x)) return false; x.cur = id; slotIdxPut(x); return true; }
+function slotNew(name, opt){   // a new, empty save; it becomes the one you're playing
+  opt = opt || {}; const x = slotIdx(); if (x.slots.length >= SLOT_MAX && !opt.force) return null;
+  const id = opt.id || slotId(), now = Date.now(), e = {id, key:x.slots.some(q => q.key === SLOT_KEY0) ? SLOT_KEY0 + '.' + id : SLOT_KEY0, name:slotClean(name) || slotName(x), created:now, updatedAt:now, played:now, tut:0};
+  x.slots.push(e); delete x.gone[id]; if (!opt.keepCur) x.cur = id; slotIdxPut(x); if (!opt.keepCur) syncSoon(); return e;
+}
+function slotLoad(id){ const e = slotEntry(id); if (!e) return null; let v = null;
+  try { v = kvGet(e.key); const s = v ? migrateFun(JSON.parse(v)) : null; if (s && s.mended){ slotBroken(e, v); delete s.mended; } return s; } catch (err) { slotBroken(e, v); return null; } }
+function slotBroken(e, raw){ if (raw) kvSet(e.key + '.broken', raw); }   // a save we can't read is kept for a grown-up, never just overwritten
+function slotWrite(id, s){   // the one place a game gets saved
+  const x = slotIdx(), e = slotEntry(id, x); if (!e) return false;
+  const raw = JSON.stringify(s); if (raw === kvGet(e.key)) return true;   // nothing new
+  kvSet(e.key, raw); const now = Date.now(); e.updatedAt = Math.max(now, (e.updatedAt || 0) + 1); e.played = now; e.sum = slotSum(s); slotIdxPut(x);
+  savedFx(); syncSoon(); if (!A.on && !$('#menu').hidden) try { buildTiles(); } catch (err) {}   // the menu shows the new progress
+  return true;
+}
+function slotWipe(id, keepTut){ const x = slotIdx(), e = slotEntry(id, x); if (!e) return; kvDel(e.key); if (!keepTut) e.tut = 0; e.sum = null; e.updatedAt = Math.max(Date.now(), (e.updatedAt || 0) + 1); slotIdxPut(x); mirrorNow(); }
+function slotRename(id, name){ const x = slotIdx(), e = slotEntry(id, x), nm = slotClean(name); if (!e || !nm) return false; e.name = nm; e.updatedAt = Math.max(Date.now(), (e.updatedAt || 0) + 1); slotIdxPut(x); syncSoon(); return true; }
+function slotDelete(id, quiet){
+  const x = slotIdx(), i = x.slots.findIndex(e => e.id === id); if (i < 0) return false;
+  kvDel(x.slots[i].key); x.slots.splice(i, 1); x.gone[id] = Date.now();
+  if (x.cur === id) x.cur = x.slots.length ? x.slots.reduce((a, b) => (b.played || 0) > (a.played || 0) ? b : a).id : '';
+  slotIdxPut(x); kvSet(KEY_PREFIX + 'newgame', String(Date.now())); mirrorNow(); if (!quiet) syncSoon();   // the backup copy forgets it now, so a reload can't 'rescue' it
+  return true;
+}
+function slotTut(){ const e = slotEntry(slotCur()); return !!(e && e.tut); }
+function slotTutSet(){ const id = slotCur(true), x = slotIdx(), e = slotEntry(id, x); if (e && !e.tut){ e.tut = 1; slotIdxPut(x); } }
+function slotSum(s){ const sol = new Set(s && Array.isArray(s.solved) ? s.solved : []); return {act:(s && s.act) || 1, rooms:TEMPLE_ROOMS.filter(r => sol.has(r.id)).length, rides:FUN_ROOMS.filter(r => sol.has(r.id)).length, solved:sol.size, crystals:(s && Array.isArray(s.crystals) ? s.crystals : []).length, gates:(s && Array.isArray(s.gates) ? s.gates : []).length, launched:!!(s && s.launched), started:!!s && !!(sol.size || s.met || s.player)}; }
+const slotProg = m => m ? (m.solved || 0) * 1000 + (m.crystals || 0) : 0;   // how far along a game is: rooms first, then crystals
+// SaveStore: the one way in and out of the saves. This browser's copy is always there (and works offline); a family server is optional (REMOTE, below)
+const SAVES = {
+  list(){ const x = slotIdx(); return x.slots.map(e => ({id:e.id, name:e.name, created:e.created || 0, updatedAt:e.updatedAt || 0, played:e.played || 0, cur:e.id === x.cur, sum:slotSum(slotLoad(e.id))})); },
+  load:slotLoad, save:slotWrite, create:slotNew, rename:slotRename, remove:slotDelete, wipe:slotWipe, cur:slotCur, use:slotUse, max:SLOT_MAX
+};
+// "Saving..." in the corner (with a little spinning block) whenever a save lands
+let savedT = 0, savedN = 0;
+function savedFx(){ savedN++; const el = $('#saving'); if (!el || document.hidden) return; clearTimeout(savedT); el.classList.remove('out'); el.hidden = false;
+  savedT = setTimeout(() => { el.classList.add('out'); savedT = setTimeout(() => { el.hidden = true; el.classList.remove('out'); }, 260); }, 1000); }
+
+// ---- cloud saves (optional): the same saves on the family's own save server, so the iPad and the computer share them.
+// The server is a Google Apps Script web app on a grown-up's Google account (cloud/README.md; protocol: docs/save-sync.md).
+// Off unless a grown-up turns it on in Grown-ups. Then the game talks ONLY to that one address, and checks everything that comes back.
+const SYNC_KEY = KEY_PREFIX + 'sync', SYNC_MAX = 3e6, SYNC_URL_RE = /^https:\/\/script\.google\.com\/(?:a\/macros\/[a-z0-9.-]{1,80}\/|macros\/)s\/[A-Za-z0-9_-]{20,140}\/exec$/;
+const FAM_ABC = '23456789ABCDEFGHJKMNPQRSTUVWXYZ', FAM_LEN = 20;   // no 0/O, 1/I/L: easy to read off one screen and type on another
+const syncUrlOK = u => typeof u === 'string' && SYNC_URL_RE.test(u);
+function famNorm(t){ const s = String(t || '').toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^SB(?=.{20}$)/, ''); return s.length === FAM_LEN && [...s].every(c => FAM_ABC.includes(c)) ? s : ''; }
+const famShow = c => 'SB-' + c.match(/.{4}/g).join('-');
+function famMake(){ const b = new Uint32Array(FAM_LEN); crypto.getRandomValues(b); return [...b].map(n => FAM_ABC[n % FAM_ABC.length]).join(''); }   // about 99 bits: long enough that nobody guesses it
+// what comes back is only ever data: plain JSON, no keys that could reach an object's prototype, numbers that are numbers, names cleaned
+const syncJSON = raw => JSON.parse(raw, (k, v) => k === '__proto__' || k === 'constructor' || k === 'prototype' ? undefined : v);
+const syncNum = (v, max) => typeof v === 'number' && isFinite(v) && v > 0 ? Math.min(Math.floor(v), max || 9e15) : 0;
+const syncObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
+function syncSum(m){ m = syncObj(m) ? m : {}; return {act:m.act === 2 ? 2 : 1, rooms:syncNum(m.rooms, 999), rides:syncNum(m.rides, 999), solved:syncNum(m.solved, 9999), crystals:syncNum(m.crystals, 9999), gates:syncNum(m.gates, 99), launched:m.launched === true, started:m.started === true}; }
+function syncMeta(r){ return syncObj(r) && typeof r.id === 'string' && SLOT_ID.test(r.id) ? {id:r.id, name:slotClean(r.name), updatedAt:syncNum(r.updatedAt), sum:syncSum(r.sum), deleted:r.deleted === true} : null; }
+function syncRec(r, id){
+  if (!syncObj(r) || r.id !== id) return null; let save = null;
+  if (r.save != null){ if (!syncObj(r.save) || !Array.isArray(r.save.solved)) return null; try { save = syncJSON(JSON.stringify(r.save)); migrateFun(syncJSON(JSON.stringify(save))); } catch (e) { return null; } }
+  return {id, name:slotClean(r.name), created:syncNum(r.created), updatedAt:syncNum(r.updatedAt), played:syncNum(r.played), tut:r.tut === 1 || r.tut === true ? 1 : 0, sum:save ? slotSum(save) : syncSum(r.sum), save};
+}
+const REMOTE = {
+  state:{when:0, err:'', n:0},
+  cfg(){ let c = null; try { c = JSON.parse(kvGet(SYNC_KEY)); } catch (e) {} const family = syncObj(c) ? famNorm(c.family) : ''; return family && syncUrlOK(c.url) ? {url:c.url, family} : null; },
+  async call(op, body, opt){
+    opt = opt || {}; const c = opt.cfg || REMOTE.cfg(); if (!c || !syncUrlOK(c.url) || !famNorm(c.family)) throw new Error('off');   // never anywhere else
+    const txt = JSON.stringify(Object.assign({}, body || {}, {v:1, op, family:famNorm(c.family)})); if (txt.length > SYNC_MAX) throw new Error('too big');
+    const ab = typeof AbortController === 'function' && !opt.keepalive ? new AbortController() : null, t = ab ? setTimeout(() => ab.abort(), 25000) : 0;
+    let raw = '';
+    try { const r = await fetch(c.url, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:txt, credentials:'omit', cache:'no-store', redirect:'follow', referrerPolicy:'no-referrer', keepalive:!!opt.keepalive && txt.length < 60000, signal:ab ? ab.signal : undefined}); raw = await r.text(); }
+    catch (e) { throw new Error('offline'); } finally { clearTimeout(t); }
+    if (raw.length > SYNC_MAX) throw new Error('too big');
+    let d = null; try { d = syncJSON(raw); } catch (e) {}
+    if (!syncObj(d)) throw new Error('not a save server');
+    if (d.ok !== true) throw new Error(typeof d.error === 'string' && /^[a-z ]{1,40}$/.test(d.error) ? d.error : 'the server said no');
+    return d;
+  },
+  async hello(cfg){ const d = await REMOTE.call('hello', {}, {cfg}); if (d.app !== 'sparks-and-bones') throw new Error('not a save server'); return {fresh:d.fresh === true}; },
+  async list(){ const d = await REMOTE.call('list'); if (!Array.isArray(d.slots)) throw new Error('not a save server'); return d.slots.slice(0, 200).map(syncMeta).filter(Boolean); },
+  async get(id){ if (!SLOT_ID.test(id)) return null; const d = await REMOTE.call('get', {id}); return d.slot == null ? null : syncRec(d.slot, id); },
+  put(slot, keepalive, base){ return REMOTE.call('put', {slot, base:base || 0}, {keepalive}); },   // base: when this device last matched the server (docs/save-sync.md, conflicts)
+  del(id, deletedAt){ return REMOTE.call('delete', {id, deletedAt}); }
+};
+function slotRecord(e){ let save = null; try { const raw = kvGet(e.key); save = raw ? JSON.parse(raw) : null; } catch (err) {} return {id:e.id, name:e.name, created:e.created || 0, updatedAt:e.updatedAt || 0, played:e.played || 0, tut:e.tut ? 1 : 0, sum:slotSum(slotLoad(e.id)), save}; }
+function slotPut(rec, asId){   // a save from the server (or a copy kept to one side): written as it is, without changing which save you're on
+  const id = asId || rec.id; if (!slotEntry(id)) slotNew(rec.name, {id, force:true, keepCur:true});
+  const x = slotIdx(), e = slotEntry(id, x); if (!e) return null;
+  if (rec.save && typeof rec.save === 'object') kvSet(e.key, JSON.stringify(rec.save)); else kvDel(e.key);
+  e.name = slotClean(rec.name) || e.name; e.created = rec.created || e.created; e.updatedAt = rec.updatedAt || Date.now(); e.played = rec.played || e.updatedAt; e.tut = rec.tut ? 1 : 0; e.sum = slotSum(rec.save); e.synced = asId ? 0 : e.updatedAt;
+  slotIdxPut(x); return e;
+}
+function slotKeptName(n){ const used = new Set(slotIdx().slots.map(e => e.name)); for (let k = 2; ; k++){ const nm = slotClean(n).slice(0, 27) + ` (${k})`; if (!used.has(nm)) return nm; } }
+let syncBusy = false, syncTimer = 0, syncLast = null, syncRetry = 0;
+// one pass over every save: each goes whichever way is newer, except that a game further along is never swapped for one that isn't (both are kept)
+async function syncWith(R){
+  if (!R || syncBusy) return null; syncBusy = true; const out = {up:0, down:0, gone:0, kept:[]};
+  const up = async e => { const rec = slotRecord(e); await R.put(rec, false, e.synced || 0); const y = slotIdx(), f = slotEntry(e.id, y); if (f){ f.synced = rec.updatedAt; slotIdxPut(y); } out.up++; };
+  try {
+    const theirs = new Map((await R.list() || []).filter(r => r && SLOT_ID.test(r.id)).map(r => [r.id, r]));
+    const playing = A.on ? slotIdx().cur : '';
+    for (const id of new Set([...slotIdx().slots.map(e => e.id), ...theirs.keys()])){
+      const x = slotIdx(), e = slotEntry(id, x), r = theirs.get(id), gone = x.gone[id] || 0, rt = (r && r.updatedAt) || 0;
+      if (!r){ if (e) await up(e); continue; }   // only here: send it
+      if (r.deleted){ if (!e) continue; if ((e.updatedAt || 0) > rt || id === playing) await up(e); else { slotDelete(id, true); out.gone++; } continue; }   // deleted on another device (unless played here since)
+      if (!e){ if (gone >= rt) await R.del(id, gone); else { const rec = await R.get(id); if (rec && slotPut(rec)) out.down++; } continue; }
+      const et = e.updatedAt || 0;
+      if (et === rt){ if (e.synced !== et){ e.synced = et; slotIdxPut(x); } continue; }
+      const mine = slotProg(slotSum(slotLoad(id))), there = slotProg(r.sum);
+      if (rt > et){   // theirs is newer
+        if (id === playing) continue;   // not while you're playing it: your next save sorts it out
+        const rec = await R.get(id); if (!rec) continue;
+        if (there >= mine){ slotPut(rec); out.down++; continue; }
+        const k = slotPut(Object.assign({}, rec, {name:slotKeptName(rec.name), updatedAt:Date.now()}), slotId());   // newer but not as far along: it becomes a save of its own
+        const y = slotIdx(), f = slotEntry(id, y); f.updatedAt = Date.now() + 1; slotIdxPut(y); await up(f); if (k) await up(k); out.kept.push(e.name);
+      } else {   // ours is newer
+        if (mine >= there){ await up(e); continue; }
+        const rec = await R.get(id); if (!rec) continue;   // ours is newer but not as far along: ours moves to a save of its own, theirs comes back here
+        const k = slotPut(Object.assign(slotRecord(e), {name:slotKeptName(e.name), updatedAt:Date.now()}), slotId());
+        if (k && slotIdx().cur === id) slotUse(k.id);
+        slotPut(rec); if (k) await up(k); out.kept.push(rec.name || e.name);
+      }
+    }
+  } catch (err) { out.err = String((err && err.message) || err); }
+  finally { syncBusy = false; }
+  syncLast = out; if (R === REMOTE){ REMOTE.state = {when:out.err ? REMOTE.state.when : Date.now(), err:out.err || '', n:slotIdx().slots.length}; cloudPaneFresh();
+    if (/^(conflict|older)$/.test(out.err || '') && syncRetry++ < 3) syncSoon(1500); else if (!out.err) syncRetry = 0; }   // another device got in first: one more pass sorts it out
+  if (out.down || out.gone || out.kept.length){ if (!$('#menu').hidden) buildTiles(); if (!$('#saves').hidden && SV.mode === 'list') svShow('list'); }
+  if (out.kept.length){ const msg = `Two different games were both called "${out.kept[0]}". I kept both, so nothing is lost! Look in Saves.`; if (!$('#hud').hidden) showToast(msg); else { menuMsg = msg; if (!$('#menu').hidden) buildTiles(); } }
+  return out;
+}
+function syncSoon(ms){ if (!REMOTE.cfg()) return; clearTimeout(syncTimer); syncTimer = setTimeout(() => syncWith(REMOTE), ms == null ? 4000 : ms); }
+function syncFlush(){ if (!REMOTE.cfg()) return; for (const e of slotIdx().slots) if (e.synced !== e.updatedAt) REMOTE.put(slotRecord(e), true, e.synced || 0).catch(() => {}); }   // leaving: send what's new, no waiting for answers
+
 (async () => {
   try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}   // ask the browser not to tidy our save away
   const mine = snapKeys(), back = await IDB.get('snap');
   if (back && back.keys && hasProgress(back.keys) && !hasProgress(mine) && restoreKeys(back.keys)){ try { buildTiles(); } catch (e) {} setTimeout(() => showToast('Phew! Your save was rescued from the backup.'), 800); }
+  else if (back && back.keys){   // one save gone missing while the list still knows it: put just that one back
+    const lost = slotIdx().slots.filter(e => kvGet(e.key) == null && typeof back.keys[e.key] === 'string');
+    lost.forEach(e => kvSet(e.key, back.keys[e.key]));
+    if (lost.length){ try { buildTiles(); } catch (e) {} setTimeout(() => showToast(`Phew! "${lost[0].name}" was rescued from the backup.`), 800); }
+  }
+  syncSoon(0);
 })();
-function makeSaveCode(){ return 'RA2:' + btoa(unescape(encodeURIComponent(JSON.stringify({v:2, keys:snapKeys()})))); }
-function loadSaveCode(code){
-  const raw = String(code || '').trim().replace(/\s+/g, '');
-  const m2 = raw.match(/^RA2:([A-Za-z0-9+/=]+)$/);
-  if (m2){ let d; try { d = JSON.parse(decodeURIComponent(escape(atob(m2[1])))); } catch (e) { return 'That code is broken. Try copying it again.'; } if (!d || !d.keys) return 'That code is broken. Try copying it again.';
-    const mine = advLoad(); let theirs = null; try { theirs = JSON.parse(d.keys[ADV_KEY]); } catch (e) {}   // like RA1: never swap a game for one that's less far along
-    if (mine && d.keys[ADV_KEY] && (mine.solved || []).length > ((theirs && theirs.solved) || []).length){ delete d.keys[ADV_KEY]; restoreKeys(d.keys); return 'Your game here is further along than that code, so I kept it.'; }
-    if (!restoreKeys(d.keys)) return 'That code is broken. Try copying it again.'; return ''; }
-  const m = raw.match(/^RA1:([A-Za-z0-9+/=]+)$/);
-  if (!m) return 'That code doesn\'t look right. Copy the whole thing, starting with RA2:';
-  let data;
-  try { data = JSON.parse(decodeURIComponent(escape(atob(m[1])))); } catch (e) { return 'That code is broken. Try copying it again.'; }
-  if (!data || data.v !== 1 || typeof data.done !== 'object') return 'That code is broken. Try copying it again.';
-  for (const [k, v] of Object.entries(data.done)) if (LESSONS.some(l => String(l.id) === k) && +v > (progress.done[k] || 0)) progress.done[k] = Math.min(3, +v);
+
+// ---- one save in a code or a file. It carries the device's Puzzle Lab and kept passwords too, in the old shape so older copies of the game can read it ----
+const NOT_SHARED = k => SLOT_RE.test(k) || k === IDX_KEY || /\.(broken|newgame|sync|tut|probe)$/.test(k);
+function slotExport(id){
+  const keys = {}; for (const [k, v] of Object.entries(snapKeys())) if (!NOT_SHARED(k)) keys[k] = v;
+  const e = slotEntry(id || slotCur()), raw = e && kvGet(e.key); if (raw) keys[SLOT_KEY0] = raw;
+  return {keys, slot:e ? {name:e.name, tut:e.tut ? 1 : 0, created:e.created || 0} : null};
+}
+let moveSel = '';   // the save the Back up page is about (Grown-ups can pick any)
+function makeSaveCode(id){ const d = slotExport(id); return 'RA2:' + btoa(unescape(encodeURIComponent(JSON.stringify({v:2, keys:d.keys, slot:d.slot})))); }
+function saveParse(text){   // a save code or a backup file's text -> {keys, slot}, or {err} to show
+  const raw = String(text || '').trim();
+  if (raw[0] === '{'){ let d = null; try { d = JSON.parse(raw); } catch (e) {} return d && d.keys && typeof d.keys === 'object' ? {keys:d.keys, slot:d.slot || null, saved:d.saved} : {err:'That doesn\'t look like a Sparks & Bones save file.'}; }
+  const code = raw.replace(/\s+/g, ''), m2 = code.match(/^RA2:([A-Za-z0-9+/=]+)$/), m = code.match(/^RA1:([A-Za-z0-9+/=]+)$/);
+  if (!m2 && !m) return {err:'That code doesn\'t look right. Copy the whole thing, starting with RA2:'};
+  let d = null; try { d = JSON.parse(decodeURIComponent(escape(atob((m2 || m)[1])))); } catch (e) {}
+  if (m2) return d && d.keys && typeof d.keys === 'object' ? {keys:d.keys, slot:d.slot || null} : {err:'That code is broken. Try copying it again.'};
+  if (!d || d.v !== 1 || typeof d.done !== 'object') return {err:'That code is broken. Try copying it again.'};
+  const keys = {}; if (d.adv && Array.isArray(d.adv.solved)) keys[SLOT_KEY0] = JSON.stringify(d.adv);   // the oldest codes: Puzzle Lab stars, an adventure, builds
+  for (const [k, b] of Object.entries(d.builds || {})) if (LESSONS.some(l => String(l.id) === k) && b && Array.isArray(b.cells)) keys[BUILD_KEY(k)] = JSON.stringify(b);
+  return {keys, slot:null, labDone:d.done};
+}
+function saveOf(d){ try { return d.keys[SLOT_KEY0] ? migrateFun(JSON.parse(d.keys[SLOT_KEY0])) : null; } catch (e) { return null; } }
+// how: 'new' (the default: a new save, or the empty one you're on) or 'replace' (the save you're on)
+function saveImport(d, how){
+  let n = 0; const done = {};
+  for (const [k, v] of Object.entries(d.keys || {})){ if (typeof v !== 'string' || !k.startsWith(KEY_PREFIX) || NOT_SHARED(k)) continue;
+    if (k === SAVE_KEY){ try { Object.assign(done, JSON.parse(v).done || {}); } catch (e) {} }   // Puzzle Lab stars only ever go up
+    else if (k === KEY_PREFIX + 'pw'){ try { JSON.parse(v).forEach(w => { const pw = typeof w === 'string' && pwFind(w); if (pw) pwKeep(pw.words); }); } catch (e) {} }   // kept passwords are for the whole device: added to, never replaced
+    else kvSet(k, v);
+    n++; }
+  for (const [k, v] of Object.entries(Object.assign(done, d.labDone || {}))) if (LESSONS.some(l => String(l.id) === k) && +v > (progress.done[k] || 0)) progress.done[k] = Math.min(3, +v);
   saveProgress();
-  if (data.adv && Array.isArray(data.adv.solved)){ const mine = advLoad(); if (!mine || (mine.solved || []).length <= data.adv.solved.length) try { localStorage.setItem(ADV_KEY, JSON.stringify(data.adv)); } catch (e) {} }
-  for (const [k, b] of Object.entries(data.builds || {})) if (LESSONS.some(l => String(l.id) === k) && b && Array.isArray(b.cells)) writeBuild(k, b);
+  const theirs = saveOf(d); if (!theirs) return n || d.labDone ? '' : 'That code is broken. Try copying it again.';
+  const x = slotIdx(), cur = slotEntry(x.cur, x), mine = cur ? slotSum(slotLoad(cur.id)) : null, tut = d.slot ? !!d.slot.tut : d.keys[KEY_PREFIX + 'tut'] === '1' || slotSum(theirs).solved > 0;
+  if (how === 'replace' && cur && mine.started){
+    if (slotProg(mine) > slotProg(slotSum(theirs))) return `Your game "${cur.name}" is further along than that one, so I kept it. Add it as a new save instead!`;
+    slotWrite(cur.id, theirs); if (tut) slotTutSet(); return '';
+  }
+  const nm = d.slot && slotClean(d.slot.name), e = cur && !mine.started ? cur : slotNew(nm && !x.slots.some(q => q.name === nm) ? nm : '');
+  if (!e) return `You've got ${SLOT_MAX} saves already! Delete one in Saves to make room.`;
+  slotUse(e.id); slotWrite(e.id, theirs); if (tut) slotTutSet();
   return '';
 }
-async function saveToFile(){
-  const day = new Date().toISOString().slice(0, 10), filename = `sparks-and-bones-save-${day}.json`;
-  const data = JSON.stringify({game:'Sparks & Bones', v:2, saved:new Date().toISOString(), keys:snapKeys()});
+function loadSaveCode(code, how){ const d = saveParse(code); return d.err || saveImport(d, how || 'new'); }
+async function saveToFile(id){
+  const day = new Date().toISOString().slice(0, 10), d = slotExport(id), slug = d.slot ? d.slot.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') : '', filename = `sparks-and-bones-${slug ? slug + '-' : ''}${day}.json`;
+  const data = JSON.stringify({game:'Sparks & Bones', v:2, saved:new Date().toISOString(), slot:d.slot, keys:d.keys});
   const done = () => { try { localStorage.setItem(KEY_PREFIX + 'backedUp', String(Date.now())); } catch (e) {} $('#fileMsg').textContent = 'Saved! Keep that file somewhere safe.'; showBackupWhen(); };
   let dl = null; try { dl = window.claude && claude.use ? await claude.use('downloads') : null; } catch (e) {}
   if (dl){ try { await dl.save({filename, data}); done(); return; } catch (e) { if (e && e.code === 'declined'){ $('#fileMsg').textContent = 'No problem. Maybe next time!'; return; } } }
   try { const url = URL.createObjectURL(new Blob([data], {type:'application/json'})), a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000); done(); }
   catch (e) { $('#fileMsg').textContent = 'This browser won\'t save files. Use the save code instead (below).'; }
 }
-function loadFromFile(file){
-  const rd = new FileReader();
-  rd.onload = () => { let d; try { d = JSON.parse(rd.result); } catch (e) { const err = loadSaveCode(rd.result); $('#fileMsg').textContent = err || 'Loaded! Restarting...'; if (!err){ mirrorNow(); setTimeout(() => location.reload(), 1200); } return; }
-    if (!d || !d.keys){ $('#fileMsg').textContent = 'That doesn\'t look like a Sparks & Bones save file.'; return; }
-    const n = restoreKeys(d.keys); $('#fileMsg').textContent = n ? `Loaded! Your game from ${String(d.saved || '').slice(0, 10)} is back. Restarting...` : 'That file was empty.'; if (n){ mirrorNow(); setTimeout(() => location.reload(), 1200); } };
-  rd.readAsText(file);
+// a file or code with a game in it: ask where it goes (a new save, or swap the one you're on), then put it there
+function importAsk(text, msgEl){
+  const d = saveParse(text); if (d.err){ msgEl.textContent = d.err; sfx.nope(); return; }
+  const ask = $('#impAsk'), theirs = saveOf(d), x = slotIdx(), cur = slotEntry(x.cur, x), started = cur && slotSum(slotLoad(cur.id)).started;
+  const finish = how => { const err = saveImport(d, how); ask.hidden = true; msgEl.textContent = err || `Loaded!${d.saved ? ' Your game from ' + String(d.saved).slice(0, 10) + ' is back.' : ''} Restarting...`;
+    if (!err){ sfx.chime(); mirrorNow(); if (storeOK) setTimeout(() => location.reload(), 1200); else buildTiles(); } else sfx.nope(); };
+  if (!theirs || !started) return finish('new');
+  const m = slotSum(theirs), nm = escH((d.slot && slotClean(d.slot.name)) || 'This game'), full = x.slots.length >= SLOT_MAX;
+  ask.innerHTML = `<p>${nm}: ${slotProgress(m)}. Where shall it go?</p><div class="row"><button class="btn red" id="impNew"${full ? ' disabled' : ''}>Add it as a new save</button><button class="btn" id="impHere">Swap it for "${escH(cur.name)}"</button></div>${full ? `<p><small>You've got ${SLOT_MAX} saves, so a new one won't fit. Delete one in Saves to make room.</small></p>` : ''}`;
+  ask.hidden = false; msgEl.textContent = '';
+  $('#impNew').onclick = () => { sfx.click(); finish('new'); };
+  $('#impHere').onclick = () => { sfx.click(); ask.innerHTML = `<p><b>Sure?</b> "${escH(cur.name)}" will be swapped for this one.</p><div class="row"><button class="btn red" id="impYes">Yes, swap it</button><button class="btn" id="impNo">No, go back</button></div>`;
+    $('#impYes').onclick = () => { sfx.click(); finish('replace'); }; $('#impNo').onclick = () => { sfx.click(); importAsk(text, msgEl); }; };
 }
+function loadFromFile(file){ const rd = new FileReader(); rd.onload = () => importAsk(rd.result, $('#fileMsg')); rd.readAsText(file); }
 function showBackupWhen(){ const el = $('#backupWhen'); if (!el) return; let t = 0; try { t = +localStorage.getItem(KEY_PREFIX + 'backedUp') || 0; } catch (e) {} el.textContent = t ? `Last backup file: ${new Date(t).toLocaleDateString()}.` : 'You haven\'t made a backup file yet.'; }
-$('#btnSaveFile').addEventListener('click', () => { sfx.click(); saveToFile(); });
+$('#btnSaveFile').addEventListener('click', () => { sfx.click(); saveToFile(moveSel); });
 $('#btnLoadFile').addEventListener('click', () => { sfx.click(); $('#loadFile').click(); });
 $('#loadFile').addEventListener('change', e => { const f = e.target.files && e.target.files[0]; if (f) loadFromFile(f); e.target.value = ''; });
 function openMove(){
   showBackupWhen(); $('#fileMsg').textContent = '';
-  $('#saveOut').value = makeSaveCode(); $('#saveIn').value = ''; $('#copyMsg').textContent = ''; $('#loadMsg').textContent = '';
+  $('#saveOut').value = makeSaveCode(moveSel); $('#saveIn').value = ''; $('#copyMsg').textContent = ''; $('#loadMsg').textContent = ''; $('#impAsk').hidden = true;
+  { const x = slotIdx(), w = $('#moveWhich'); if (!slotEntry(moveSel, x)) moveSel = x.cur; const e = slotEntry(moveSel, x);
+    if (x.slots.length > 1){ w.innerHTML = `<label for="moveSlot">Which save? </label><select id="moveSlot">${x.slots.map(q => `<option value="${q.id}"${q.id === moveSel ? ' selected' : ''}>${escH(q.name)}</option>`).join('')}</select>`;
+      $('#moveSlot').onchange = ev => { moveSel = ev.target.value; $('#saveOut').value = makeSaveCode(moveSel); $('#fileMsg').textContent = ''; }; }
+    else w.textContent = e ? `This backs up "${e.name}".` : ''; $('#saveOut').value = makeSaveCode(moveSel); }
   $('#move').hidden = false;
 }
 // press Play: a moment of loading screen (with a silly line), the world builds underneath it, then it fades away
@@ -3083,13 +3348,8 @@ $('#btnGates').addEventListener('click', () => {
   sfx.click(); const sv = advLoad(), got = new Set(sv && sv.gates || []), asked = new Set(sv && sv.quiz || []);
   openPane('Gate Cards', `<p>Logic gates are the tiny decision-makers inside every computer, phone and games console. Each card is one you've used for real.</p>${Object.keys(GATE_CARDS).map(k => got.has(k) ? `<div style="border:3px solid #5a3a00;background:#fff8e0;padding:8px;margin:8px 0;overflow:hidden"><h3 style="margin:0 0 4px">${GATE_CARDS[k].name}</h3>${asked.has(k) ? gateCardHTML(k) : gateCardHTML(k, true) + quizHTML(k)}</div>` : `<div style="border:3px dashed #888;padding:8px;margin:8px 0;color:#777"><b>??? gate</b>: keep exploring to find this one.</div>`).join('')}`);
 });
-$('#btnNew').addEventListener('click', () => {
-  sfx.click(); const sv = advLoad(), n = sv ? (sv.solved || []).length : 0;
-  openPane('Start a new game?', `<p>You already have a game saved on this device${n ? ` (<b>${n} of ${ROOMS.length}</b> rooms done)` : ''}.</p><p>Starting a new game will <b>wipe that save</b> and begin again at the helicopter crash.</p><p>Don't worry about your passwords: they still work. You can find them under <b>Passwords</b> on the menu, and type one in any time to jump back.</p><div class="row"><button class="btn red" id="newYes">Yes, start again</button><button class="btn" id="newNo">No, keep my game</button></div>`);
-  $('#newNo').onclick = () => { sfx.click(); $('#pane').hidden = true; };
-  $('#newYes').onclick = () => { sfx.click(); advMem = null; try { localStorage.removeItem(ADV_KEY); localStorage.removeItem('redstone-academy.tut'); localStorage.setItem(KEY_PREFIX + 'newgame', String(Date.now())); } catch (e) {} mirrorNow(); $('#pane').hidden = true; ac(); playWithLoader(startAdventure); };   // the newgame mark counts as progress, so the backup copy is replaced now and a reload can't 'rescue' the old game
-});
-$('#btnMove').addEventListener('click', () => { sfx.click(); openMove(); });
+$('#btnNew').addEventListener('click', () => { sfx.click(); openSaves('new'); });   // a new game is a new save: the others stay safe
+$('#btnSaves').addEventListener('click', () => { sfx.click(); openSaves('list'); });
 $('#goalBox').addEventListener('click', () => { $('#goalBox').classList.toggle('open'); });
 // folded, the goal panel shows whole sentences only (as many as fit in about two lines), then a "more" tab. Whoever sets the goal just sets its text.
 { const gt = $('#goalText'), FOLD = 110;
@@ -3109,7 +3369,7 @@ $('#goalBox').addEventListener('click', () => { $('#goalBox').classList.toggle('
   const up = () => { clearTimeout(t); b.textContent = 'Grown-ups (hold)'; };
   b.addEventListener('pointerdown', down); ['pointerup','pointerleave','pointercancel'].forEach(k => b.addEventListener(k, up));
 }
-$('#btnMoveClose').addEventListener('click', () => { $('#move').hidden = true; buildTiles(); });
+$('#btnMoveClose').addEventListener('click', () => { $('#move').hidden = true; moveSel = ''; buildTiles(); });
 $('#dlg').addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); dlgAdvance(); });
 $('#paneClose').addEventListener('click', () => { $('#pane').hidden = true; });
 $('#btnTips').addEventListener('click', () => { sfx.click(); const save = advLoad(), solved = new Set(save ? save.solved : []); const list = ROOMS.filter(r => r.mc && solved.has(r.id)); openPane('Things to build in real Minecraft', (list.length ? '<ol style="font-size:16px;line-height:1.4">' + list.map(r => `<li><b>${r.name}:</b> ${r.mc}</li>`).join('') + '</ol>' : '<p>Solve rooms in the temple to collect Minecraft tips here!</p>') + padHelp()); });
@@ -3121,8 +3381,16 @@ $('#btnPass').addEventListener('click', () => {
   sfx.click();
   const kept = pwKept().filter(w => { const pw = pwFind(w); return pw && pw.act !== 2; });   // the funfair isn't open yet: its passwords aren't listed
   const list = kept.length ? `<p><b>Your passwords</b> (tap one to jump back there):</p><div class="pwList">${kept.map(w => { const pw = pwFind(w); return `<button class="btn pwBtn" data-w="${w}">${w}<small>${pw.after === 'launch' ? 'after the liftoff' : 'rooms 1 to ' + pw.after + ' done'}</small></button>`; }).join('')}</div>` : '<p><i>No passwords yet. The temple gives you one every few rooms.</i></p>';
-  openPane('Passwords', `<p><b>What's a password?</b> It's a secret code the game gives you every few rooms. Old games used them instead of saving!</p><p>When you get one, grab a <b>pencil and paper</b> and <b>write it down</b> (ask a grown-up to help). Keep the paper safe: stick it on the fridge! If the game ever forgets where you were, or you play on a different computer or tablet, type it in here and you'll jump straight back.</p>${list}<p><b>Type a password:</b></p><input id="passIn" autocomplete="off" style="font-size:22px;width:100%;padding:8px;text-transform:uppercase" placeholder="e.g. ONE SILLY WORD"><div class="row"><button class="btn red" id="passGo">Go!</button><span id="passMsg" class="msg" role="status"></span></div>`);
-  let busy = false; const go = () => { if (busy) return; const sv = usePassword($('#passIn').value); if (sv){ busy = true; $('#passMsg').textContent = 'Yes! Off you go...'; sfx.chime(); setTimeout(() => { $('#pane').hidden = true; ac(); playWithLoader(() => startAdventure(sv)); }, 700); } else { $('#passMsg').textContent = 'Hmm, that\'s not one of the temple\'s passwords. Check the spelling?'; sfx.nope(); } };
+  openPane('Passwords', `<p><b>What's a password?</b> It's a secret code the game gives you every few rooms. Old games used them instead of saving!</p><p>When you get one, grab a <b>pencil and paper</b> and <b>write it down</b> (ask a grown-up to help). Keep the paper safe: stick it on the fridge! If the game ever forgets where you were, or you play on a different computer or tablet, type it in here and you'll jump straight back.</p>${list}<p><b>Type a password:</b></p><input id="passIn" autocomplete="off" style="font-size:22px;width:100%;padding:8px;text-transform:uppercase" placeholder="e.g. ONE SILLY WORD"><div class="row"><button class="btn red" id="passGo">Go!</button><span id="passMsg" class="msg" role="status"></span></div><div id="passWhere" hidden></div>`);
+  let busy = false;
+  const start = how => { if (busy) return; const sv = usePassword($('#passIn').value, how); if (!sv){ $('#passMsg').textContent = `You've got ${SLOT_MAX} saves already! Delete one in Saves to make room.`; sfx.nope(); return; }
+    busy = true; $('#passWhere').hidden = true; $('#passMsg').textContent = 'Yes! Off you go...'; sfx.chime(); setTimeout(() => { $('#pane').hidden = true; ac(); playWithLoader(() => startAdventure(sv)); }, 700); };
+  const go = () => { if (busy) return; if (!passFind($('#passIn').value)){ $('#passWhere').hidden = true; $('#passMsg').textContent = 'Hmm, that\'s not one of the temple\'s passwords. Check the spelling?'; sfx.nope(); return; }
+    const x = slotIdx(), cur = slotEntry(x.cur, x); if (!cur || !slotSum(slotLoad(cur.id)).started) return start('here');   // no game to lose: straight in
+    const full = x.slots.length >= SLOT_MAX, w = $('#passWhere'); $('#passMsg').textContent = ''; sfx.chime();   // never swap the game you're on without asking
+    w.innerHTML = `<p><b>Yes! That's a real password.</b> Where shall it go?</p><div class="row"><button class="btn red" id="passNew"${full ? ' disabled' : ''}>Start a new save</button><button class="btn" id="passHere">Put it in "${escH(cur.name)}"</button></div><p style="font-size:15px">${full ? `You've got ${SLOT_MAX} saves, so a new one won't fit. ` : ''}"${escH(cur.name)}" would jump to the password's place. Rooms you've done stay done.</p>`;
+    w.hidden = false; $('#passNew').onclick = () => { sfx.click(); start('new'); }; $('#passHere').onclick = () => { sfx.click(); start('here'); };
+    const first = full ? $('#passHere') : $('#passNew'); if (padMode) padFocus(first); else first.focus(); };
   document.querySelectorAll('.pwBtn').forEach(bt => bt.onclick = () => { $('#passIn').value = bt.dataset.w; go(); });
   $('#passGo').onclick = go; $('#passIn').onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter') go(); }; setTimeout(() => $('#passIn').focus(), 50);
 });
@@ -3131,10 +3399,72 @@ $('#btnCopy').addEventListener('click', () => {
   const fallback = () => { t.focus(); t.select(); $('#copyMsg').textContent = 'Selected: press copy on your keyboard or menu.'; };
   try { navigator.clipboard.writeText(t.value).then(done, fallback); } catch (e) { fallback(); }
 });
-$('#btnLoadCode').addEventListener('click', () => {
-  const err = loadSaveCode($('#saveIn').value);
-  $('#loadMsg').textContent = err || 'Loaded! Restarting...';
-  if (!err){ sfx.chime(); mirrorNow(); setTimeout(() => location.reload(), 1200); }
+$('#btnLoadCode').addEventListener('click', () => { sfx.click(); importAsk($('#saveIn').value, $('#loadMsg')); });
+
+/* ---- Select Save: the list of saves, like Minecraft's Select World (touch, mouse, keyboard and controller) ---- */
+const SV = {mode:'list', root:'list', sel:''};
+const escH = t => String(t).replace(/[&<>"']/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'})[c]);
+function slotWhen(t){ if (!t) return 'a while ago'; const d = new Date(t), now = new Date(), day = q => new Date(q.getFullYear(), q.getMonth(), q.getDate()).getTime(), n = Math.round((day(now) - day(d)) / 864e5);
+  return n <= 0 ? 'Today' : n === 1 ? 'Yesterday' : d.toLocaleDateString('en-GB', d.getFullYear() === now.getFullYear() ? {day:'numeric', month:'long'} : {day:'numeric', month:'long', year:'numeric'}); }
+function slotProgress(m){ if (!m.started) return 'Not started yet'; const pl = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+  return (m.act === 2 ? `Act 2: ${m.rides} of ${FUN_ROOMS.length} rides` : m.launched ? 'Act 1 finished!' : `Act 1: ${m.rooms} of ${TEMPLE_ROOMS.length} rooms`) + ' · ' + pl(m.crystals, 'crystal') + (m.gates ? ' · ' + pl(m.gates, 'Gate Card') : ''); }
+// a little pixel picture for each save: the act's crystal on its ground (a grass block for a game that hasn't started)
+function slotIcon(m){
+  if (!m.started) return '<svg viewBox="0 0 16 16" class="px" aria-hidden="true"><rect width="16" height="16" fill="#8a5a33"/><path d="M2 8h2v2H2zM9 10h2v2H9zM5 13h2v2H5zM12 6h2v2h-2z" fill="#6b4224"/><rect width="16" height="5" fill="#5d9c3a"/><path d="M0 5h2v2H0zM5 5h1v2H5zM9 5h2v1H9zM13 5h3v2h-3z" fill="#5d9c3a"/><path d="M3 1h2v1H3zM10 2h2v1h-2z" fill="#7cc04f"/></svg>';
+  const [g1, g2, c1, c2, ed] = m.act === 2 ? ['#262b55', '#333a72', '#4fd6ff', '#c2f3ff', '#0c3a50'] : ['#56614a', '#66744f', '#c75cff', '#e3a8ff', '#3a0d50'];
+  return `<svg viewBox="0 0 16 16" class="px" aria-hidden="true"><rect width="16" height="16" fill="${g1}"/><path d="M0 0h4v4H0zM8 4h4v4H8zM4 10h4v4H4zM12 12h4v4h-4z" fill="${g2}"/><path d="M8 1l5 5-5 9-5-9z" fill="${c1}" stroke="${ed}" stroke-width="1"/><path d="M8 1l2 5-2 9-2-9z" fill="${c2}"/>${m.launched && m.act !== 2 ? '<path d="M13 1h2v3h-2z" fill="#ffd84a"/>' : ''}</svg>`;
+}
+function openSaves(mode){ const ov = $('#saves'); try { if (CV.dirt) ov.style.backgroundImage = 'url(' + CV.dirt.toDataURL() + ')'; } catch (e) {}
+  const x = slotIdx(); if (!slotEntry(SV.sel, x)) SV.sel = x.cur; SV.root = mode; ov.hidden = false; svShow(mode); syncSoon(0); }   // (with cloud saves on: fetch the other devices' saves now)
+function svClose(){ $('#saves').hidden = true; buildTiles(); }
+function svBack(){ sfx.click(); if (SV.mode === SV.root) svClose(); else svShow('list'); }
+function svPlay(id){ if (!slotUse(id)) return; sfx.click(); $('#saves').hidden = true; ac(); playWithLoader(startAdventure); }
+function svName(val, ok){   // a name box: Enter is OK, Escape goes back (and the game doesn't see the letters)
+  const inp = $('#svName'); inp.value = val; inp.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter'){ e.preventDefault(); ok(); } else if (e.key === 'Escape'){ e.preventDefault(); svBack(); } };
+  if (!padMode){ inp.focus(); try { inp.select(); } catch (e) {} }
+}
+function svShow(mode){
+  SV.mode = mode; const b = $('#svBody'), h = $('#svHead'), x = slotIdx(), e = slotEntry(SV.sel, x), btn = (id, txt, cls, more) => `<button class="btn${cls ? ' ' + cls : ''}" id="${id}"${more || ''}>${txt}</button>`;
+  const nameBox = `<label class="svLbl" for="svName">Save name</label><input id="svName" class="svIn" maxlength="32" autocomplete="off" autocapitalize="words" spellcheck="false" enterkeyhint="done">`;
+  if (mode === 'new'){
+    const full = x.slots.length >= SLOT_MAX; h.textContent = 'Create New Save';
+    b.innerHTML = full ? `<p class="svP">You've got ${SLOT_MAX} saves already. That's as many as there's room for! Delete one you don't need, then try again.</p><div class="svBtns">${btn('newNo', 'Back', '', ' data-pad-first')}</div>`
+      : `${nameBox}<p class="svP">A brand new adventure, starting at the helicopter crash. Your other saves stay safe.</p><div class="svBtns">${btn('newYes', 'Create New Save', 'red')}${btn('newNo', 'Cancel')}</div>`;
+    $('#newNo').onclick = svBack;
+    if (!full){ const ok = () => { const n = slotNew($('#svName').value); if (!n) return; SV.sel = n.id; sfx.click(); mirrorNow(); $('#saves').hidden = true; ac(); playWithLoader(startAdventure); };
+      $('#newYes').onclick = ok; svName(slotName(x), ok); }
+    return;
+  }
+  if (mode === 'rename' && e){
+    h.textContent = 'Rename Save'; b.innerHTML = `${nameBox}<div class="svMsg" id="svMsg" role="status"></div><div class="svBtns">${btn('svRenYes', 'Save name', 'red')}${btn('svRenNo', 'Cancel')}</div>`;
+    const ok = () => { if (!slotRename(e.id, $('#svName').value)){ $('#svMsg').textContent = 'A save needs a name! Type one in.'; sfx.nope(); return; } sfx.click(); svShow('list'); };
+    $('#svRenYes').onclick = ok; $('#svRenNo').onclick = svBack; svName(e.name, ok); return;
+  }
+  if (mode === 'delete' && e){
+    h.textContent = 'Delete Save?'; b.innerHTML = `<p class="svBig">Are you sure you want to delete this save?</p><p class="svP">"${escH(e.name)}" will be lost forever! (A long time!)</p><div class="svBtns svTwo">${btn('svDelYes', 'Delete', 'red')}${btn('svDelNo', 'Cancel', '', ' data-pad-first')}</div>`;
+    $('#svDelYes').onclick = () => { sfx.brk(); slotDelete(e.id); SV.sel = slotIdx().cur; svShow('list'); };
+    $('#svDelNo').onclick = svBack; if (!padMode) $('#svDelNo').focus(); return;
+  }
+  SV.mode = 'list'; h.textContent = 'Select Save';
+  const list = SAVES.list().sort((p, q) => (q.played || 0) - (p.played || 0)), has = !!slotEntry(SV.sel, x), dis = has ? '' : ' disabled';
+  b.innerHTML = (list.length ? `<div class="svList" role="listbox" aria-label="Your saves">${list.map(m => `<button class="svRow${m.id === SV.sel ? ' sel' : ''}" role="option" aria-selected="${m.id === SV.sel}" data-id="${m.id}"><span class="svIcon">${slotIcon(m.sum)}</span><span class="svTxt"><b>${escH(m.name)}</b><span>${slotProgress(m.sum)}</span><span>Last played: ${slotWhen(m.played)}</span></span></button>`).join('')}</div>` : '<p class="svP svEmpty">No saves yet. Make one with Create New Save!</p>')
+    + (REMOTE.cfg() ? '<p class="svP" style="font-size:16px">These saves are shared with your other devices.</p>' : '')
+    + `<div class="svMsg" id="svMsg" role="status"></div><div class="svBtns">${btn('svPlay', 'Play Selected Save', 'red', dis)}${btn('svNew', 'Create New Save')}${btn('svRename', 'Rename', '', dis)}${btn('svDelete', 'Delete', '', dis)}${btn('svCancel', 'Cancel')}</div>`;
+  b.querySelectorAll('.svRow').forEach(r => r.onclick = () => { if (r.dataset.id === SV.sel) return svPlay(SV.sel); sfx.click(); svSelect(r.dataset.id); });   // tap to choose, tap again to play
+  $('#svPlay').onclick = () => svPlay(SV.sel);
+  $('#svNew').onclick = () => { sfx.click(); if (slotIdx().slots.length >= SLOT_MAX){ $('#svMsg').textContent = `You've got ${SLOT_MAX} saves already! Delete one to make room.`; sfx.nope(); return; } svShow('new'); };
+  $('#svRename').onclick = () => { sfx.click(); svShow('rename'); };
+  $('#svDelete').onclick = () => { sfx.click(); svShow('delete'); };
+  $('#svCancel').onclick = svBack;
+}
+function svSelect(id){ SV.sel = id; document.querySelectorAll('#saves .svRow').forEach(r => { const on = r.dataset.id === id; r.classList.toggle('sel', on); r.setAttribute('aria-selected', on); }); ['#svPlay', '#svRename', '#svDelete'].forEach(q => { const el = $(q); if (el) el.disabled = !id; }); }
+addEventListener('keydown', e => {
+  if ($('#saves').hidden || (e.target && /INPUT|TEXTAREA/.test(e.target.tagName))) return;
+  if (e.key === 'Escape'){ e.preventDefault(); svBack(); return; }
+  if (SV.mode !== 'list') return;
+  const rows = [...document.querySelectorAll('#saves .svRow')], i = rows.findIndex(r => r.dataset.id === SV.sel);
+  if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && rows.length){ e.preventDefault(); const r = rows[Math.max(0, Math.min(rows.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)))]; svSelect(r.dataset.id); r.focus(); sfx.click(); }
+  else if (e.key === 'Delete' && i >= 0){ e.preventDefault(); svShow('delete'); }
 });
 
 /* logic book */
@@ -4116,9 +4446,8 @@ function discover(id){
   setTimeout(() => { sfx.row(); showToast(`DISCOVERY! ${d.name} (${A.disc.size} of ${DISCOVERIES.length})`); }, 700);
 }
 const A = { on:false, disc:new Set(), bonus:new Set(), solved:new Set(), crystals:new Set(), unlocked:new Set(['rblock']), found:new Set(['dust']), room:null, rt:{}, crystalsMesh:[], monkey:null, rocket:null, launched:false };
-function advLoad(){ let v = null; try { v = storeOK ? localStorage.getItem(ADV_KEY) : advMem; const s = v ? migrateFun(JSON.parse(v)) : null; if (s && s.mended){ advKeepBroken(v); delete s.mended; } return s; } catch (e) { advKeepBroken(v); return null; } }
-function advWrite(s){ advMem = JSON.stringify(s); try { localStorage.setItem(ADV_KEY, advMem); } catch (e) { storeOK = false; } }
-function advKeepBroken(raw){ try { if (raw) localStorage.setItem(ADV_KEY + '.broken', raw); } catch (e) {} }   // a save we can't read is kept for a grown-up, never just overwritten
+function advLoad(){ return slotLoad(slotCur()); }   // the save you're playing (see the save slots, near the menu code)
+function advWrite(s){ slotWrite(slotCur(true), s); }
 // Act 2 grew from 10 rides to 20: old saves used 101-110 for what are now these rides
 function migrateFun(s){
   if (!s || typeof s !== 'object') throw new Error('not a save');
@@ -4139,7 +4468,7 @@ function advSerialize(){
 }
 let advTimer = 0;
 function advSaveSoon(){ if (!A.on || S.simulating) return; clearTimeout(advTimer); advTimer = setTimeout(advSaveNow, 500); }
-function advSaveNow(){ if (!A.on) return; advWrite(advSerialize()); }
+function advSaveNow(){ if (!A.on || A.openCine) return; advWrite(advSerialize()); }   // (nothing to keep while the opening plays)
 
 function roomOf(x, y){ for (const r of ROOMS){ const b = r.box; if (x > b.x0 && x < b.x1 && y > b.y0 && y < b.y1) return r; } return shipRoomAt(x, y); }
 function inHall(x, y){ return (x > HALL.x0 && x < HALL.x1 && y > HALL.y0 && y < HALL.y1) || (ROOMS === TEMPLE_ROOMS && inShipCorr(x, y)); }   // the corridor to the Skull's machines counts as the chamber
@@ -5389,10 +5718,7 @@ function showPassword(pw){
   const first = !pwKept().length; pwKeep(pw.words);
   setTimeout(() => { if (!A.on) return; sfx.chime(); showCard(first ? 'Your first SECRET PASSWORD!' : 'SECRET PASSWORD!', (first ? 'A password is a secret code that takes you back to this exact spot. Grab a <b>pencil and paper</b> (or a grown-up) and <b>write it down</b>:<br>' : 'Write this down on your password paper:<br>') + `<b style="font-size:26px;letter-spacing:.04em">${pw.words}</b><br><small>${first ? 'Keep the paper safe. If the game ever forgets where you were, or you play on another device, go to <b>Passwords</b> on the menu and type it in. (The game remembers them for you too.)' : 'Find all your passwords under Passwords on the menu.'}</small><br><button class="btn" style="margin-top:8px" id="pwBackup">Also save a backup file</button>`); const bk = $('#pwBackup'); if (bk) bk.onclick = e => { e.stopPropagation(); sfx.click(); saveToFile().then(() => showToast($('#fileMsg').textContent)); }; }, 5000);
 }
-function usePassword(text){
-  const pw = passMatch(text); if (!pw) return false;
-  return passApply(pw);
-}
+function passFind(text){ return passMatch(text); }
 function passMatch(text){
   // forgive a couple of spelling slips: kids type "BOOGY" for "BOOGIE"
   const lev = (x, y) => { const d = [...Array(y.length + 1).keys()]; for (let i = 1; i <= x.length; i++){ let prev = d[0]; d[0] = i; for (let j = 1; j <= y.length; j++){ const t = d[j]; d[j] = Math.min(d[j] + 1, d[j-1] + 1, prev + (x[i-1] === y[j-1] ? 0 : 1)); prev = t; } } return d[y.length]; };
@@ -5403,22 +5729,71 @@ function passMatch(text){
     || (typed.length >= 6 && PASSWORDS.find(p2 => p2.old && near(p2.old, 2))));
   return pw || null;
 }
-function passApply(pw){
-  const n = pw.after === 'launch' || pw.act === 2 ? TEMPLE_ROOMS.length : pw.after, cur = advLoad() || {};
+// how: 'here' (the save you're on: rooms you've done stay done) or 'new' (a new save, just the password's progress)
+function usePassword(text, how){ const pw = passMatch(text); if (!pw) return false; return passApply(pw, how); }
+function passApply(pw, how){
+  if (how === 'new' && !slotNew()) return null;
+  const n = pw.after === 'launch' || pw.act === 2 ? TEMPLE_ROOMS.length : pw.after, cur = (how === 'new' ? null : advLoad()) || {};
   const solved = new Set([...(cur.solved || []), ...TEMPLE_ROOMS.filter(r => r.id <= n).map(r => r.id), ...(pw.act === 2 ? FUN_ROOMS.filter(r => r.id <= pw.after).map(r => r.id) : [])]);
   const unlocked = new Set([...(cur.unlocked || ['rblock']), 'rblock']); TEMPLE_ROOMS.filter(r => r.id <= n).forEach(r => (r.unlock || []).forEach(u => unlocked.add(u)));
   const save = Object.assign({v:1, funV:2, disc:[], notes:[], bonus:[], cells:[], levers:{}}, cur, {solved:[...solved], crystals:[...new Set([...(cur.crystals || []), ...solved])], unlocked:[...unlocked], launched:!!cur.launched || pw.after === 'launch' || pw.act === 2});
   if (pw.after === 'launch' || pw.act === 2){ save.act = pw.act === 2 ? 2 : 1; save.met = save.kit = save.trapOff = true; save.found = [...new Set([...(save.found || []), 'dust', ...BASIC])]; save.cells = []; save.cellsAct = 0; save.levers = {}; if (pw.act === 2) save.funMet = true; }
   else { if ((cur.act || 1) !== 1 || !cur.cells){ save.cells = []; save.cellsAct = 0; save.levers = {}; } save.act = 1; }   // Act 1 passwords go back to the temple
   delete save.player;   // cellsAct 0: no blocks of yours saved, so every room gets its own loose parts
-  advWrite(save); try { localStorage.setItem('redstone-academy.tut', '1'); } catch (e) {}
+  advWrite(save); slotTutSet();
   return save;
 }
+// ---- Grown-ups: cloud saves (set up once per device: the web app's address and the family save code) ----
+function cloudErrText(e){
+  return ({offline:'Can\'t reach the save server just now. Saves stay on this device and are shared later.', 'wrong family code':'That family save code doesn\'t match this save server. Check it against the first device.',
+    'not set up':'The save server isn\'t set up yet. Turn cloud saves on from the first device.', 'not a save server':'That address answered, but not as a Sparks & Bones save server. Check the address, and that the web app\'s access is "Anyone".',
+    busy:'The save server was busy. It will try again soon.', 'too big':'That save is too big to share.', conflict:'Two devices changed the same save. It sorts itself out on the next share (nothing is lost).', older:'Two devices changed the same save. It sorts itself out on the next share (nothing is lost).',
+    'too many saves':'The save server is full (40 saves). Delete some old saves in Saves.', 'bad save':'One save couldn\'t be shared (it looks broken). It is still on this device.'})[e] || 'The save server said no (' + e + '). It will try again later.';
+}
+function cloudWhen(t){ return t ? new Date(t).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}) : ''; }
+function cloudPaneFresh(){ const st = $('#cloudStat'); if (st && !$('#pane').hidden) st.innerHTML = cloudStatus(); }
+function cloudStatus(){ const c = REMOTE.cfg(), s = REMOTE.state;
+  return '<b>Status:</b> ' + escH(!c ? 'Off. Saves stay on this device.' : s.err ? 'On, but: ' + cloudErrText(s.err) : s.when ? `On. Last shared at ${cloudWhen(s.when)}.` : 'On.'); }
+function openCloud(msg){
+  const c = REMOTE.cfg(), inp = (id, lbl, ph, more) => `<label for="${id}">${lbl}</label><input id="${id}" class="cloudIn" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${ph}"${more || ''}>`;
+  openPane('Cloud saves', `<div class="cloud"><p>Share the saves between your devices (say, the iPad and the computer) through a small save server on <b>your own Google account</b>. It keeps each save as a file in your Google Drive. Max never signs in. Setting it up takes about 5 minutes: follow <b>cloud/README.md</b> in the game's files.</p>
+    <p id="cloudStat" role="status">${cloudStatus()}</p>
+    ${c ? `<p>Save server:<br><code>${escH(c.url)}</code></p><p>Family save code: <b id="cloudCodeTxt">hidden</b></p>
+      <div class="row"><button class="btn" id="cloudReveal">Show the code</button></div>
+      <div class="row"><button class="btn red" id="cloudNow">Share saves now</button><button class="btn" id="cloudOff">Turn off on this device</button></div>`
+    : `${inp('cloudUrl', 'Web app address (it ends in /exec)', 'https://script.google.com/macros/s/.../exec', ' inputmode="url"')}
+      ${inp('cloudCode', 'Family save code (the same on every device)', 'SB-XXXX-XXXX-XXXX-XXXX-XXXX')}
+      <div class="row"><button class="btn" id="cloudMake">Make a new code</button></div>
+      <p class="cloudSmall">First device: tap <b>Make a new code</b>. Other devices: type the same code. Keep it private, like a password: anyone with the address AND the code can see and change these saves.</p>
+      <div class="row"><button class="btn red" id="cloudOn">Turn on cloud saves</button></div>`}
+    <p id="cloudMsg" class="cloudMsg" role="status">${escH(msg || '')}</p></div>`);
+  const say = t => { $('#cloudMsg').textContent = t; };
+  $('#paneBody').querySelectorAll('input').forEach(i => i.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter' && $('#cloudOn')) $('#cloudOn').click(); });
+  if (c){
+    $('#cloudReveal').onclick = () => { sfx.click(); const t = $('#cloudCodeTxt'), on = t.textContent === 'hidden'; t.textContent = on ? famShow(c.family) : 'hidden'; $('#cloudReveal').textContent = on ? 'Hide the code' : 'Show the code'; };
+    $('#cloudNow').onclick = async () => { sfx.click(); say('Sharing...'); const r = await syncNowWait(); say(!r ? '' : r.err ? cloudErrText(r.err) : `Done! ${r.up} sent, ${r.down} fetched.${r.kept.length ? ' Two different games had the same name, so both were kept.' : ''}`); };
+    $('#cloudOff').onclick = () => { sfx.click(); kvDel(SYNC_KEY); REMOTE.state = {when:0, err:'', n:0}; openCloud('Cloud saves are off on this device. The saves here are still here.'); };
+    return;
+  }
+  $('#cloudMake').onclick = () => { sfx.click(); $('#cloudCode').value = famShow(famMake()); say('A new code! Write it down, then type it on your other devices.'); };
+  $('#cloudOn').onclick = async () => {
+    const url = $('#cloudUrl').value.trim(), family = famNorm($('#cloudCode').value);
+    if (!syncUrlOK(url)){ sfx.nope(); return say('That doesn\'t look like the web app\'s address. It starts with https://script.google.com/ and ends with /exec.'); }
+    if (!family){ sfx.nope(); return say('That family save code isn\'t right. It\'s SB- and then 20 letters and numbers (no 0 or 1). Tap Make a new code on the first device.'); }
+    sfx.click(); say('Checking the save server...'); $('#cloudOn').disabled = true;
+    try { const h = await REMOTE.hello({url, family}); kvSet(SYNC_KEY, JSON.stringify({url, family})); REMOTE.state = {when:0, err:'', n:0}; const r = await syncNowWait();
+      openCloud((h.fresh ? 'Cloud saves are on! This is the first device: use the same code on the others. ' : 'Cloud saves are on! ') + (r && r.err ? cloudErrText(r.err) : r ? `${r.up} sent, ${r.down} fetched.` : ''));
+    } catch (e) { const b = $('#cloudOn'); if (b) b.disabled = false; sfx.nope(); say(cloudErrText(String((e && e.message) || e))); }
+  };
+}
+async function syncNowWait(){ clearTimeout(syncTimer); for (let i = 0; syncBusy && i < 300; i++) await new Promise(r => setTimeout(r, 100)); return syncWith(REMOTE); }
 function openGrownups(){
   const rep = plogReport();
   const tbl = rep.rows.length ? `<table style="font-size:13px;border-collapse:collapse;width:100%"><tr><th>Room</th><th>Busy</th><th>Solved in</th><th>Wrong</th><th>Hints</th><th>Resets</th><th>Notes</th></tr>${rep.rows.map(x => `<tr><td>${x.id}. ${x.name}</td><td>${mmss(x.act)}</td><td>${x.solved ? mmss(x.solveAct) : '-'}</td><td>${x.wrong}</td><td>${x.hints}</td><td>${x.resets + x.deaths}</td><td>${x.flags.join(', ')}</td></tr>`).join('')}</table>` : '<p>No rooms played yet on this device.</p>';
   const code = 'RA-LOG1:' + btoa(unescape(encodeURIComponent(JSON.stringify(rep))));
-  openPane('For grown-ups: how it\'s going', `${tbl}${passList()}<p style="font-size:14px">Everything here stays on this device. To get the game tuned, copy this report and paste it to Claude.</p><textarea id="logCode" readonly style="width:100%;height:60px;font-size:11px">${code}</textarea><button class="btn" id="logCopy">Copy report</button>`);
+  openPane('For grown-ups: how it\'s going', `${tbl}${passList()}<p style="font-size:14px">Everything here stays on this device. To get the game tuned, copy this report and paste it to Claude.</p><textarea id="logCode" readonly style="width:100%;height:60px;font-size:11px">${code}</textarea><button class="btn" id="logCopy">Copy report</button><h3 style="margin:14px 0 4px">Saves</h3><p style="font-size:15px">Keep a copy of a save somewhere safe, or carry it to another device: it goes as a file or a code. (One save at a time.)</p><div class="row"><button class="btn" id="btnMove">Back up my save...</button><button class="btn" id="btnCloud">Cloud saves...</button></div>`);
+  $('#btnMove').onclick = () => { sfx.click(); $('#pane').hidden = true; openMove(); };
+  $('#btnCloud').onclick = () => { sfx.click(); openCloud(); };
   const ta = $('#logCode'); $('#logCopy').onclick = () => { ta.select(); try { navigator.clipboard.writeText(code).then(() => showToast('Report copied!'), () => { document.execCommand('copy'); showToast('Report copied!'); }); } catch (e) { document.execCommand('copy'); showToast('Report copied!'); } };
 }
 
@@ -7511,6 +7886,7 @@ function hubCardFrame(dt){
 }
 const roomNum = r => r.ship ? `Skull machine ${r.ship} of ${SHIP_ROOMS.length}` : r.zone === 'fun' ? `Ride ${ROOMS.indexOf(r) + 1} of ${ROOMS.length}` : `Room ${r.id} of ${ROOMS.length}`;   // the funfair counts rides 1-20, not 101-120
 function enterArea(r, where){
+  advSaveSoon();   // autosave on the way between rooms
   if (DLG.on && (DLG.why || (DLG.hello && !(r && r.id === DLG.hello)))) dlgCancel();   // walked out of a demo (or a ride's hello): stop it, give the view back
   if (r) zoneTitle(r.zone);
   if (r && r.zone === 'sky' && !A.flungDone && A.metBarold){ A.flungDone = true; setTimeout(catapultBarold, 2500); } else if (where === 'hall') zoneTitle('hall');
@@ -8470,7 +8846,7 @@ function endTutorial(){
   if (was === 'B'){ A.gotKit = true; A.leadToDoor = true; document.body.classList.remove('emptyHands'); refreshHotbar(); }
   document.querySelectorAll('#topBtns .btn.glow').forEach(b => b.classList.remove('glow'));
   tut = null; $('#tut').hidden = true; if (was === 'B') A.tutDone = true; advSaveSoon(); monkeySay(null);
-  if (was === 'B'){ try { localStorage.setItem('redstone-academy.tut', '1'); } catch (e) {} setTimeout(() => { if (!A.trapMet) monkeySay('This way! The main door\'s been stuck since before Tuesday. We use the side door.', 6000); }, 300); }
+  if (was === 'B'){ slotTutSet(); setTimeout(() => { if (!A.trapMet) monkeySay('This way! The main door\'s been stuck since before Tuesday. We use the side door.', 6000); }, 300); }
 }
 function tutFrame(dt){
   if (!tut) return;
@@ -8569,7 +8945,7 @@ function openingFrame(dt){ heliSinkFrame(dt); stickFrame(); }
 // a save the game can't start from must never leave a blank screen: keep it for a grown-up, back to the menu (passwords still work)
 function startAdventure(given){
   try { advStart(given); menuMsg = ''; if (PREVIEW_LAST && A.solved.has(PREVIEW_LAST)) setTimeout(() => { if (A.on) previewEnd(); }, 1500); }
-  catch (e) { console.error(e); A.on = false; try { advKeepBroken(given ? JSON.stringify(given) : storeOK ? localStorage.getItem(ADV_KEY) : advMem); localStorage.removeItem(ADV_KEY); } catch (_) {} advMem = null;
+  catch (e) { console.error(e); A.on = false; try { const se = slotEntry(slotCur()); if (se){ slotBroken(se, given ? JSON.stringify(given) : kvGet(se.key)); slotWipe(se.id); } } catch (_) {}
     menuMsg = 'Uh-oh, your save got muddled up! Type a password to jump back.'; showMenu(); }
 }
 function advStart(given){
@@ -8607,7 +8983,7 @@ function advStart(given){
   refreshHotbar(); selectFirstVisible(); refreshViewUI();
   advFrame(0, 0);
   try { passEarned().forEach(pw => pwKeep(pw.words)); } catch (e) {}   // backfill the password list from older saves
-  let seen = false; try { seen = localStorage.getItem('redstone-academy.tut') === '1'; } catch (e) {}
+  const seen = slotTut();
   if (A.act === 1 && !seen && !(save && save.solved && save.solved.length)){ if (save && save.met){ if (!A.gotKit) startTutorial('B'); } else if (save && (save.player || save.trapMet)) startTutorial('A'); else startOpening(); }
   if (A.act === 2 && !A.funMet) setTimeout(() => { if (A.on && A.act === 2) zoneTitle('fun'); }, 600);
   setTimeout(() => { if (A.on && !tut && !A.openCine) [...A.gates].filter(k => GATE_QUIZ[k] && !A.quizDone.has(k)).forEach(k => showCard('NEW GATE CARD: ' + GATE_CARDS[k].name + '!', gateCardHTML(k, true) + quizHTML(k))); }, 2000);   // a Gate Card is never lost: one you didn't finish comes back
@@ -9638,6 +10014,7 @@ window.__game = {
   menuScene(){ return !!(MENU3D.g && MENU3D.g.visible); },
   passwords(){ return PASSWORDS.map(p => p.words); }, tryPassword(t){ const pw = passMatch(t); return pw ? pw.words : null; },
   backup:{mirrorNow, makeSaveCode, loadSaveCode, IDB, restoreKeys, snapKeys},
+  saves:{store:SAVES, idx:slotIdx, sync:syncWith, remote:REMOTE, cloud:openCloud, syncNow:syncNowWait, fam:{norm:famNorm, make:famMake, show:famShow, urlOK:syncUrlOK}, shown:() => savedN, open:openSaves, openMove, kv:kvGet, menuMsg:() => menuMsg},
   loadLesson(n, keep){ $('#menu').hidden = true; $('#hud').hidden = false; loadLesson(n, !keep); refreshHotbar(); },
   armCard(){ cardArmT = -1e9; $('#whyOk').disabled = false; }, dropCards(){ CARDQ.length = 0; $('#why').hidden = true; }, cardQueue(){ return CARDQ.map(c => c[0]); }, cardArmed,
   flushSave(){ clearTimeout(saveTimer); if (L) writeBuild(L.def.id, serializeBuild()); },
@@ -9659,7 +10036,7 @@ window.__game = {
   asking: () => asking, toggleAsk,
   pad: {poll:pollPad, PB, P, S, DLG, dlgStart, openBook:() => openBook(firstUnlocked()), reset(){ padMode = false; padPrev = []; padId = ''; padFocus(null); }, mode:() => padMode, fam:() => padFam, sneak:() => padSneak, focus:() => padFocusEl, ok:padOK, back:padBack, tip:() => tipText().join(''), tut:id => TUT_B.find(q => q.id === id).say(), sel:() => sel, fp:() => viewFP, hintLevel:() => L.hintLevel, inFP},
   adv: {
-    start(fresh){ if (fresh){ advMem = null; try { localStorage.removeItem(ADV_KEY); } catch (e) {} } startAdventure(); },
+    start(fresh){ if (fresh){ slotWipe(slotCur(true), true); if (kvGet(KEY_PREFIX + 'tut') === '1') slotTutSet(); } startAdventure(); },   // (older scripts still set the old 'tutorial done' key)
     tp(x, y){ const c = cellPos(x, y); P.fling = null; P.x = c.x; P.z = c.z; P.y = c.y; stepFP(0); advFrame(0, 0); },
     room(){ return A.rt && A.rt.room ? A.rt.room.id : A.room; },
     playerY(){ return P.y; }, flinging(){ return !!P.fling; }, pitch(){ return P.pitch; },
