@@ -2004,15 +2004,16 @@ function renderCard(){
     if (rt.heart){ card.hidden = false; const lit = SHIP_ROOMS.map(q => A.solved.has(q.id)); card.innerHTML = `<h3>Skull machines</h3><div class="blinks">${lit.map(v => `<span style="font-size:24px;color:${v ? '#a040ff' : '#888'}">${v ? '&#9670;' : '&#9671;'}</span>`).join('')}</div><div class="note">Crystals: ${A.crystals.size} / ${ROOMS.length}</div>`; return; }
     if (r && A.solved.has(r.id) && r.bonus){
       card.hidden = false;
-      const got = A.bonus.has(r.id), it = ITEMS.find(i => i.id === r.bonus.reward);
+      const got = A.bonus.has(r.id), it = ITEMS.find(i => i.id === r.bonus.reward) || {id:'', name:(r.bonus.badge || 'Bonus') + ' badge'};
       const need = r.bonus.toy && !A.unlocked.has(r.bonus.toy) ? ITEMS.find(i => i.id === r.bonus.toy) : null;
       const prog = need ? `You need the ${need.name} first: win it in room ${ROOMS.find(q => q.bonus && q.bonus.reward === need.id).id}.` : r.bonus.kind === 'pulses' ? `${Math.min(rt.pulses || 0, r.bonus.n)} / ${r.bonus.n} ${r.bonus.unit || 'parps'}` : r.bonus.kind === 'dust' ? `dust used: ${countDust(r)} (${r.bonus.n} or fewer)` : '';
-      card.innerHTML = `<h3>${got ? 'Bonus won!' : 'Bonus'}</h3><div class="note" style="display:flex;gap:8px;align-items:center"><img class="px" src="${ICONS[it.id]}" alt="" style="width:32px;height:32px"><span>${got ? it.name + ' is yours.' : (t => t[0].toUpperCase() + t.slice(1))(r.bonus.text.replace('BONUS: ', '')) + '<br><b>' + prog + '</b>'}</span></div>`;
+      card.innerHTML = `<h3>${got ? 'Bonus won!' : 'Bonus'}</h3><div class="note" style="display:flex;gap:8px;align-items:center">${it.id ? `<img class="px" src="${ICONS[it.id]}" alt="" style="width:32px;height:32px">` : '<span style="font-size:28px;color:#c08a00">&#9733;</span>'}<span>${got ? it.name + ' is yours.' : (t => t[0].toUpperCase() + t.slice(1))(r.bonus.text.replace('BONUS: ', '')) + '<br><b>' + prog + '</b>'}</span></div>`;
       return;
     }
     if (r && A.solved.has(r.id) && r.mc){ card.hidden = false; card.innerHTML = `<h3>Try it in real Minecraft</h3><div class="note" style="font-size:14px">${r.mc}</div>`; return; }
     card.hidden = !r || r.check === 'lit' || r.check === 'boom' || A.solved.has(r.id);
     if (card.hidden){ card.innerHTML = ''; return; }
+    if (r.check === 'coop'){ card.innerHTML = coopCardHTML(r, rt); return; }
     if (r.check === 'pen'){ const nT = TROOP.room === r && TROOP.list.length ? TROOP.list.length : r.troop.n; card.innerHTML = `<h3>Tamarins in the pen</h3><div class="note"><b style="font-size:22px">${rt.inPen || 0} / ${nT}</b>${nT < r.troop.n ? '<br>(just one, to start with)' : ''}</div>`; return; }
     if (r.check === 'launch'){ card.innerHTML = `<h3>Monkey launches</h3><div class="note"><b style="font-size:22px">${Math.min(rt.launches || 0, r.launches)} / ${r.launches}</b><br>(they have to do it themselves!)</div>`; return; }
     if (r.check === 'together'){ card.hidden = true; card.innerHTML = ''; return; }
@@ -2248,6 +2249,7 @@ function quicksandFrame(s){
   const inSand = isQuick(x, y) && !onSafeBridge() && P.y < floorAt(x, y) + .1;
   if (inSand){
     P.sink = Math.min(1.5, (P.sink || 0) + s*.42);
+    if (P.sink >= .35 && coopRescue('sand')) return;   // co-op rooms never kill: it spits you back out
     if (!P.sandWarned){ P.sandWarned = true; sfx.blub(); showToast('You\'re sinking! Get out of the quicksand!'); }
     if (P.sink >= 1.45) die('GLUG GLUG! The quicksand got you!');
   } else { P.sink = Math.max(0, (P.sink || 0) - s*1.6); if (!P.sink) P.sandWarned = false; }
@@ -2483,9 +2485,11 @@ function blocksWay(x, y){
 }
 function breakCell(c){
   if (c.locked){ sfx.nope(); return; }
+  if (coopLock(c)) return;
   setCell(c.x, c.y, null); sfx.brk(c.t); syncVisuals(); updatePreview(); saveBuildSoon(); plogEvent('break');
 }
 function interact(c){
+  if (c.t === 'lever' && coopLock(c)) return true;
   if (c.t === 'lever'){
     c.on = !c.on; sfx.lever(c.on); syncVisuals(); saveBuildSoon();
     if (L && L.inputs.includes(c)) L.tested.add(combo().join());
@@ -3450,15 +3454,17 @@ const TEMPLE_ROOMS = [
     mc:'In Minecraft, a torch on the side of a block turns OFF when that block gets power. This is the most important trick in redstone!',
     bonus:{text:'BONUS: make the lamp come on 4 times to win the Temple Gong!', kind:'pulses', n:4, unit:'times', reward:'gong'},
     unlock:['stone'], sol:[] },
-  { id:15, ch:2, name:'Into the block', check:'table', inputs:[[2,5]], out:[[8,4]], fn:a=>!a,
-    fixed:[K('stone',6,4),K('torch',7,4,{attach:3}),K('lamp',8,4),K('lever',2,5)],
-    loose:[D(3,5),D(4,5),D(5,5),D(6,5),D(7,5)],
-    goal:'Lever ON should turn the lamp OFF. The wire goes RIGHT PAST the block... but does it point at it?',
-    hello:'Hmm. The wire runs past the block, but the torch is still happy. Dust is picky about where it points!',
-    hint:'Dust only pushes power where it POINTS, like an arrow. Make the end of the wire point straight INTO the block.',
-    win:'Dust points like an arrow! Now power goes INTO the block and the torch gets grumpy.',
+  // first room that USES the grumpy torch: no wire this time. The lever sits low, so a wire that just walks up to the block runs PAST it (room 4's lesson again)
+  { id:15, ch:2, name:'Into the block', check:'table', inputs:[[2,6]], out:[[8,4]], fn:a=>!a, missInto:[6,4], missLamp:true,
+    fixed:[K('stone',6,4),K('torch',7,4,{attach:3}),K('lamp',8,4),K('lever',2,6)],
+    goal:'Make the lever switch the lamp OFF. Lever ON: lamp OFF. Lever OFF: lamp ON.',
+    hello:'Another grumpy torch machine! But nobody built the wire. Hmm...',
+    nudge:'The torch only goes grumpy when its BLOCK gets power. Can you get power INTO the stone block?',
+    hint:'Dust pushes power out of its END, like an arrow. Lay a wire from the lever, and make its END point straight INTO the stone block.',
+    win:'Dust points like an arrow! Power went INTO the block, and the torch got grumpy.',
     mc:'In Minecraft, dust only powers a block it points into. Make your dust line end facing the block.',
-    sol:[K('air',6,5),K('air',7,5),K('air',5,5),D(4,4),D(5,4)] },
+    bonus:{text:'BONUS: do it with only 5 dust. Win the ARROW ACE badge!', kind:'dust', n:5, badge:'ARROW ACE', card:'Your wire took the short way AND pointed straight INTO the block, like an arrow. Barold wants one too. He can\'t have one.'},
+    sol:[D(3,6),D(4,6),D(5,6),D(6,6),D(6,5)] },
   { id:16, ch:2, name:'See-through', give:['stone','glass','dust','torch'], check:'table', inputs:[[2,4]], out:[[7,4]], fn:a=>!a,
     fixed:[K('lever',2,4),K('torch',5,4,{attach:3}),K('lamp',7,4)],
     loose:[D(3,4),K('glass',4,4),D(6,4)],
@@ -3471,31 +3477,41 @@ const TEMPLE_ROOMS = [
     unlock:['glass'], sol:[K('stone',4,4)] },
   { id:17, ch:2, name:'Night-light', give:['dust','stone','torch'], check:'table', inputs:[[3,4]], out:[[8,4]], fn:a=>!a,
     fixed:[K('plate',3,4),K('lamp',8,4)],
-    goal:'Make the lamp go OFF when you stand on the plate, and ON when you step off. A grumpy torch can do it!',
-    hello:'Sneaky! The lamp should go dark when someone steps on the plate. Like a grumpy torch...',
+    goal:'Make the lamp go OFF when you stand on the plate, and ON when you step off.',
+    hello:'Sneaky! A lamp that goes dark when someone steps on the plate...',
+    nudge:'The lamp has to do the OPPOSITE of the plate. Which of your parts always does the opposite?',
     hint:'Plate, then dust into a stone block, a torch on the far side, then dust to the lamp.',
     win:'You built a NOT gate! It flips the answer. Computers do that billions of times a second.',
     mc:'Build a NOT gate in Minecraft: dust into a block, a torch on the other side. The torch does the opposite!',
     bonus:{text:'BONUS: make your Water Cannon squirt when someone stands on the plate. Win a Confetti Cannon!', kind:'toyOnInput', toy:'water', reward:'confetti'},
     sol:[D(4,4),K('stone',5,4),K('torch',6,4,{attach:3}),D(7,4)] },
-  { id:18, direct:true, ban:['rblock','torch','button','plate'], want:'the lever has to raise the bridge', ch:2, name:'Quicksand!', give:['dust','lever'], check:'lit', out:[[4,4]],
+  // CO-OP (OR): Barold stands on his plate to raise the bridge. Then it's HIS turn: he steps OFF and it sinks in front of him.
+  // You cope by wiring the far side's lever in too: his plate OR your lever holds the bridge. Solved when he's across. (coop*, below)
+  { id:18, ch:2, name:'Quicksand!', ban:['rblock','lever','button','plate','torch','stone','glass','repeater'], want:'Barold\'s plate and the lever have to hold the bridge up', give:['dust'], check:'coop', out:[[4,4]],
     quick:[[4,1,6,7]], bridge:[[4,4],[5,4],[6,4]],
-    fixed:[],
-    goal:'QUICKSAND! Don\'t stand in it for long... Get power to the bridge to make it rise, then cross.',
-    hello:'Careful! That\'s QUICKSAND! The bridge only comes up when it gets power...',
-    hint:'Put a lever down, wire it to the end of the bridge, flip it ON, then walk across.',
-    win:'The bridge is up! Now cross quickly... and don\'t look down!',
-    mc:'In Minecraft you can make secret bridges and doors that only appear with redstone power, using pistons.',
-    sol:[K('lever',2,4),D(3,4)] },
-  { id:19, ch:2, name:'Whoopee trap', give:['dust','stone','torch'], check:'table', inputs:[[5,4]], out:[[8,2]], fn:a=>!a,
-    fixed:[K('plate',5,4),K('fart',8,2)],
-    goal:'Set a trap: make the whoopee cushion fart when someone steps OFF the plate.',
-    hello:'Heh heh. A trap. When they step OFF the plate... PARP!',
-    hint:'It\'s like the night-light, but the cushion is the lamp.',
-    win:'PAAARP! You\'re a trap master!',
-    mc:'Minecraft traps work like this: a pressure plate wired to TNT (or a dispenser) catches whoever steps on it!',
-    bonus:{text:'BONUS: make Confetti go off with the PARP. Win Fireworks!', kind:'toyLit', toy:'confetti', reward:'firework'},
-    sol:[D(6,4),K('stone',7,4),K('torch',8,4,{attach:3}),D(8,3)] },
+    fixed:[K('plate',2,2),K('lever',8,6)],
+    coop:{kind:'bridge', plate:[2,2], foot:[3,4], far:[8,3]}, crystalAt:[8,2],
+    goal:'QUICKSAND! Get yourself over it. Then get Barold over too!',
+    hello:'QUICKSAND! The bridge only comes up with power. I\'ll stand on that plate for you. You wire it to the bridge!',
+    nudge:'Barold can only stand on ONE thing at a time. What else could hold the bridge up while he walks?',
+    hint:'Wire the lever on the far side to the bridge as well. Flip it ON. Then the plate OR the lever keeps the bridge up.',
+    win:'We BOTH made it! My plate OR your lever: EITHER one holds the bridge up. That\'s an OR gate!',
+    mc:'In Minecraft, join two wires into one and EITHER switch can work your door or bridge. That\'s an OR gate.',
+    bonus:{text:'BONUS: get Barold over with only 6 dust in the room. Win the BRIDGE BOSS badge!', kind:'dust', n:6, badge:'BRIDGE BOSS', card:'Two short wires, one bridge, two happy feet... well, YOUR feet and Barold\'s bony ones. Bridge Boss!'},
+    sol:[D(2,3),D(2,4),D(3,4),D(8,5),D(8,4),D(7,4)], after:[['lever',8,6,true]] },
+  // CO-OP (NOT launch): a hole too wide to jump, a Bounce Pad at the edge and Barold's "safety plate". When he steps OFF it, the
+  // pad has to fling you over. Wired straight, the pad goes off too SOON (while he's still on it): you just hop. A grumpy torch does it.
+  { id:19, ch:2, name:'Ready, steady, BOING!', ban:['rblock','lever','button','plate'], want:'Barold\'s safety plate has to work the Bounce Pad', give:['dust','stone','torch'], check:'coop', out:[[3,4]],
+    chasm:[[4,1,6,7]], fixed:[K('plate',1,6),K('launcher',3,4)],
+    coop:{kind:'pad', plate:[1,6], pad:[3,4], land:[8,4], bland:[8,6]}, crystalAt:[8,2],
+    goal:'Barold stands on his safety plate. When he steps OFF it, the Bounce Pad must fling you over the hole!',
+    hello:'A HOLE! Much too far to jump. But look, a Bounce Pad! I\'ll stand on my safety plate. When I step OFF... WHOOSH!',
+    nudge:'While Barold is ON his plate, the pad must be OFF. When he steps OFF, the pad must go ON. It\'s the OPPOSITE!',
+    hint:'Wire Barold\'s plate into a stone block. Stick a grumpy torch on the other side of the block, right next to the pad.',
+    win:'WHOOSH! Barold stepped OFF and the pad went ON. The grumpy torch flipped it: a NOT gate!',
+    mc:'In Minecraft, a torch on a block always does the opposite of the block. Great for traps that go off when you step OFF.',
+    bonus:{text:'BONUS: make your Confetti Cannon pop when the Bounce Pad is ON. Win Fireworks!', kind:'toyLit', toy:'confetti', reward:'firework', why:'You made the Confetti Cannon pop when the Bounce Pad went ON: one torch, two things!'},
+    sol:[D(2,6),K('stone',3,6),K('torch',3,5,{attach:2})] },
   // ---------------- Chapter 3: TIRED SIGNALS ----------------
   { id:20, ch:3, name:'How far does power go?', give:['rblock','dust'], check:'lit', out:[[1,3]], showPower:true,
     fixed:[K('rblock',1,7),K('lamp',8,6),K('lamp',8,2),K('lamp',1,3)],
@@ -3510,6 +3526,7 @@ const TEMPLE_ROOMS = [
     fixed:[K('lever',1,1),K('lamp',1,7)], walls:[[1,4,2],[2,4,2],[3,4,2],[4,4,2],[5,4,2],[6,4,2],[7,4,2]],
     goal:'Make the lever switch the lamp ON and OFF, the long way round.',
     hello:'Phew, it\'s a long way round. I wonder if power gets tired...',
+    nudge:'The power gets tired before the end. What could give it fresh power, part way along?',
     hint:'Power starts at 15 and loses 1 every block. Two grumpy torches in a row flip it twice, so it comes out the right way round, fresh at 15!',
     tired:'The power got tired! Remember the grumpy torch? What if TWO torches flipped it twice?',
     win:'Two flips make it the right way round, and fresh! That\'s exactly what a Repeater does inside.',
@@ -3540,6 +3557,7 @@ const TEMPLE_ROOMS = [
     loose:[D(7,5),K('glass',6,5),K('torch',5,5,{attach:1}),D(4,5),K('stone',3,5),D(2,4),D(2,3),K('repeater',2,2,{dir:2})],
     goal:'Fix the power line: lever ON should light the lamp. THREE things are broken.',
     hello:'The power line to the inner temple is broken! Someone made three mistakes. Can you spot them all?',
+    nudge:'Flip the lever ON and follow the power, one block at a time. Where does it stop?',
     hint:'Look for: a block power can\'t get into, a missing grumpy torch, and a repeater pointing the wrong way.',
     win:'Power\'s flowing! You fixed it like a real engineer.',
     mc:'Fixing broken circuits is a big part of Minecraft redstone. Follow the power, block by block.',
@@ -3550,6 +3568,7 @@ const TEMPLE_ROOMS = [
     loose:[D(3,6),D(5,7)],
     goal:'The last bridge before the Crystal Skull Chamber! Make it rise. Look at the machine carefully...',
     hello:'The Bridge of Doom! The torch is grumpy so the bridge is down. What makes a grumpy torch happy again?',
+    nudge:'The torch raises the bridge. Is the torch ON or OFF right now? Why?',
     hint:'The lever is ON, so the torch is OFF. Turn the lever OFF and the torch comes back on. Oh, and there\'s a gap in the wire!',
     win:'The bridge is UP! The Chamber of the Crystal Skull is through that door...',
     mc:'Inverted switches like this are used all over Minecraft: a lever that turns something OFF when it\'s ON.',
@@ -3590,6 +3609,10 @@ function placeCanon(r, slot){
   r.quick = (r.quick || []).map(([x0, y0, x1, y1]) => [Math.min(X(x0), X(x1)), Y(y0), Math.max(X(x0), X(x1)), Y(y1)]);
   r.after = (r.after || []).map(([what, x, y, v]) => [what, X(x), Y(y), v]);
   if (r.requireOff) r.requireOff = P2(r.requireOff);
+  if (r.chasm) r.chasm = r.chasm.map(([x0, y0, x1, y1]) => [Math.min(X(x0), X(x1)), Y(y0), Math.max(X(x0), X(x1)), Y(y1)]);
+  if (r.coop){ const q = Object.assign({}, r.coop); ['plate', 'foot', 'far', 'pad', 'land', 'bland'].forEach(k => { if (q[k]) q[k] = P2(q[k]); }); r.coop = q; }
+  if (r.missInto) r.missInto = P2(r.missInto);
+  if (r.crystalAt) r.crystalAt = P2(r.crystalAt);
   if (r.why) r.why = r.why.map(w => Object.assign({}, w, w.at ? {at:P2(w.at)} : {}, w.set ? {set:w.set.map(P2)} : {}));
   if (r.troop){ const t = r.troop, R4 = ([x0, y0, x1, y1]) => [Math.min(X(x0), X(x1)), Y(y0), Math.max(X(x0), X(x1)), Y(y1)];
     ['pen','start','seats'].forEach(k => { if (t[k]) t[k] = R4(t[k]); }); ['lure','food','danceAt'].forEach(k => { if (t[k]) t[k] = P2(t[k]); }); if (t.labels) t.labels = t.labels.map(([txt, x, y]) => [txt, ...P2([x, y])]); }
@@ -4232,6 +4255,7 @@ function buildTemple(save){
   HEART.sockets.forEach(([x, y]) => setWall(x, y, 1, 9));   // the pedestals round the Skull (drawn by shipDecor)
   shipCells(save);
   if (!A.doorTrapOff){ TRAP.landing = S.elev[129*NX + 8]; TRAP.orig = {}; TRAP.hole.forEach(([x, y]) => { const i = y*NX + x; TRAP.orig[i] = S.elev[i]; S.pit[i] = 1; S.elev[i] = 0; S.fkind[i] = 0; if (y === 128) S.ladder[i] = 1; }); }
+  coopCarve();
   buildWalls(); buildFloor();
   buildDecor();
   S.lastSnap = ''; S.gridDirty = true;
@@ -4287,7 +4311,7 @@ function buildTerrain(){
   torches.forEach(([x, y, e, dx, dy]) => { const p = cellPos(x, y); fireAdd(terrainRoot, p.x + dx*.42, e + 2.22, p.z + dy*.42, .48); });   // flickering flames (all one draw call)
   terrainRoot.children.forEach(m => { if (!m.userData.terrain) m.raycast = () => {}; });
   // the bottom of every drop: under the rope bridges it's cooled lava crust with glowing cracks (hot to look at, safe to stand on); the side door's chasm stays mossy
-  const pits = [], hot = [], trapHole = new Set(TRAP.hole.map(([x, y]) => y*NX + x)); for (let i=0;i<NX*NY;i++) if (S.pit[i]) (trapHole.has(i) ? pits : hot).push([i % NX, (i / NX) | 0]);
+  const pits = [], hot = [], trapHole = new Set(TRAP.hole.map(([x, y]) => y*NX + x)); for (let i=0;i<NX*NY;i++) if (S.pit[i]) (trapHole.has(i) || isChasm(i) ? pits : hot).push([i % NX, (i / NX) | 0]);
   inst(cbox(1, .08, 1), M.mossy, pits, (mtx, [x, y]) => { const p = cellPos(x, y); mtx.makeTranslation(p.x, .04, p.z); });
   inst(cbox(1, .08, 1), M.crust, hot, (mtx, [x, y]) => { const p = cellPos(x, y); mtx.makeTranslation(p.x, .04, p.z); });
   hot.forEach(([x, y]) => { const p = cellPos(x, y); if ((x + y) % 2 === 0) glowAdd(terrainRoot, p.x, .35, p.z, 2.6, 0xff4a14, .08); if ((x*3 + y) % 4 === 0) lavaSpot(terrainRoot, p.x, .1, p.z, 'crust'); });
@@ -4540,6 +4564,7 @@ function guideLead(dt, m, u, d, mx, my, px, py){
   if (A.act !== 1 || !A.doorTrapOff || A.launching || A.launched || !m.visible) return false;
   const cur = A.rt && A.rt.room, T = cur && !A.solved.has(cur.id) ? cur : ROOMS.find(q => !A.solved.has(q.id));
   if (!T) return false;   // every room done: he goes back to walking with you
+  { const co = coopWho(cur); if (co){ coopBarold(dt, m, u, co, mx, my); return true; } }   // a co-op room: he's busy on his plate
   const spot = leadSpot(T); if (!spot) return false;
   // a story to tell (Barold's lore needs him beside you, in a calm moment after a room is done): if you stay behind in a finished room a good
   // while, he comes back to you and tells it, then runs on ahead again. Never while you're in the middle of a puzzle.
@@ -4564,6 +4589,156 @@ function guideLead(dt, m, u, d, mx, my, px, py){
   u.waitT = (u.waitT || 0) + dt; u.idleT = cur === T ? 0 : (u.idleT || 0) + dt;
   if (cur !== T && d > 6 && d < 30 && u.waitT > 12000 && !u.bubble && !DLG.on){ u.waitT = 0; monkeySay(bag('waitIn', WAIT_IN), 3500); }
   return true;
+}
+/* ---- Barold co-op moments (rooms 18 and 19): he stands on a plate for you, and steps OFF it, which you have to cope with ----
+   Room 18 (OR): his plate raises the bridge; then it's HIS turn, he steps off and it sinks in front of him, so the far lever has
+   to hold it up too. Room 19 (NOT): he steps OFF his safety plate on "GO!", and that has to fire the Bounce Pad under you.
+   He is scripted: he only walks along real paths (bfsPath: never into the sand or the hole), and flies only in his one launch
+   arc. The sand and the hole never hurt you in these rooms: they spit you back out on the side you came from. */
+const coopRoom = () => { const r = A.on && A.rt && A.rt.room; return r && r.coop ? r : null; };
+// which side of the sand or hole a cell is on: 0 = the side you came in by, 1 = the far side, -1 = in it
+function coopSide(r, x, y){ const b = (r.quick && r.quick[0]) || (r.chasm && r.chasm[0]); if (!b) return 0; if (x >= b[0] && x <= b[2]) return -1; const e = entryOf(r); return (x < b[0]) === (e[0] < b[0]) ? 0 : 1; }
+// Barold's feet press plates, but only in the co-op rooms (anywhere else he'd set off your circuits by accident)
+function baroldOnCell(x, y){ const m = A.monkey; if (!m || !A.on || !m.visible || m.userData.fly) return false; const [cx, cy] = cellAtWorld(m.position.x, m.position.z); if (cx !== x || cy !== y) return false; const r = roomOf(x, y); return !!(r && r.coop); }
+const coopBridgeUp = r => r.bridge.some(([x, y]) => { const c = at(x, y); return !!c && c.lit; });
+// the hole in room 19 (carved at layout until the room is solved; then it fills in)
+function coopCarve(){
+  A.coopPending = null; A.coopFill = null; A.chasmOrig = {};
+  ROOMS.forEach(r => (r.chasm || []).forEach(([x0, y0, x1, y1]) => { if (A.solved.has(r.id)) return; for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++){ const i = y*NX + x; A.chasmOrig[i] = [S.elev[i], S.fkind[i]]; S.pit[i] = 1; S.elev[i] = 0; S.fkind[i] = 0; } }));
+}
+const isChasm = i => !!(A.chasmOrig && A.chasmOrig[i]);
+function coopFillStart(r){ const cells = []; (r.chasm || []).forEach(([x0, y0, x1, y1]) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (isPit(x, y)) cells.push([x, y]); }); if (cells.length) A.coopFill = {r, cells, k:0, t:0, blocks:[]}; }
+function coopFillFrame(dt){
+  const F = A.coopFill; if (!F) return; F.t += dt;
+  while (F.k < F.cells.length && F.t > F.k*110){ const [x, y] = F.cells[F.k], c = cellPos(x, y), b = new THREE.Mesh(G.cube, M.mossy); b.position.set(c.x, 12 + Math.random()*4, c.z); b.rotation.set(Math.random(), Math.random(), Math.random()); b.raycast = () => {}; decorRoot.add(b); F.blocks.push({m:b, vy:0, land:(A.chasmOrig[y*NX + x] || [3])[0] - .5, done:false}); F.k++; }
+  F.blocks.forEach(o => { if (o.done) return; o.vy -= 40*dt/1000; o.m.position.y += o.vy*dt/1000; o.m.rotation.x *= .95; o.m.rotation.y *= .95; o.m.rotation.z *= .95; if (o.m.position.y <= o.land){ o.m.position.y = o.land; o.m.rotation.set(0, 0, 0); o.done = true; noise(.18, .14, 160); shake = Math.max(shake, .1); } });
+  if (F.k >= F.cells.length && F.blocks.every(o => o.done)){
+    F.cells.forEach(([x, y]) => { const i = y*NX + x, o = A.chasmOrig[i] || [3, 1]; S.pit[i] = 0; S.elev[i] = o[0]; S.fkind[i] = o[1]; delete A.chasmOrig[i]; });
+    buildFloor(); F.blocks.forEach(o => decorRoot.remove(o.m)); A.coopFill = null; sfx.gong();
+    monkeySay('The hole filled itself in! Now nobody can fall in. Not even me.', 5000);
+  }
+}
+// you fell in: a bounce back out to where you jumped from (never a death in a co-op room)
+function coopRescue(kind){
+  const r = coopRoom(); if (!r || !inFP() || S.dead || P.fling) return false;
+  const rt = A.rt, bank = rt.bank || entryOf(r), b = cellPos(...bank);
+  P.sink = 0; P.sandWarned = false; P.vy = 0;
+  P.fling = {ax:P.x, az:P.z, ay:P.y, bx:b.x, bz:b.z, by:floorAt(...bank), t:0, T:1.1, h:kind === 'sand' ? 2.5 : 4.5, cell:bank, room:r};
+  sfx.boing(); showToast(kind === 'sand' ? 'BLURP! The quicksand spat you back out!' : 'BOING! The moss at the bottom is super bouncy!');
+  rt.rescues = (rt.rescues || 0) + 1; plogEvent('wrong');
+  if (rt.rescues <= 2) setTimeout(() => { if (A.on && A.rt === rt) monkeySay(kind === 'sand' ? 'Phew! Don\'t step in the sand. Wait for the bridge to come up.' : 'Phew! Too far to jump. Let the Bounce Pad fling you over.', 6000); }, 900);
+  return true;
+}
+// while Barold walks over the bridge, the lever and the wires in here are left alone (so it can't sink under him)
+function coopLock(c){
+  const r = coopRoom(), C = r && A.rt.coop; if (!C || C.ph !== 'cross' || roomOf(c.x, c.y) !== r) return false;
+  sfx.nope(); showToast('Wait! Barold is on the bridge!'); return true;
+}
+// you're on a powered Bounce Pad in room 19: it flings you over only when it came ON because Barold stepped OFF his plate
+function coopPad(r, x, y){
+  const C = A.rt && A.rt.room === r ? A.rt.coop : null;
+  if (C && C.ph === 'off' && !C.padAtOff && !A.solved.has(r.id)){
+    const land = r.coop.land, a = cellPos(x, y), b = cellPos(...land);
+    sfx.piston(); sfx.boing(); P.fling = {ax:a.x, az:a.z, ay:P.y, bx:b.x, bz:b.z, by:floorAt(...land), t:0, T:1.6, h:6, cell:land, room:r};
+    showToast('WHEEEEEE!'); C.ph = 'flying'; C.launched = true; renderCard(); return;
+  }
+  P.vy = 6.5; P.ground = false; sfx.boing();   // any other time it just bounces you on the spot
+  if (C && !A.solved.has(r.id)){ const sig = buildSig(r); if (C.hopSig !== sig){ C.hopSig = sig; plogEvent('wrong');
+    monkeySay(baroldOnCell(...r.coop.plate) ? 'Not yet! The pad went ON while I\'m still ON my plate. It has to wait until I step OFF!' : 'Wait for me! Let me get on my safety plate first.', 7000); } }
+}
+// walk to a cell (true once he's there)
+function coopGo(m, u, mx, my, to, dt, run){
+  if (mx === to[0] && my === to[1]){ u.path = null; u.follow = false; return true; }
+  u.follow = true; u.run = run || 1.2; u.pathAge = (u.pathAge || 0) + dt;
+  if (!u.path || !u.path.length || u.pathAge > 1500 || u.coopTo !== to.join()){ u.pathAge = 0; u.coopTo = to.join(); u.path = bfsPath([mx, my], to); }   // no way there right now? he waits
+  return false;
+}
+function coopFace(m, u){ u.path = null; u.follow = false; u.target = null; m.rotation.y = Math.atan2(P.x - m.position.x, P.z - m.position.z); }
+// the room Barold's script is running for, if any (guideLead hands him over to it)
+function coopWho(cur){
+  if (A.coopPending){ const r = ROOMS.find(q => q.id === A.coopPending); if (r) return r; }
+  return cur && cur.coop && !A.solved.has(cur.id) && A.rt && A.rt.room === cur && A.rt.coop ? cur : null;
+}
+function coopBarold(dt, m, u, r, mx, my){
+  u.hold = true; u.run = 0;
+  if (DLG.on && !dlgSoft()) return coopFace(m, u);
+  const K = r.coop, me = cellAtWorld(P.x, P.z), pSide = coopSide(r, ...me), bSide = coopSide(r, mx, my);
+  if (A.coopPending === r.id){   // room 19 is solved: his turn on the Bounce Pad, then the hole fills in
+    if (bSide === 1){ if (!A.coopFill) coopFillStart(r); A.coopPending = null; return coopFace(m, u); }
+    if (coopGo(m, u, mx, my, K.pad, dt, 1.3)){ const a = m.position, b = cellPos(...K.bland), T = 1.3;
+      u.fly = {vx:(b.x - a.x)/T, vz:(b.z - a.z)/T, vy:16*T/2, spin:0}; u.path = null; sfx.piston(); sfx.boing(); monkeySay('My turn! WHEEEEE!', 2500); }
+    return;
+  }
+  const C = A.rt.coop, say = (k, t, ms) => { if (!C.said[k]){ C.said[k] = true; monkeySay(t, ms || 6000); } };
+  C.said = C.said || {}; C.t = (C.t || 0) + dt;
+  const set = ph => { C.ph = ph; C.t = 0; };
+  if (K.kind === 'bridge'){
+    if (pSide === 1 && !C.youOver){ C.youOver = true; renderCard(); }
+    if (C.ph === 'go'){ if (coopGo(m, u, mx, my, K.plate, dt)){ set('hold'); if (!coopBridgeUp(r)) say('plate', 'I\'m on the plate! Now wire it to the bridge.'); } }
+    else if (C.ph === 'hold' || C.ph === 'wait'){
+      if (!(mx === K.plate[0] && my === K.plate[1])) return void set('go');
+      coopFace(m, u);
+      if (pSide !== 1){ if (C.ph === 'hold') C.t = 0; return; }
+      if (C.ph === 'hold' && C.t > 900){ monkeySay('My turn! Here I come!', 2500); set('try'); }
+      else if (C.ph === 'wait' && C.t > 2500 && buildSig(r) !== C.sig){ monkeySay('Ooh, something changed! I\'ll try again...', 3000); set('try'); }
+      else if (C.ph === 'wait' && C.t > 40000) say('ask', 'Is there something on YOUR side that could hold the bridge up?', 7000);
+    }
+    else if (C.ph === 'try'){
+      if (pSide === 0) return void set('go');
+      if (!coopGo(m, u, mx, my, K.foot, dt)){ C.t = 0; return; }
+      coopFace(m, u);
+      if (C.t > 1600){
+        if (coopBridgeUp(r)){ set('cross'); monkeySay('Here I come! Teamwork!', 2500); }
+        else { C.sig = buildSig(r); C.fails = (C.fails || 0) + 1; plogEvent('wrong'); monkeySay(C.fails === 1 ? 'Oh no! The bridge only stays up while I\'m ON the plate!' : 'Still sinking! It needs power when I\'m NOT on my plate.', 6000); set('back'); }
+      }
+    }
+    else if (C.ph === 'back'){ if (coopGo(m, u, mx, my, K.plate, dt)){ set('wait'); say('without', 'I\'ll hold it for now. Can you keep it up WITHOUT me on the plate?', 7000); } }
+    else if (C.ph === 'cross'){
+      const c = at(mx, my);
+      if (isQuick(mx, my) && !(c && c.t === 'bridge' && c.lit)){ coopGo(m, u, mx, my, K.foot, dt, 1.6); return; }   // (it can't sink under him, but just in case: straight back off it)
+      if (coopGo(m, u, mx, my, K.far, dt, 1.3)){ coopFace(m, u); C.ph = 'done'; solveRoom(r); }
+    }
+    return;
+  }
+  // ---- the Bounce Pad (room 19)
+  const pad = at(...K.pad), padLit = !!(pad && pad.lit), onPad = me[0] === K.pad[0] && me[1] === K.pad[1] && !P.fling;
+  if (!onPad) C.left = true;
+  if (C.ph === 'go'){ if (coopGo(m, u, mx, my, K.plate, dt)){ set('hold'); say('plate', 'I\'m on my safety plate! Stand on the Bounce Pad.'); } }
+  else if (C.ph === 'hold'){
+    if (!(mx === K.plate[0] && my === K.plate[1])) return void set('go');
+    coopFace(m, u);
+    if (!onPad || padLit || !C.left){ C.t = 0; return; }
+    if (C.t > 700){ monkeySay('Ready? 3... 2... 1... GO!', 2400); set('count'); }
+  }
+  else if (C.ph === 'count'){ coopFace(m, u); if (C.t > 2300 && !stillTalking(m)){
+    let off = null; for (const [dx, dy] of DIRS){ const x = K.plate[0] + dx, y = K.plate[1] + dy; if (!off && passableCell(x, y) && !at(x, y) && coopSide(r, x, y) === 0) off = [x, y]; }
+    if (!off) for (const [dx, dy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]){ const x = K.plate[0] + dx, y = K.plate[1] + dy; if (!off && passableCell(x, y) && !at(x, y) && coopSide(r, x, y) === 0) off = [x, y]; }
+    C.off = off || entryOf(r); C.padAtOff = padLit; set('off'); } }
+  else if (C.ph === 'off'){
+    coopGo(m, u, mx, my, C.off, dt);
+    if (C.t > 2800){ C.left = false; plogEvent('wrong');
+      monkeySay(padLit ? 'Hmm. The pad was ON the whole time. It should only go ON when I step OFF.' : 'Nothing! When I step OFF my plate, the pad has to switch ON.', 7000); set('go'); }
+  }
+  else if (C.ph === 'flying'){ if (!(mx === C.off[0] && my === C.off[1])) coopGo(m, u, mx, my, C.off, dt); else coopFace(m, u); }
+}
+// each frame in a co-op room: where your last safe floor was, the bouncy hole, the room's checks
+function coopFrame(dt){
+  coopFillFrame(dt);
+  const r = coopRoom(); if (!r) return;
+  const rt = A.rt; if (!rt.coop) rt.coop = {ph:'go', t:0};
+  const [x, y] = cellAtWorld(P.x, P.z);
+  if (!P.fling && P.ground && roomOf(x, y) === r && coopSide(r, x, y) >= 0 && !isQuick(x, y) && !isPit(x, y)) rt.bank = [x, y];
+  if (isPit(x, y) && !P.fling && P.y < floorAt(...(rt.bank || entryOf(r))) - 1.2) coopRescue('pit');
+  const C = rt.coop;
+  if (r.coop.kind === 'pad' && C.ph === 'flying' && !P.fling && !A.solved.has(r.id)){
+    if (coopSide(r, x, y) === 1){ A.coopPending = r.id; solveRoom(r); renderCard(); }
+    else C.ph = 'go';
+  }
+}
+function coopCardHTML(r, rt){
+  const C = rt.coop || {}, done = A.solved.has(r.id), tick = v => v ? '&#10003;' : '&#9675;';
+  const rows = r.coop.kind === 'bridge' ? [[C.youOver || done, 'You get over the sand'], [done, 'Barold gets over too']] : [[C.launched || done, 'BOING! You fly over the hole'], [done && !A.coopPending, 'Then Barold flies over']];
+  return `<h3>Teamwork</h3><div class="note">${rows.map(([v, t]) => tick(v) + ' ' + t).join('<br>')}</div>`;
 }
 const starTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 32; const g = c.getContext('2d'); g.fillStyle = '#ffe14a'; g.strokeStyle = '#7a5200'; g.lineWidth = 2; g.beginPath(); for (let i=0;i<10;i++){ const r = i % 2 ? 6 : 14, a = i*Math.PI/5 - Math.PI/2; g.lineTo(16 + Math.cos(a)*r, 16 + Math.sin(a)*r); } g.closePath(); g.fill(); g.stroke(); return new THREE.CanvasTexture(c); })();
 function faintMonkey(m){
@@ -4675,6 +4850,7 @@ function troopField(r, tx, ty){
   return {get:(x, y) => inside(x, y) ? dist[id(x, y)] : -1, cells:q};
 }
 function troopOnCell(x, y){
+  if (baroldOnCell(x, y)) return true;
   for (const m of (A.extras || [])){ if (m.userData.fly) continue; const [cx, cy] = cellAtWorld(m.position.x, m.position.z); if (cx === x && cy === y) return true; }
   if (!TROOP.list.length) return false;
   for (const m of TROOP.list){ const u = m.userData; if (u.fly) continue; const [cx, cy] = cellAtWorld(m.position.x, m.position.z); if (cx === x && cy === y) return true; }
@@ -6367,6 +6543,7 @@ function launcherPlayer(dt){
   if (P.fling){ if (S.dead || !A.on) P.fling = null; else { flingFrame(dt || 16); return; } }
   const [x, y] = cellAtWorld(P.x, P.z), c = at(x, y);
   if (!(c && c.t === 'launcher' && c.lit && P.y < floorAt(x, y) + .05 && inFP() && !S.dead)) return;
+  { const rc = S.mode === 'adventure' ? roomOf(x, y) : null; if (rc && rc.coop && rc.coop.kind === 'pad'){ coopPad(rc, x, y); return; } }
   const r = S.mode === 'adventure' ? roomOf(x, y) : null, land = r && flingLanding(r, x, y);
   sfx.piston(); sfx.boing();
   if (!land){ P.vy = 11; return; }
@@ -6874,6 +7051,7 @@ function advFrame(dt, now){
   }
   // monkeys: the guide wanders the room and stops to talk; the others roam the jungle and the hall
   if (!tut && !A.launching) guideFollow(dt);
+  coopFrame(dt);
   // anyone who is talking stands still and faces you (even mid-lead): nobody wanders off mid-sentence
   if (A.monkey) monkeyStep(A.monkey, dt, guideArea(), (A.monkey.userData.run ? stillTalking(A.monkey) : !!A.monkey.userData.bubble) || (DLG.on && !dlgSoft()) || !!tut);   // (a soft box is already on screen: he can keep walking while it reads out)
   (A.extras || []).forEach(m => monkeyStep(m, dt, m.userData.area, !!m.userData.bubble));
@@ -7095,10 +7273,10 @@ function checkAdventure(){
     if (!rt.ownSaid){ rt.ownSaid = true; plogEvent('cheat'); sfx.nope(); monkeySay(ownPowerLine(r, own), 10000); renderCard(); }
     return; } }
   if (rt.sigIn === undefined) rt.sigIn = buildSig(r);   // (a room that STARTS with a wire running past, like room 4, waits until you change something)
-  const past = STABLE && !rt.pastSaid && ['lit', 'pulse', 'boom'].includes(r.check) && buildSig(r) !== rt.sigIn ? alongsideOut(r) : null;
+  const past = STABLE && !rt.pastSaid && ['lit', 'pulse', 'boom', 'coop'].includes(r.check) && buildSig(r) !== rt.sigIn ? alongsideOut(r) : null;
   if (past){ rt.pastSaid = true; sfx.nope(); monkeySay(`So close! The wire runs PAST the ${OUT_WORD[past.t] || 'thing'}. Power only comes out of the END of a wire, like an arrow. Make the end point straight INTO it.`, 10000); }
   // (else) a wire that ran out of power (rooms 20+ teach "how far" properly, so they don't get this line)
-  else if (STABLE && !rt.farSaid && ['lit', 'pulse', 'boom'].includes(r.check) && A.act !== 2 && r.id < 20 && !r.out.every(([x, y]) => outLit(x, y)) && ranOutIn(r)){ rt.farSaid = true; sfx.nope(); monkeySay('The power ran OUT! It gets a bit weaker on every dust, and after 15 dust there\'s none left. Find a shorter way!', 10000); }
+  else if (STABLE && !rt.farSaid && ['lit', 'pulse', 'boom', 'coop'].includes(r.check) && A.act !== 2 && r.id < 20 && !r.out.every(([x, y]) => outLit(x, y)) && ranOutIn(r)){ rt.farSaid = true; sfx.nope(); monkeySay('The power ran OUT! It gets a bit weaker on every dust, and after 15 dust there\'s none left. Find a shorter way!', 10000); }
   if (r.check === 'lit'){
     // lit SOME outputs with a lever or red block jammed right next to them: works in real Minecraft, but say why it doesn't count here
     const foreign = n => n && !(r.give || []).includes(n.t) && !r.fixed.some(f => f.x === n.x && f.y === n.y);
@@ -7216,6 +7394,8 @@ function checkAdventure(){
       if (resetOn) rt.armed2 = true;
       if (rt.armed2 && !resetOn){ rt.hold = !lit ? rt.hold + 1 : 0; if (rt.hold >= 15) solveRoom(r); }
     }
+  } else if (r.check === 'coop'){
+    { const C = rt.coop || {}, k = [C.ph, C.youOver, C.launched].join(); if (rt.coopCard !== k){ rt.coopCard = k; renderCard(); } }
   } else if (r.check === 'seq'){
     checkSeq(r, rt);
   } else if (r.check === 'table'){
@@ -7241,9 +7421,16 @@ function checkAdventure(){
       monkeySay(r.fn(true) ? 'Ooh, it\'s BACKWARDS! One grumpy torch flips it. What would a SECOND torch do?' : 'It\'s COPYING, not flipping! The output does the same as the input. A grumpy torch makes it do the OPPOSITE.', 11000);
     } else if (!match && !rt.missShown){
       rt.missShown = true; sfx.nope();
-      monkeySay(r.tired && want && countDust(r) >= 12 ? r.tired : 'Hmm, not quite. Tap me (from the front!) for a clue.', 9000);
+      monkeySay(roomMiss(r) || (r.tired && want && countDust(r) >= 12 ? r.tired : 'Hmm, not quite. Tap me (from the front!) for a clue.'), 9000);
     }
   }
+}
+// a room's own kind word for the wrong plan it was built to tempt (room 15: a wire into the lamp, or one running PAST the block)
+function roomMiss(r){
+  const fed = ([x, y]) => [0, 1, 2, 3].map(d => { const n = at(x + DIRS[d][0], y + DIRS[d][1]); return n && n.t === 'dust' && n.pw > 0 ? !!n.pts[opp(d)] : null; }).filter(v => v !== null);
+  if (r.missInto){ const f = fed(r.missInto); if (f.length && !f.some(Boolean)) return 'So close! Your wire runs PAST the stone block. Its END has to point straight INTO the block.'; }
+  if (r.missLamp && fed(r.out[0]).some(Boolean)) return 'Your wire goes into the lamp. But the lamp is ALREADY on! More power can\'t switch it OFF. What makes the TORCH go off?';
+  return null;
 }
 function checkBonus(r, rt){
   const b = r.bonus; if (!b || A.bonus.has(r.id)) return;
@@ -7256,6 +7443,12 @@ function checkBonus(r, rt){
     ok = S.stable && toyOn && cond;
   }
   if (!ok) return;
+  if (b.badge){   // an ordinary bonus between the toys (Tom: toys every 3-4 rooms): a badge and a funny card, still saying why
+    A.bonus.add(r.id); sfx.chime(); confetti(); const why = bonusWhy(r, b, rt, id => (ITEMS.find(i => i.id === id) || {name:id}).name);
+    monkeySay(`${why} BONUS: the ${b.badge} badge!`, 9000); showToast(`${why} BONUS: ${b.badge} badge!`);
+    if (b.card) setTimeout(() => { if (A.on) showCard('BADGE: ' + b.badge, b.card); }, 1500);
+    renderCard(); advSaveSoon(); return;
+  }
   A.bonus.add(r.id); A.unlocked.add(b.reward);
   const it = ITEMS.find(i => i.id === b.reward);
   sfx.chime(); confetti(); if (b.reward === 'fart') setTimeout(() => sfx.fart(), 400);
@@ -7266,6 +7459,7 @@ function checkBonus(r, rt){
   refreshHotbar(); renderCard(); advSaveSoon();
 }
 function bonusWhy(r, b, rt, toyNm){
+  if (b.why) return b.why;
   if (b.kind === 'dust'){ const n = countDust(r); return `You used only ${n} dust!`; }
   if (b.kind === 'pulses') return `You made it go ${b.n} ${b.unit || 'times'}!`;
   if (b.kind === 'toyLit') return `You made the ${toyNm(b.toy)} go off with the ${r.out.length > 1 ? 'lamps' : 'lamp'}!`;
@@ -8035,6 +8229,7 @@ function advHint(){
   if (!r && A.room !== 'hall' && A.solved.size && A.act !== 2){ const c = objectiveCell(); if (c){ forceTrail(c); const vines = S.ladder[c[1]*NX + c[0]]; showCard('Hint', vines ? 'Climb the VINES! Walk right into them and keep going.' : 'Follow the glowing trail to the next room. It ends at the tall beam of light.'); return; } }
   if (!r){ showCard('Hint', A.room === 'hall' ? HEART.hint : 'The temple is north. Walk in through the golden pillars.'); return; }
   if (r !== HEART && A.solved.has(r.id)) return hintDone(r);
+  if (r.nudge && A.rt && !A.rt.nudged){ A.rt.nudged = true; showCard('Hint', r.nudge + '<br><small>Still stuck? Press again for a bigger clue.</small>'); return; }   // the first press is a nudge, not the answer
   L.hintLevel = Math.min(r.sol.length ? 2 : 1, (L.hintLevel || 0) + 1);
   const onlyCuts = r.sol.length && r.sol.every(g => g.t === 'air');
   if (onlyCuts) return hintCut(r);
@@ -8161,7 +8356,7 @@ window.__game = {
   pad: {poll:pollPad, PB, P, S, DLG, dlgStart, openBook:() => openBook(firstUnlocked()), reset(){ padMode = false; padPrev = []; padId = ''; padFocus(null); }, mode:() => padMode, fam:() => padFam, sneak:() => padSneak, focus:() => padFocusEl, ok:padOK, back:padBack, tip:() => tipText().join(''), tut:id => TUT_B.find(q => q.id === id).say(), sel:() => sel, fp:() => viewFP, hintLevel:() => L.hintLevel, inFP},
   adv: {
     start(fresh){ if (fresh){ advMem = null; try { localStorage.removeItem(ADV_KEY); } catch (e) {} } startAdventure(); },
-    tp(x, y){ const c = cellPos(x, y); P.x = c.x; P.z = c.z; P.y = c.y; stepFP(0); advFrame(0, 0); },
+    tp(x, y){ const c = cellPos(x, y); P.fling = null; P.x = c.x; P.z = c.z; P.y = c.y; stepFP(0); advFrame(0, 0); },
     room(){ return A.rt && A.rt.room ? A.rt.room.id : A.room; },
     playerY(){ return P.y; }, flinging(){ return !!P.fling; }, pitch(){ return P.pitch; },
     cellNear(x, z){ return cellAtWorld(x, z); }, robotScale(){ const f = fx.find(q => q.kind === 'robot'); return f ? f.g.scale.x : 0; }, troopFlying(){ return TROOP.list.filter(m => m.userData.fly).length; }, itemName(id){ return (ITEMS.find(i => i.id === id) || {}).name; },
@@ -8171,7 +8366,7 @@ window.__game = {
     monkeyPos(){ return A.monkey ? [...cellAtWorld(A.monkey.position.x, A.monkey.position.z)] : null; }, baroldXZ(){ return A.monkey ? [A.monkey.position.x, A.monkey.position.z, A.monkey.position.y] : null; }, doorStand(){ return A.doorTrapOff ? [ENTRANCE[0], ENTRANCE[1] + 2] : TRAP.stand; }, trapBlock(){ return TRAP.block; },
     fartAt(x, y){ monkeysFlee(cellPos(x, y)); },
     monkeyFaint(){ return !!(A.monkey && A.monkey.userData.faint > 0); },
-    tut(){ return tut ? tutList()[tut.i].id : 'done'; }, tutPart(){ return tut ? tut.list : null; }, tutSpot(){ return tut ? (tut.placed || tutSpot()) : null; }, skipOpening(){ endOpening(); }, opening(){ return !!A.openCine; }, objective(){ return objectiveCell(); }, entrance(){ return ENTRANCE; }, goAct(n){ goAct(n); }, act(){ return A.act; }, funMet(){ return !!A.funMet; }, funDone(){ return !!A.funDone; }, depot(){ return FUN_DEPOT; }, captainCell(){ return A.captain ? cellAtWorld(A.captain.position.x, A.captain.position.z) : null; }, baroldCell(){ return A.monkey ? cellAtWorld(A.monkey.position.x, A.monkey.position.z) : null; }, scareFromBehind(){ const m = A.monkey; if (!m) return false; const fx = Math.sin(m.rotation.y), fz = Math.cos(m.rotation.y); P.x = m.position.x - fx*1.3; P.z = m.position.z - fz*1.3; P.yaw = Math.atan2(-(m.position.x - P.x), -(m.position.z - P.z)); P.pitch = -.15; stepFP(0); const [cx, cy] = centre(); act(cx, cy, 'use'); return A.disc.has('scare'); }, crackCells(){ const out = []; for (let x = SHRINE[0] - 3; x <= SHRINE[0] + 3; x++) for (let y = SHRINE[1] - 3; y <= SHRINE[1] + 3; y++){ const c = at(x, y); if (c && c.t === 'crackwall') out.push([x, y]); } return out; }, chestCells(){ return (A.chestMeshes || []).filter(ch => !ch.userData.open).map(ch => ch.userData.cell); }, dancePlates(){ return [[-2, -2], [2, -2], [-2, 2], [2, 2]].map(([ox, oy]) => [DANCE[0] + ox, DANCE[1] + oy]); },  grabPickups(){ let n = 0; for (let k = 0; k < 3; k++){ pickupsFrame(16); (A.pickups || []).slice().forEach(pk => { this.walkTo(pk.x, pk.y); for (let j = 0; j < 30; j++){ stepFP(16); pickupsFrame(16); } n++; }); } $('#why').hidden = true; return n; }, pickups(){ return (A.pickups || []).map(pk => pk.t); }, found(){ return [...A.found]; }, trap(){ return {on:trapOn(), gear:gearOn(), gap:TRAP.gap, trapWire:TRAP.trapWire, doorWire:TRAP.doorWire, hole:TRAP.hole, off:!!A.doorTrapOff, met:!!A.trapMet, filling:!!A.filling}; }, lumPairs(){ const L2 = c => { const r = c.r, g = c.g, b = c.b; return .2126*r + .7152*g + .0722*b; }; const avg = cv => { const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data; let t = 0, n = 0; for (let i = 0; i < d.length; i += 4){ if (d[i+3] < 20) continue; t += (.2126*d[i] + .7152*d[i+1] + .0722*d[i+2])/255; n++; } return n ? t/n : 0; }; return {dustOff:L2(dustMats[0].color), dustOn:L2(dustMats[15].color), lampOff:avg(CV.lampOff), lampOn:avg(CV.lampOn)}; }, itemNames(){ return ITEMS.map(i => [i.id, i.name]); }, discTotal(){ return DISCOVERIES.length; }, bonuses(){ return {got:[...A.bonus], total:ROOMS.filter(r => r.bonus).map(r => r.id)}; }, toys(){ return [...A.unlocked]; }, passKept(){ return pwKept(); }, gates(){ return [...(A.gates || [])]; }, sound(on){ soundOn = !!on; updSoundBtn(); }, intro(){ return {at:A.introAt, i:A.introI}; }, tapBarold(){ dlgAdvance(); dlgAdvance(); }, dlgOn(){ return DLG.on; }, feed(){ return FEED; }, clock(){ return A.clock || 0; }, renderInfo(){ const m = renderer.info.memory; return {calls:renderer.info.render.calls, tris:renderer.info.render.triangles, geo:m.geometries, tex:m.textures}; }, gotKit(){ return !!A.gotKit; }, skipTut(){ endTutorial(); },
+    tut(){ return tut ? tutList()[tut.i].id : 'done'; }, tutPart(){ return tut ? tut.list : null; }, tutSpot(){ return tut ? (tut.placed || tutSpot()) : null; }, skipOpening(){ endOpening(); }, opening(){ return !!A.openCine; }, objective(){ return objectiveCell(); }, entrance(){ return ENTRANCE; }, goAct(n){ goAct(n); }, act(){ return A.act; }, funMet(){ return !!A.funMet; }, funDone(){ return !!A.funDone; }, depot(){ return FUN_DEPOT; }, captainCell(){ return A.captain ? cellAtWorld(A.captain.position.x, A.captain.position.z) : null; }, baroldCell(){ return A.monkey ? cellAtWorld(A.monkey.position.x, A.monkey.position.z) : null; }, baroldTo(x, y){ if (A.monkey){ const c = cellPos(x, y); A.monkey.position.set(c.x, c.y, c.z); A.monkey.userData.path = null; } }, coop(){ return A.rt && A.rt.coop ? JSON.parse(JSON.stringify(A.rt.coop)) : null; }, coopPending(){ return A.coopPending || null; }, isPit(x, y){ return isPit(x, y); }, isQuick(x, y){ return isQuick(x, y); }, scareFromBehind(){ const m = A.monkey; if (!m) return false; const fx = Math.sin(m.rotation.y), fz = Math.cos(m.rotation.y); P.x = m.position.x - fx*1.3; P.z = m.position.z - fz*1.3; P.yaw = Math.atan2(-(m.position.x - P.x), -(m.position.z - P.z)); P.pitch = -.15; stepFP(0); const [cx, cy] = centre(); act(cx, cy, 'use'); return A.disc.has('scare'); }, crackCells(){ const out = []; for (let x = SHRINE[0] - 3; x <= SHRINE[0] + 3; x++) for (let y = SHRINE[1] - 3; y <= SHRINE[1] + 3; y++){ const c = at(x, y); if (c && c.t === 'crackwall') out.push([x, y]); } return out; }, chestCells(){ return (A.chestMeshes || []).filter(ch => !ch.userData.open).map(ch => ch.userData.cell); }, dancePlates(){ return [[-2, -2], [2, -2], [-2, 2], [2, 2]].map(([ox, oy]) => [DANCE[0] + ox, DANCE[1] + oy]); },  grabPickups(){ let n = 0; for (let k = 0; k < 3; k++){ pickupsFrame(16); (A.pickups || []).slice().forEach(pk => { this.walkTo(pk.x, pk.y); for (let j = 0; j < 30; j++){ stepFP(16); pickupsFrame(16); } n++; }); } $('#why').hidden = true; return n; }, pickups(){ return (A.pickups || []).map(pk => pk.t); }, found(){ return [...A.found]; }, trap(){ return {on:trapOn(), gear:gearOn(), gap:TRAP.gap, trapWire:TRAP.trapWire, doorWire:TRAP.doorWire, hole:TRAP.hole, off:!!A.doorTrapOff, met:!!A.trapMet, filling:!!A.filling}; }, lumPairs(){ const L2 = c => { const r = c.r, g = c.g, b = c.b; return .2126*r + .7152*g + .0722*b; }; const avg = cv => { const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data; let t = 0, n = 0; for (let i = 0; i < d.length; i += 4){ if (d[i+3] < 20) continue; t += (.2126*d[i] + .7152*d[i+1] + .0722*d[i+2])/255; n++; } return n ? t/n : 0; }; return {dustOff:L2(dustMats[0].color), dustOn:L2(dustMats[15].color), lampOff:avg(CV.lampOff), lampOn:avg(CV.lampOn)}; }, itemNames(){ return ITEMS.map(i => [i.id, i.name]); }, discTotal(){ return DISCOVERIES.length; }, bonuses(){ return {got:[...A.bonus], total:ROOMS.filter(r => r.bonus).map(r => r.id)}; }, toys(){ return [...A.unlocked]; }, passKept(){ return pwKept(); }, gates(){ return [...(A.gates || [])]; }, sound(on){ soundOn = !!on; updSoundBtn(); }, intro(){ return {at:A.introAt, i:A.introI}; }, tapBarold(){ dlgAdvance(); dlgAdvance(); }, dlgOn(){ return DLG.on; }, feed(){ return FEED; }, clock(){ return A.clock || 0; }, renderInfo(){ const m = renderer.info.memory; return {calls:renderer.info.render.calls, tris:renderer.info.render.triangles, geo:m.geometries, tex:m.textures}; }, gotKit(){ return !!A.gotKit; }, skipTut(){ endTutorial(); },
     look(dyaw){ P.yaw += dyaw; stepFP(0); },
     setLook(yaw, pitch){ P.yaw = yaw; P.pitch = pitch || 0; stepFP(0); },
     solved(id){ return A.solved.has(id); }, crystals(){ return A.crystals.size; }, unlocked(){ return [...A.unlocked]; },
