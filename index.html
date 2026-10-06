@@ -1903,7 +1903,7 @@ function serializeBuild(){
 let saveTimer = 0;
 function saveBuildSoon(){
   if (A.on) return advSaveSoon();
-  if (!L || S.simulating) return;
+  if (!L || S.simulating || L.def.gym) return;
   const id = L.def.id; clearTimeout(saveTimer);
   saveTimer = setTimeout(() => { if (L && L.def.id === id) writeBuild(id, serializeBuild()); }, 400);
 }
@@ -1922,7 +1922,7 @@ function applyBuild(b){
   syncVisuals(); renderCard();
 }
 function loadLesson(n, fresh){
-  const def = LESSONS.find(l => l.id === n); if (!def) return;
+  const def = n === GYM_ID ? GYM.def : LESSONS.find(l => l.id === n); if (!def) return;
   if (def.kind === 'free') sbYard(); else { setWorld(16, 16, 'lab'); buildWalls(); }   // free build: its own walled yard
   advRootsShow(false); sbClear();   // the temple's bits stay behind (they'd float about with nothing solid in them)
   clearWorld();
@@ -1950,14 +1950,14 @@ function loadLesson(n, fresh){
   (special.length ? special : L.ghosts.slice(0, 3)).forEach(g => g.key = true);
   L.btns = S.grid.filter(c => c && c.t === 'button' && c.locked);
   syncVisuals();
-  if (fresh) writeBuild(def.id, null); else applyBuild(readBuild(def.id));
+  if (def.gym){} else if (fresh) writeBuild(def.id, null); else applyBuild(readBuild(def.id));   // the gate gym keeps nothing
   focusCamera(def); spawnPlayer(def); if (def.kind === 'free') sbSpawn();
   $('#lessonNum').textContent = (def.kind === 'free' ? 'Free build' : 'Mission ' + def.id) + (def.gate !== 'free' && def.gate !== 'wire' && def.gate !== 'buffer' && def.gate !== 'clock' ? ' · ' + def.gate.toUpperCase() : '');
   $('#lessonTitle').textContent = def.name;
   $('#goalText').textContent = def.intro || def.goal;
   renderCard();
   hideToast(); $('#why').hidden = true; CARDQ.length = 0;
-  if (def.kind === 'free') setTimeout(() => { if (isFree()) sbWelcome(); }, 500);
+  if (def.kind === 'free') setTimeout(() => { if (isFree() && !GYM.quiet) sbWelcome(); }, 500);
 }
 function combo(){ return L.inputs.map(c => c.on); }
 function rowIndex(cb){ return cb.reduce((a, v) => (a << 1) | (v ? 1 : 0), 0); }
@@ -2056,6 +2056,7 @@ function verifyAll(){
 }
 function complete(){
   L.done = true;
+  if (L.def.gym) return gymStageDone();   // the gate gym: no stars, no progress
   if (L.def.payoff === 'boom' && L.payCell && at(L.payCell.x, L.payCell.y) === L.payCell){ L.payCell.locked = false; L.payCell.fuse = 8; }
   if (L.def.payoff === 'fart') sfx.fart();
   const stars = 3 - (L.hintLevel >= 2 ? 1 : 0) - (L.hintLevel >= 3 ? 1 : 0);
@@ -2259,6 +2260,7 @@ function renderCard(){
     return;
   }
   card.hidden = false;
+  if (def.card){ card.innerHTML = def.card(); return; }
   if (def.kind === 'free'){ card.innerHTML = `<h3>Free build</h3><div class="note">Try a clock, a NOT, or your own idea!</div>`; return; }
   if (def.kind === 'clock'){
     let h = `<h3>Blinks</h3><div class="blinks">`;
@@ -2274,7 +2276,7 @@ function renderCard(){
   let h = `<h3>Truth table</h3><table><tr>${rowInputs(0,k).map((_,i)=>`<th>${'ABC'[i]}</th>`).join('')}${outs.map(o=>`<th>${o.label||'Lamp'}</th>`).join('')}<th></th></tr>`;
   L.rows.forEach((done, r) => {
     const ins = rowInputs(r, k);
-    h += `<tr class="${r===cur?'now':''}">${ins.map(v => `<td>${svgLever(v)}</td>`).join('')}${wants(def, ins).map(v => `<td>${svgLamp(v)}</td>`).join('')}<td class="chk ${L.bad.has(r)?'bad':''}">${done?'&#10003;':L.bad.has(r)?'&#10007;':''}</td></tr>`;
+    h += `<tr class="${r===cur?'now':''}">${ins.map(v => `<td>${svgLever(v)}</td>`).join('')}${wants(def, ins).map(v => `<td>${def.play && !done ? '<b style="font-size:20px">?</b>' : svgLamp(v)}</td>`).join('')}<td class="chk ${L.bad.has(r)?'bad':''}">${done?'&#10003;':L.bad.has(r)?'&#10007;':''}</td></tr>`;
   });
   card.innerHTML = h + '</table>';
 }
@@ -3060,6 +3062,7 @@ To use it on the Switch again, plug it into the Switch dock with its cable (Joy-
 
 /* ================= screens ================= */
 function showMenu(){
+  if (GYM.on) return gymLeave();   // the gate gym: going to the menu goes Back to where you were
   stopAdventure(); stopMoving();
   if (locked) try { document.exitPointerLock(); } catch (_) {}
   $('#cele').hidden = true; $('#hud').hidden = true; $('#book').hidden = true; $('#menu').hidden = false;
@@ -3496,7 +3499,7 @@ function playWithLoader(go){
 $('#btnPlay').addEventListener('click', () => { ac(); playWithLoader(startAdventure); });
 $('#btnGates').addEventListener('click', () => {
   sfx.click(); const sv = advLoad(), got = new Set(sv && sv.gates || []), asked = new Set(sv && sv.quiz || []);
-  openPane('Gate Cards', `<p>Logic gates are the tiny decision-makers inside every computer, phone and games console. Each card is one you've used for real.</p>${Object.keys(GATE_CARDS).map(k => got.has(k) ? `<div style="border:3px solid #5a3a00;background:#fff8e0;padding:8px;margin:8px 0;overflow:hidden"><h3 style="margin:0 0 4px">${GATE_CARDS[k].name}</h3>${asked.has(k) ? gateCardHTML(k) : gateCardHTML(k, true) + quizHTML(k)}</div>` : `<div style="border:3px dashed #888;padding:8px;margin:8px 0;color:#777"><b>??? gate</b>: keep exploring to find this one.</div>`).join('')}`);
+  openPane('Gate Cards', `<p>Logic gates are the tiny decision-makers inside every computer, phone and games console. Each card is one you've used for real.</p>${Object.keys(GATE_CARDS).map(k => got.has(k) ? `<div style="border:3px solid #5a3a00;background:#fff8e0;padding:8px;margin:8px 0;overflow:hidden"><h3 style="margin:0 0 4px;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap">${GATE_CARDS[k].name}${gymBtnHTML(k)}</h3>${asked.has(k) ? gateCardHTML(k) : gateCardHTML(k, true) + quizHTML(k)}</div>` : `<div style="border:3px dashed #888;padding:8px;margin:8px 0;color:#777"><b>??? gate</b>: keep exploring to find this one.</div>`).join('')}`);
 });
 $('#btnNew').addEventListener('click', () => { sfx.click(); openSaves('new'); });   // a new game is a new save: the others stay safe
 $('#btnSaves').addEventListener('click', () => { sfx.click(); openSaves('list'); });
@@ -3790,7 +3793,7 @@ function frame(now){
   if (inFP()){ stepFP(dt); if (!lastTouch || padMode){ const [cx,cy] = centre(); hover(cx, cy); } else if (outline.visible){ outline.visible = false; previewRoot.clear(); previewKey = ''; } }
   else { setFov(TOP_FOV); keyMoveOverhead(dt); }
   advFrame(dt, now); sprayFrame(dt);
-  runFx(dt); sbFrame(dt);
+  runFx(dt); sbFrame(dt); achFrame(dt);
   if (shake > 0){ shake = Math.max(0, shake - dt/1000); if (!inFP()) updateCam(); camera.position.x += (Math.random()-.5)*shake; camera.position.y += (Math.random()-.5)*shake; }
   const pulse = reduceMotion ? .5 : .42 + .16*Math.sin(now*0.004);
   for (const m of ghostMats) m.opacity = pulse;
@@ -5251,10 +5254,12 @@ const DISCOVERIES = [
   {id:'bonk', name:'Bonk!', clue:'Some doors REALLY don\'t want visitors.'}
 ];
 function discover(id){
-  if (!A.on || A.disc.has(id)) return;
+  if (!A.on) return;
+  if (id === 'bonk' || id === 'poke') achCount(id);   // Ouch (3 bonks), Big Mouth (20 pokes)
+  if (A.disc.has(id)) return;
   const d = DISCOVERIES.find(q => q.id === id); if (!d) return;
   A.disc.add(id); advSaveSoon();
-  setTimeout(() => { sfx.row(); showToast(`DISCOVERY! ${d.name} (${A.disc.size} of ${DISCOVERIES.length})`); }, 700);
+  achToast(ACH_BY[id] || d);   // an achievement now: icon, name, funny line
 }
 const A = { on:false, disc:new Set(), bonus:new Set(), solved:new Set(), crystals:new Set(), unlocked:new Set(['rblock']), found:new Set(['dust']), room:null, rt:{}, crystalsMesh:[], monkey:null, rocket:null, launched:false };
 function advLoad(){ return slotLoad(slotCur()); }   // the save you're playing (see the save slots, near the menu code)
@@ -5275,7 +5280,7 @@ function migrateFun(s){
 }
 function advSerialize(){
   return { v:1, funV:2, actV:2, whySeen:[...(A.whySeen || [])], layout:LAYOUT, act:A.act || 1, cellsAct:A.act || 1, funMet:!!A.funMet, funDone:!!A.funDone, apeMet:!!A.apeMet, apeDone:!!A.apeDone, rode:!!A.rode, apeBeats:[...(A.apeBeats || [])], met:!!A.metBarold, kit:!!A.gotKit, trapOff:!!A.doorTrapOff, trapMet:!!A.trapMet, found:[...(A.found || [])], gates:[...(A.gates || [])], shrine:!!A.shrineOpen, secrets:[...(A.secrets || [])], chests:[...(A.chests || [])], notes:[...(A.notes || [])], disc:[...A.disc], launched:!!A.launched, mapBack:!!A.mapBack, bonus:[...A.bonus], solved:[...A.solved], crystals:[...A.crystals], unlocked:[...A.unlocked],
-    lore:[...(A.lore || [])], quiz:[...(A.quizDone || [])],
+    lore:[...(A.lore || [])], quiz:[...(A.quizDone || [])], ach:[...ACHS.got], achN:ACHS.n,
     cells: S.grid.filter(c => c && !c.locked).map(c => [c.t, c.x, c.y, c.dir, c.delay, c.attach, onBit(c)]),
     levers: Object.fromEntries(S.grid.filter(c => c && c.locked && c.t === 'lever').map(c => [c.x + ',' + c.y, c.on ? 1 : 0])),
     player: {x:+P.x.toFixed(2), z:+P.z.toFixed(2), yaw:+P.yaw.toFixed(2)} };
@@ -9011,7 +9016,7 @@ function bannedHere(id){
   return false;
 }
 function kitFor(){
-  if (!A.on) return (L && L.def && L.def.kind === 'free') ? sandboxKit() : null;   // free build: the basics, plus what the temple has won
+  if (!A.on) return (L && L.def && L.def.kind === 'free') ? sandboxKit() : (L && L.def && L.def.gym) ? new Set(['pick', ...(L.def.tools || [])]) : null;   // free build: the basics, plus what the temple has won
   const r = A.rt && A.rt.room;
   if (!A.gotKit && !A.solved.size) return new Set(['pick']);   // empty hands until Barold hands you redstone
   const all = new Set(['pick', ...(A.solved.size || r ? A.unlocked : [])]);
@@ -10032,6 +10037,7 @@ function advStart(given){
   A.on = true; A.room = null; A.launching = false; advRootsShow(true); sbClear();
   A.act = (save && save.act) || 1; ROOMS = actRooms(A.act); A.funMet = !!(save && save.funMet); A.whySeen = new Set((save && save.whySeen) || []); A.helloSeen = new Set(); A.funDone = !!(save && save.funDone); A.funIntroT = 0; A.funIntroI = -1; A.apeMet = !!(save && save.apeMet); A.apeDone = !!(save && save.apeDone); A.apeBeats = new Set((save && save.apeBeats) || []); A.apeLanded = A.apeMet; A.apeCine = null; A.rode = !!(save && save.rode); A.ride = null; if (CINE.on) cineEnd(); A.expressCut = null; A.teleT = 0; A.apeDue = []; A.apeIntroT = 0; A.apeHostRoom = undefined;
   A.shrineOpen = !!(save && save.shrine); A.metBarold = !!(save && (save.met || (save.solved && save.solved.length))); A.gotKit = !!(save && (save.kit || save.met || (save.solved && save.solved.length))); A.gates = new Set(save && save.gates ? save.gates : []); A.found = new Set(save && save.found ? save.found : ['dust']); if (save && !save.found){ const top = Math.max(0, ...(save.solved || [])); ROOMS.filter(q => q.id <= top + 1).forEach(q => (q.give || []).forEach(t => A.found.add(t))); } A.doorTrapOff = !!(save && (save.trapOff || (save.solved && save.solved.length))); A.trapMet = !!(save && save.trapMet); A.leadToDoor = A.gotKit; document.body.classList.toggle('emptyHands', !A.gotKit); A.introAt = 0; A.introStarted = false; A.thief = null; A.revealed = A.metBarold; A.callK = undefined; A.callT = undefined; A.trapHint = 0; A.gapHint = false; A.bothSaid = false;
+  achLoad(save);   // achievements: this save slot's
   A.disc = new Set(save && save.disc ? save.disc : []); A.notes = new Set(save && save.notes ? save.notes : []); A.secrets = new Set(save && save.secrets ? save.secrets : []); A.chests = new Set(save && save.chests ? save.chests : []);
   A.solved = new Set(save ? save.solved : []); A.bonus = new Set(save && save.bonus ? save.bonus : []); A.crystals = new Set(save ? save.crystals : []);
   A.unlocked = new Set(save ? save.unlocked : ['rblock']);
@@ -10250,7 +10256,8 @@ function tntBang(list){
   for (const o of list){ const k = (o.x >> 1) + ',' + (o.y >> 1) + ',' + (o.z >> 1); if (n > 8 && seen.has(k)) continue; seen.add(k); origins.push(o); }
   blast(origins, R, {n, mult, chain:ch, destroy:true});
   TNTS.bangs.push({n, R:+R.toFixed(2), chain:ch, total:TNTS.chains[ch]}); if (TNTS.bangs.length > 30) TNTS.bangs.shift();
-  if (TNTS.chains[ch] >= TNT_ACH) sbAchieve('sixtyfour');   // "TNTTT...T": one T for every TNT (Tom)
+  if (TNTS.chains[ch] >= TNT_ACH) sbAchieve('sixtyfour');
+  achTntBang(list);   // three piles, one bang: the TNT Mega mode   // "TNTTT...T": one T for every TNT (Tom)
   saveBuildSoon();
 }
 // what a blast does: lights TNT, breaks what you built, throws you and the creatures, sets off whoopee gas. o: grid spots {x, y, z}
@@ -10281,6 +10288,7 @@ function blast(origins, R, opt){
     let best = null;
     origins.forEach((o, i) => { const w = pts[i], d = Math.hypot(w.x - P.x, w.y - (P.y + .9), w.z - P.z); if (d < R*1.6 && (!best || d < best.d) && blastRay(o, px, py, pz)) best = {d, w}; });
     if (best){ if (best.d < Math.max(2.4, R*.55)) blastTumble(best.w); else knockPlayer(best.w, (1 - best.d/(R*1.6))*(7 + 5*Math.sqrt(opt.mult || 1))); }
+    else achBlastWatch(origins, R);   // safe behind blast-proof glass
   }
   // creatures go flying (happily)
   for (const m of creatures()){
@@ -10484,12 +10492,7 @@ function sbFrame(dt){
 }
 // sandbox achievements (kept with the Puzzle Lab's progress)
 const SB_ACH = {destroyer:{name:'For I am become Steve, destroyer of worlds', how:'The skunk\'s stink covered EVERYTHING, and then... KA-BOOM. A giant green mushroom cloud!'}, sixtyfour:{name:'TN' + 'T'.repeat(63), how:TNT_ACH + ' Boom Blocks in ONE chain!'}, gasbang:{name:'Big Stinky Bang', how:'You made whoopee gas explode!'}, toilet:{name:'Space Toilet Pilot', how:'You rode the Space Toilet into the sky!'}, donkey:{name:'The Donkey Has Landed', how:'A Giant Stone Donkey fell out of the sky. As you do.'}, blasted:null};
-function sbAchieve(id){
-  const a = SB_ACH[id]; if (!a) return;
-  progress.sbAch = progress.sbAch || {}; if (progress.sbAch[id]) return;
-  progress.sbAch[id] = Date.now(); saveProgress();
-  setTimeout(() => { sfx.chime(); musicCue && musicCue('fanfare'); showCard('ACHIEVEMENT!', `<b style="font-size:22px;word-break:break-all;overflow-wrap:anywhere">${a.name}</b><br>${a.how}`); }, 1600);
-}
+function sbAchieve(id){ if (SB_ACH[id] && ach(id)) try { musicCue('fanfare'); } catch (e) {} }   // now in the save slot's achievements (a toast, not a card)
 
 // ---- the yard: free build happens in a walled build yard of its own (no floating bits of temple, nothing to walk through) ----
 const FREE_N = 28;   // 26 x 26 blocks to build on, inside a stone wall
@@ -10623,6 +10626,7 @@ function openInventory(){
   let html = '<div class="invGrid">' + v.map(i => { const it = ITEMS[i], lk = hotbar.children[i].classList.contains('locked'); return `<button class="btn invItem${i === sel ? ' sel' : ''}${lk ? ' lockd' : ''}" data-i="${i}"><img src="${ICONS[it.id]}" alt="">${it.name}</button>`; }).join('') + '</div>';
   if (isFree()){ const next = SANDBOX_UNLOCKS.filter(u => !unlockHave(u)); if (next.length) html += '<p style="margin:10px 0 4px"><b>Still to win:</b></p><div class="invGrid">' + next.map(u => u.items.map(id => { const it = ITEMS.find(q => q.id === id); return it ? `<button class="btn invItem lockd" disabled><img src="${ICONS[id]}" alt="" style="filter:grayscale(1) brightness(.5)">${it.name}<small>${u.how}</small></button>` : ''; }).join('')).join('') + '</div>'; }
   if (isFree()) html += megaHTML(v.map(i => ITEMS[i].id));
+  html += achInvHTML();   // the achievements page, from the game
   openPane('Your items', html);
   $('#paneBody').querySelectorAll('.invItem[data-i]').forEach(b => b.addEventListener('click', () => { const i = +b.dataset.i; if (!hotbar.children[i].classList.contains('locked')) select(i); $('#paneClose').click(); }));
 }
@@ -10632,7 +10636,7 @@ function megaHTML(ids){
   const sv = sbSave(), done = progress.sbEggs || {};
   const rows = []; ids.forEach(id => (TOY_EGGS[id] || []).forEach(e => { const k = megaKnown(e.gate, sv), ok2 = done[id + ':' + e.gate], cardK = EGG_CARD[e.gate] || e.gate;
     const grey = !k ? (GATE_CARDS[cardK] ? `<svg viewBox="0 0 200 100" width="44" height="22" style="opacity:.3;filter:grayscale(1);flex:none">${gateSVG(cardK)}</svg>` : `<img src="${ICONS.repeater}" alt="" style="width:22px;height:22px;opacity:.3;filter:grayscale(1);image-rendering:pixelated;flex:none">`) : '';
-    rows.push(`<div class="megaRow" style="display:flex;gap:8px;align-items:center;margin:4px 0;font-size:15px"><img src="${ICONS[id]}" alt="" style="width:28px;height:28px;image-rendering:pixelated">${ok2 ? '<b style="color:#b38f00">&#9733;</b> ' : ''}<span>${k ? e.text + (ok2 ? ` <b>That was ${EGG_NAME[e.gate] || e.gate}!</b>` : '') : 'Mega mode: ???'}</span>${grey}</div>`); }));
+    rows.push(`<div class="megaRow" style="display:flex;gap:8px;align-items:center;margin:4px 0;font-size:15px"><img src="${ICONS[id]}" alt="" style="width:28px;height:28px;image-rendering:pixelated">${ok2 ? '<b style="color:#b38f00">&#9733;</b> ' : ''}<span>${k ? e.text + (ok2 ? ` <b>That was ${EGG_NAME[e.gate] || e.gate}!</b>` : '') : 'Mega mode: ???'}</span>${k ? gymBtnHTML(e.gate, id) : ''}${grey}</div>`); }));
   progress.megaSeen = progress.megaSeen || {}; ids.forEach(id => { if (TOY_EGGS[id]) progress.megaSeen[id] = 1; }); saveProgress(); sbSparkle();   // he has opened the page: the hotbar sparkle can stop
   return rows.length ? '<p style="margin:12px 0 2px"><b>MEGA MODES</b> (build the right circuit and the toy goes HUGE):</p>' + rows.join('') : '';
 }
@@ -11114,7 +11118,7 @@ function eggWon(id0, egg){
   progress.sbEggs = progress.sbEggs || {}; const id = id0 + ':' + egg.gate, first = !progress.sbEggs[id];
   progress.sbEggs[id] = progress.sbEggs[id] || Date.now();
   const a = egg.ach && SB_ACH[egg.ach]; let ach = '';
-  if (a){ progress.sbAch = progress.sbAch || {}; if (!progress.sbAch[egg.ach]){ progress.sbAch[egg.ach] = Date.now(); ach = `<br><b>ACHIEVEMENT: <span style="word-break:break-word">${a.name}</span></b>`; } }
+  if (a && achAward(egg.ach)) ach = `<br><b>ACHIEVEMENT: <span style="word-break:break-word">${a.name}</span></b>`;   // into the save slot's achievements (with its toast)
   saveProgress();
   if (first || ach) setTimeout(() => { sfx.chime(); showCard('MEGA MODE!', `That was ${EGG_NAME[egg.gate] || egg.gate}! ${egg.text.replace(/^Mega mode: /, '')}${ach}`); }, 2500);
 }
@@ -11846,7 +11850,7 @@ function mobHome(m){
   g.userData.fly = {vx:ax ? side*v : (Math.random() - .5), vz:ax ? (Math.random() - .5) : side*v, vy:16*T/2, spin:0, t:0}; m.home = true; m.life = undefined;
 }
 // a Mega achievement goes into the "MEGA MODE!" card (eggWon) when there is one; this just makes sure it's kept
-function sbAchieveQuiet(id){ progress.sbAch = progress.sbAch || {}; if (!progress.sbAch[id]){ progress.sbAch[id] = Date.now(); saveProgress(); } }
+function sbAchieveQuiet(id){ if (ACH_BY[id]){ ach(id); return; } progress.sbAch = progress.sbAch || {}; if (!progress.sbAch[id]){ progress.sbAch[id] = Date.now(); saveProgress(); } }
 // everything above, once a frame in free build (from sbFrame)
 function toys2Frame(s){
   if (SBX.slowT > 0) SBX.slowT -= s/.3;
@@ -11916,6 +11920,549 @@ const MEGA_FOR_CARD = {and:'wire an AND gate into the Homing Beacon and see what
   nor:'wire a NOR gate into the Ninja Rope...', nand:'wire a NAND gate into the Goat Pen...', xor:'wire an XOR gate into a Teleporter Pad...', clock:'wire a Clock into the Sheep Strike...', memory:'wire a Memory latch into the MEGA ROBOT...'};
 const gateCardPlain = gateCardHTML;
 gateCardHTML = function(k, quiz){ return gateCardPlain(k, quiz) + (MEGA_FOR_CARD[k] ? `<p class="megaLine" style="clear:both;margin:6px 0 0;font-size:14px"><b>Mega mode unlocked!</b> In Free Build, ${MEGA_FOR_CARD[k]}</p>` : ''); };
+
+/* ================= ACHIEVEMENTS (Tom, 5 Oct: grow the 20 discoveries into a proper page; docs/achievements.md) =================
+   One table. Each entry: id, cat, name, line (the funny line on the toast), clue (shown on a locked one once you're close), icon,
+   when (does its content exist in the game yet? if not it stays off the page and can't fire), near (show the clue), n (a count:
+   [have, need]). Saved in the CURRENT SAVE SLOT's adventure save, by the normal save path (advSerialize / advWrite), as a plain
+   list (save.ach) plus a few counters (save.achN). The 20 old discoveries keep their ids and their own list (save.disc). */
+const ACH_SVG = {
+  crystal:'<rect x="6" y="1" width="4" height="2" fill="#e6b3ff"/><rect x="4" y="3" width="8" height="8" fill="#b05cff"/><rect x="5" y="4" width="2" height="5" fill="#f1d9ff"/><rect x="6" y="11" width="4" height="3" fill="#7a2acb"/>',
+  bone:'<rect x="2" y="6" width="12" height="4" fill="#eee8d5"/><rect x="1" y="4" width="3" height="3" fill="#eee8d5"/><rect x="1" y="9" width="3" height="3" fill="#eee8d5"/><rect x="12" y="4" width="3" height="3" fill="#eee8d5"/><rect x="12" y="9" width="3" height="3" fill="#eee8d5"/>',
+  scroll:'<rect x="3" y="2" width="10" height="12" fill="#f3e2b0"/><rect x="2" y="1" width="12" height="2" fill="#b8925a"/><rect x="2" y="13" width="12" height="2" fill="#b8925a"/><rect x="5" y="5" width="6" height="1" fill="#6b4a1f"/><rect x="5" y="8" width="6" height="1" fill="#6b4a1f"/><rect x="5" y="11" width="4" height="1" fill="#6b4a1f"/>',
+  door:'<rect x="3" y="1" width="10" height="14" fill="#5a3a1a"/><rect x="4" y="2" width="8" height="13" fill="#8a5a2a"/><rect x="10" y="8" width="1" height="2" fill="#ffd84a"/><rect x="2" y="14" width="12" height="1" fill="#333"/>',
+  map:'<rect x="1" y="3" width="14" height="10" fill="#f3e2b0"/><rect x="3" y="5" width="4" height="3" fill="#5d9c3a"/><rect x="9" y="8" width="4" height="3" fill="#5d9c3a"/><rect x="10" y="4" width="2" height="2" fill="#d8261a"/><rect x="6" y="9" width="2" height="1" fill="#8a5a2a"/>',
+  cloud:'<rect x="2" y="6" width="12" height="6" fill="#9cc43a"/><rect x="4" y="4" width="5" height="3" fill="#9cc43a"/><rect x="8" y="3" width="4" height="4" fill="#b8d860"/><rect x="5" y="8" width="2" height="2" fill="#6b8f1f"/>',
+  chute:'<rect x="2" y="2" width="12" height="3" fill="#d8261a"/><rect x="4" y="1" width="8" height="1" fill="#ff5a3c"/><rect x="3" y="5" width="1" height="5" fill="#ddd"/><rect x="12" y="5" width="1" height="5" fill="#ddd"/><rect x="6" y="10" width="4" height="5" fill="#3a6ad8"/>',
+  calendar:'<rect x="2" y="3" width="12" height="11" fill="#fff"/><rect x="2" y="3" width="12" height="3" fill="#d8261a"/><rect x="5" y="8" width="2" height="2" fill="#333"/><rect x="9" y="8" width="2" height="2" fill="#333"/><rect x="5" y="11" width="2" height="2" fill="#333"/>',
+  trophy:'<rect x="4" y="2" width="8" height="6" fill="#ffd84a"/><rect x="2" y="3" width="2" height="3" fill="#ffd84a"/><rect x="12" y="3" width="2" height="3" fill="#ffd84a"/><rect x="7" y="8" width="2" height="3" fill="#c09a00"/><rect x="5" y="11" width="6" height="3" fill="#8a6a00"/><rect x="5" y="3" width="2" height="3" fill="#fff2a0"/>',
+  question:'<rect x="5" y="2" width="6" height="2" fill="#aaa"/><rect x="10" y="4" width="2" height="3" fill="#aaa"/><rect x="7" y="7" width="3" height="2" fill="#aaa"/><rect x="7" y="9" width="2" height="2" fill="#aaa"/><rect x="7" y="12" width="2" height="2" fill="#aaa"/>'
+};
+function achIconHTML(icon, dim){
+  const st = dim ? 'filter:grayscale(1) brightness(.6);opacity:.55;' : '';
+  if (icon && icon.startsWith('gate:')) return `<svg viewBox="0 0 200 100" style="${st}width:40px;height:20px;background:#fff;border-radius:3px">${gateSVG(icon.slice(5))}</svg>`;
+  if (ACH_SVG[icon]) return `<svg viewBox="0 0 16 16" class="px" style="${st}" aria-hidden="true">${ACH_SVG[icon]}</svg>`;
+  if (ICONS[icon]) return `<img src="${ICONS[icon]}" alt="" style="${st}">`;
+  return `<svg viewBox="0 0 16 16" class="px" aria-hidden="true">${ACH_SVG.trophy}</svg>`;
+}
+const ACH_CATS = [['learn', 'Learning'], ['clever', 'Clever building'], ['toys', 'Toys and Mega modes'], ['funny', 'Funny moments'], ['explore', 'Explorer']];
+// Act 1's Gate Cards: whichever cards Act 1's rooms hand out (OR and NOT today)
+const ACT1_GATES = [...new Set([...Object.values(GATE_FROM), ...TEMPLE_ROOMS.map(r => r.gate), ...SHIP_ROOMS.map(r => r.gate)].filter(g => g && GATE_CARDS[g]))];
+const ACT1_BONUS = TEMPLE_ROOMS.filter(r => r.bonus);
+const ACH_SECRETS = ['secret1', 'secret2', 'secret3', 'secret4', 'shrine'];
+const solvedN = c => TEMPLE_ROOMS.filter(r => c.solved.has(r.id)).length;
+const labNear = c => solvedN(c) >= 8 || !!progress.act1;   // the Puzzle Lab's missions and Free Build: where the harder gates get built
+const kitHas = (c, id) => { try { return sandboxKit().has(id); } catch (e) { return false; } };
+// each toy's Mega mode gets its own achievement (when the toy and a checkable Mega line exist). Names for toys still being built wait here.
+const MEGA_ACH = {
+  bananacannon:['Banana Blizzard', 'So. Many. Bananas.'], banana:['Night Shift', 'He works best in the dark.'], sheep:['Flock Party', 'Baaa-ZZZT!'],
+  goldfish:['GIGA ROBOT', 'It stayed BIG. Really, really big.'], launcher:['Double Bounce', 'Boing... BOING!'], spacetoilet:['Toilet in Orbit', 'You can see the whole world from up here!'],
+  beacon:['Four Times the Donkey', 'The sky went dark. It was a donkey.'], bananabomb:['Banana Fireworks', 'Pop pop pop pop POP!'], madcow:['Colossal Cow', 'MOOOOOOOOOOOO.'],
+  groovitron:['World Disco', 'Even the sun is dancing.'], monkeys:['Monkey Mountain', 'Count them. Go on.'], goat:['MECHA GOAT', 'Boom Blocks bounce right off it!'],
+  sheepstrike:['Woolly Weather', 'It\'s raining sheep!'], oldlady:['Granny Band', 'Ba-dum TSSS!'], ninjarope:['Long Swing', 'Wheeeeeeeee!'], teleporter:['Everybody Vanish!', 'Where did everyone go?'],
+  holybanana:['Holy Banana', 'Aaaaaaah!'], chickencannon:['Chicken Storm', 'Bawk! Bawk! BAWK!'], whoopeemine:['Parp Choir', 'The whole field parps at once!'],
+  bouncycastle:['Bouncy Palace', 'It\'s as big as the temple!'], slime:['Slime Geyser', 'Up, up and SPLAT!']
+};
+const megaToys = () => Object.keys(TOY_EGGS).filter(t => TOY_EGGS[t].some(e => e.gate !== 'count') && t !== 'skunk' && t !== 'tnt' && t !== 'fart');   // skunk, TNT and whoopee have their own big ones below
+// a toy's Mega mode can carry its own named achievement (TOY_EGGS ach: SB_ACH); which toy does a named one belong to?
+const megaOwnAch = t => (TOY_EGGS[t] || []).map(e => e.ach).filter(Boolean);
+const SB_ACH_TOY = id => Object.keys(TOY_EGGS).find(t => megaOwnAch(t).includes(id)) || {supersheep:'sheepstrike', fiveout:'holybanana'}[id] || null;
+const ACH_EARLY = new Set(['destroyer', 'sixtyfour', 'toilet', 'donkey', 'gasbang', 'hideseek']);   // listed by hand above
+const megaDone = (t, got) => got.has('mega_' + t) || megaOwnAch(t).some(id => got.has(id));
+const megaLive = t => !!(TOY_EGGS[t] && TOY_EGGS[t].some(e => e.gate !== 'count')) && ITEMS.some(i => i.id === t);
+const ACH_LIST = [
+  // ---- learning: earned the first time he BUILDS it himself (the gate's parts mostly his own, checked like the Mega modes: a truth table on a copy of the grid)
+  {id:'sparky', cat:'learn', name:'Sparky', line:'It\'s alive!', clue:'Make a lamp light up.', icon:'lamp', gym:'wire', near:c => c.met},
+  {id:'wirewiz', cat:'learn', name:'Wire Wizard', line:'That\'s a LONG wire.', clue:'Lay one wire 15 dust long.', icon:'dust', gym:'wire', near:c => solvedN(c) >= 3},
+  {id:'empty', cat:'learn', name:'Running on Empty', line:'Where did it go?!', clue:'Make a wire so long that the power runs out.', icon:'dust', gym:'buffer', near:c => solvedN(c) >= 12},
+  {id:'reprep', cat:'learn', name:'Repeater Repeater', line:'Again! Again!', clue:'Give a tired wire fresh power with a Repeater.', icon:'repeater', gym:'buffer', near:c => c.solved.has(20) || c.solved.has(21)},
+  {id:'g_not', cat:'learn', gate:'not', name:'Grumpy Torch Tamer', line:'No means yes. Sort of.', clue:'Build your own NOT gate: a torch on the side of a block.', near:c => c.solved.has(13) || c.gates.has('not')},
+  {id:'g_or', cat:'learn', gate:'or', name:'Either Way', line:'This one OR that one. Easy.', clue:'Build your own OR gate: two wires that join.', near:c => solvedN(c) >= 6},
+  {id:'g_and', cat:'learn', gate:'and', name:'Both Hands', line:'Both. BOTH!', clue:'Build an AND gate yourself (Puzzle Lab or Free Build).', near:labNear},
+  {id:'g_nor', cat:'learn', gate:'nor', name:'Nobody Home', line:'Neither. Nobody. Nothing.', clue:'Build a NOR gate yourself: lamp ON only when NO lever is on.', near:labNear},
+  {id:'g_nand', cat:'learn', gate:'nand', name:'Not Both', line:'Anything but both!', clue:'Build a NAND gate yourself.'},   // NAND: taught on the Ape Planet (Act 2)
+  {id:'g_clock', cat:'learn', gate:'clock', name:'Tick Tock', line:'It does it by ITSELF!', clue:'Build a clock: a torch that keeps switching itself off.', near:labNear},
+  {id:'g_memory', cat:'learn', gate:'memory', name:'Elephant Brain', line:'It REMEMBERS!', clue:'Build a memory: two torches holding each other.', near:labNear},
+  {id:'g_xor', cat:'learn', gate:'xor', name:'Odd One Out', line:'Only one. Not two.', clue:'Build an XOR: either switch flips the light.', near:labNear},
+  {id:'keeper', cat:'learn', name:'Gate Keeper', line:'Collect them all!', clue:'Win every Gate Card in Act 1.', icon:'trophy', near:c => c.gates.size > 0, n:c => [ACT1_GATES.filter(g => c.gates.has(g)).length, ACT1_GATES.length]},
+  // ---- clever building
+  {id:'penny', cat:'clever', name:'Penny Pincher', line:'Not one part wasted!', clue:'Fix a big room with no more parts than the temple\'s own answer.', icon:'dust', near:c => solvedN(c) >= 5},
+  {id:'bonus5', cat:'clever', name:'Bonus Hunter', line:'Five shiny bonuses!', clue:'Win 5 room bonuses.', icon:'trophy', near:c => c.bonus.size > 0, n:c => [Math.min(5, c.bonus.size), 5]},
+  {id:'bonusall', cat:'clever', name:'Bonus Boss', line:'Every. Single. Bonus.', clue:'Win every bonus in Act 1.', icon:'trophy', near:c => c.bonus.size >= 3, n:c => [ACT1_BONUS.filter(r => c.bonus.has(r.id)).length, ACT1_BONUS.length]},
+  {id:'nohints', cat:'clever', name:'No Hints Needed', line:'Who needs hints anyway?', clue:'Finish a whole chapter without pressing Hint.', icon:'lamp', near:c => solvedN(c) >= 2},
+  {id:'twojobs', cat:'clever', name:'One Circuit, Two Jobs', line:'One switch. Two things. Clever!', clue:'Make one switch work two DIFFERENT things at once.', icon:'lever', near:c => solvedN(c) >= 8},
+  {id:'showoff', cat:'clever', name:'Show-off', line:'That\'s not how I\'d do it. But it works!', clue:'Fix a room a different way from the usual answer.', icon:'torch', near:c => solvedN(c) >= 6},
+  {id:'debugger', cat:'clever', name:'Debugger', line:'Bug squashed!', clue:'Fix a broken machine in under 30 seconds.', icon:'pick', near:c => solvedN(c) >= 4},
+  {id:'safecrack', cat:'clever', name:'Safe Cracker', line:'Click. Click. Click. OPEN!', clue:'Build a 4-lever lock: two levers ON, the other two OFF.', icon:'lever', near:labNear},
+  {id:'bureaucrat', cat:'clever', name:'Bureaucrat', line:'Three switches, three jobs. Very official.', clue:'Build one machine where three switches do different jobs.', icon:'scroll', near:labNear},
+  {id:'legend', cat:'clever', name:'Logic Legend', line:'The hardest Mega mode of all!', clue:'Unlock a toy\'s hardest Mega mode.', icon:'trophy', when:() => false},   // waits for the combined ("Mega mode 2") lines
+  // ---- toys and Mega modes (free build)
+  {id:'sixtyfour', cat:'toys', name:'TN' + 'T'.repeat(63), line:'One T for every Boom Block!', clue:'Set off ' + TNT_ACH + ' Boom Blocks in ONE chain.', icon:'tnt', near:c => kitHas(c, 'tnt')},
+  {id:'destroyer', cat:'toys', name:'For I am become Steve, destroyer of worlds', line:'The skunk\'s stink covered EVERYTHING. Then... KA-BOOM!', clue:'Skunk Mega mode... and then a spark.', icon:'skunk', when:() => megaLive('skunk'), near:c => kitHas(c, 'skunk')},
+  {id:'mega_tnt', cat:'toys', name:'Synchronised Swimming... I Mean Exploding', line:'Three piles. One BANG.', clue:'Wire three piles of Boom Blocks to go off at the SAME moment.', icon:'tnt', near:c => kitHas(c, 'tnt') && kitHas(c, 'repeater')},
+  {id:'gasbang', cat:'toys', name:'Big Stinky Bang', line:'Whoopee gas plus BOOM equals KA-PARP!', clue:'A whoopee cushion parps... then a Boom Block goes off right next to it.', icon:'fart', near:c => kitHas(c, 'fart')},
+  {id:'hideseek', cat:'toys', name:'Hide and Seek', line:'Can\'t touch me!', clue:'Watch a Boom Block go off from behind Blast-proof Glass.', icon:'rglass', near:c => kitHas(c, 'tnt')},
+  {id:'toilet', cat:'toys', name:'Space Toilet Pilot', line:'WHOOOSH! Hold on to the seat!', clue:'Sit on the Space Toilet in Free Build and power it.', icon:'spacetoilet', near:c => kitHas(c, 'spacetoilet')},
+  {id:'donkey', cat:'toys', name:'The Donkey Has Landed', line:'A Giant Stone Donkey fell out of the sky. As you do.', clue:'Power a Homing Beacon in Free Build.', icon:'beacon', when:() => ITEMS.some(i => i.id === 'beacon'), near:c => kitHas(c, 'beacon')},
+  ...Object.keys(MEGA_ACH).filter(t => !megaOwnAch(t).length).map(t => ({id:'mega_' + t, cat:'toys', toy:t, name:MEGA_ACH[t][0], line:MEGA_ACH[t][1], icon:t, when:() => megaLive(t), near:c => kitHas(c, t)})),
+  ...Object.keys(SB_ACH).filter(id => SB_ACH[id] && !ACH_EARLY.has(id)).map(id => { const t = SB_ACH_TOY(id); return {id, cat:'toys', toy:t, name:SB_ACH[id].name, line:SB_ACH[id].how, icon:t || 'trophy', when:() => !t || ITEMS.some(i => i.id === t), near:c => !t || kitHas(c, t)}; }),
+  {id:'megaall', cat:'toys', name:'Mega Collector', line:'MEGA everything!', clue:'Unlock every Mega mode in Act 1.', icon:'trophy', near:c => megaGot().length > 0, n:() => [megaGot().length, megaToys().length]},
+  // ---- funny moments (celebrate trying things)
+  {id:'ouch', cat:'funny', name:'Ouch', line:'Third time lucky. Not.', clue:'Get bonked by the Bonk-o-Matic 3 times.', icon:'pick', near:c => c.disc.has('bonk'), n:c => [Math.min(3, c.n.bonk || 0), 3]},
+  {id:'backwards', cat:'funny', name:'Head On Backwards', line:'Why can I see my own BUM?', clue:'Scare Barold until he falls apart. Will he put his head back on right?', icon:'bone', near:c => c.disc.has('scare')},
+  {id:'sniff', cat:'funny', name:'Sniff Test', line:'Your nose has given up.', clue:'Walk through 10 stink clouds.', icon:'cloud', near:c => (c.n.sniff || 0) > 0, n:c => [Math.min(10, c.n.sniff || 0), 10]},
+  {id:'flyer', cat:'funny', name:'Frequent Flyer', line:'Wheee! Again!', clue:'Get launched into the air 10 times.', icon:'launcher', near:c => (c.n.fly || 0) > 0, n:c => [Math.min(10, c.n.fly || 0), 10]},
+  {id:'chute', cat:'funny', name:'Parachute Pro', line:'Gently does it.', clue:'Fall from REALLY high up.', icon:'chute', near:c => kitHas(c, 'spacetoilet') || kitHas(c, 'tnt')},
+  {id:'party3', cat:'funny', name:'Party Animal', line:'PARTY POWER: MAXIMUM!', clue:'Turn the PARTY POWER dial all the way up.', icon:'disco'},   // waits for room 12's PARTY POWER dial
+  {id:'tuesday', cat:'funny', name:'Not Tuesday', line:'It\'s never Tuesday.', clue:'Listen to Barold when things are calm.', icon:'calendar', near:c => solvedN(c) >= 4},
+  {id:'bigmouth', cat:'funny', name:'Big Mouth', line:'Poke. Poke. Poke. They\'re used to it now.', clue:'Poke 20 monkeys.', icon:'banana', near:c => c.disc.has('poke'), n:c => [Math.min(20, c.n.poke || 0), 20]},
+  // ---- explorer
+  {id:'secrets', cat:'explore', name:'Secret Squirrel', line:'You found EVERY hidden room!', clue:'Find every hidden room (and the cracked shrine).', icon:'door', near:c => ACH_SECRETS.some(d => c.disc.has(d)), n:c => [ACH_SECRETS.filter(d => c.disc.has(d)).length, ACH_SECRETS.length]},
+  {id:'crystals', cat:'explore', name:'Crystal Clear', line:'Shiny!', clue:'Collect every crystal in the temple.', icon:'crystal', near:c => c.crystals.size > 0, n:c => [TEMPLE_ROOMS.filter(r => c.crystals.has(r.id)).length, TEMPLE_ROOMS.length]},
+  {id:'launched', cat:'explore', name:'Top of the Temple', line:'3... 2... 1... LIFT OFF!', clue:'Fix the Crystal Skull\'s machines and launch.', icon:'crystal', near:c => solvedN(c) >= 20},
+  {id:'mapback', cat:'explore', name:'Map Back', line:'Give it BACK, you cheeky monkey!', clue:'Someone sneaky has your map...', icon:'map', near:c => c.launched},
+  {id:'act2', cat:'explore', name:'Visitor Sticker', line:'Welcome, curious hairless creature!', clue:'Fly on to the next planet.', icon:'map', near:c => c.launched},   // the Ape Planet (Act 2)
+  {id:'act3', cat:'explore', name:'Roll Up!', line:'The seaside funfair!', icon:'map', when:() => false},
+  {id:'ghostgold', cat:'explore', name:'Ghost Train Gold', line:'A GOLD score on the ghost train!', icon:'trophy', when:() => false},
+  {id:'act4', cat:'explore', name:'Sky Watcher', line:'The Maya watched the stars.', icon:'map', when:() => false},
+  {id:'act5', cat:'explore', name:'Top of the Class', line:'Redstone Academy!', icon:'scroll', when:() => false}
+];
+// the old discoveries: same ids (old saves), now achievements with a funny line each
+const DISC_ACH = {faint:['funny', 'fart', 'Even the monkeys fainted.'], poke:['funny', 'banana', 'Boop!'], notes:['explore', 'scroll', 'Every note found. Sir Reginald would be proud.'],
+  scare:['funny', 'bone', 'Barold fell to bits. He\'s fine!'], zoo:['explore', 'banana', 'Eight kinds of monkey and ape!'], soak:['funny', 'water', 'SPLOOSH!'],
+  launch:['funny', 'tnt', 'Monkeys CAN fly. For a bit.'], party:['funny', 'disco', 'Shake it, monkey!'], blasted:['funny', 'tnt', 'Ow. Maybe stand further back?'],
+  secret1:['explore', 'door', 'A secret room!'], secret2:['explore', 'door', 'A secret room!'], secret3:['explore', 'door', 'A secret room!'], honk:['funny', 'airhorn', 'Every monkey jumped!'],
+  gunge:['funny', 'gunge', 'Splat. You\'re green now.'], disco2:['funny', 'disco', 'Four plates, four dancers!'], bananas:['funny', 'bananacannon', 'Bananas EVERYWHERE!'],
+  secret4:['explore', 'door', 'Even the Skull has secrets!'], shrine:['explore', 'tnt', 'KABOOM! Something was inside...'], disco:['funny', 'disco', 'Disco anywhere you like!'], bonk:['funny', 'pick', 'Right on the nose.']};
+DISCOVERIES.forEach(d => { const [cat, icon, line] = DISC_ACH[d.id] || ['funny', 'trophy', '']; ACH_LIST.push({id:d.id, old:true, cat, icon, name:d.name, line, clue:d.clue, near:c => solvedN(c) >= 1 || c.met,
+  n:d.id === 'notes' ? c => [[...c.notes].filter(n => typeof n === 'number').length, Object.keys(NOTES).length] : null}); });
+// a toy's own name that's already taken (the banana cannon's 'Banana Barrage' is an old discovery's too): it keeps the Mega name waiting for it
+ACH_LIST.forEach((d, i) => { if (!SB_ACH[d.id] || ACH_EARLY.has(d.id)) return; const nm = d.name.toLowerCase();
+  if (ACH_LIST.some(q => q !== d && !SB_ACH[q.id] && q.name.toLowerCase() === nm) && d.toy && MEGA_ACH[d.toy]){ d.name = MEGA_ACH[d.toy][0]; SB_ACH[d.id].name = d.name; } });
+const ACH_BY = Object.fromEntries(ACH_LIST.map(d => [d.id, d]));
+const achLive = d => !d.when || !!d.when();
+const megaGot = () => { const g = achGotSet(); return megaToys().filter(t => megaDone(t, g)); };
+
+/* ---- the store: the current save slot's adventure save ---- */
+const ACHS = {got:new Set(), n:{}, syncAt:-1e9};
+const achArr = v => Array.isArray(v) ? v.filter(x => typeof x === 'string') : [];
+const achObj = v => v && typeof v === 'object' && !Array.isArray(v) ? v : {};
+function achLoad(save){ const cur = slotCur();
+  if (save || ACHS.slot !== ''){ ACHS.got = new Set(achArr(save && save.ach)); ACHS.n = Object.assign({}, achObj(save && save.achN)); }   // (won before there was any save at all: they go into the first one)
+  ACHS.slot = cur; ACHS.syncAt = performance.now(); if (save) achMigrate(); }
+// free build's first achievements were kept with the Puzzle Lab progress: they move into the save that's loaded first
+function achMigrate(){ const old = progress.sbAch; if (!old || progress.sbAchMoved) return; Object.keys(old).forEach(k => { if (ACH_BY[k] && !ACH_BY[k].old) ACHS.got.add(k); }); progress.sbAchMoved = 1; saveProgress(); }
+function achSync(force){
+  if (A.on) return;
+  const now = performance.now(); if (!force && now - ACHS.syncAt < 1000) return; ACHS.syncAt = now;
+  let sv = null; try { sv = advLoad(); } catch (e) {}
+  const cur = slotCur(); if (cur !== ACHS.slot){ if (ACHS.slot !== undefined && !(ACHS.slot === '' && !sv)){ ACHS.got = new Set(); ACHS.n = {}; } ACHS.slot = cur; }   // another save picked: not the last one's
+  if (sv){ ACHS.got = new Set(achArr(sv.ach)); ACHS.n = Object.assign({}, achObj(sv.achN)); if (progress.sbAch && !progress.sbAchMoved){ achMigrate(); achWrite(); } }   // no save yet (a bare sandbox): keep what's in memory
+}
+function achWrite(){ if (A.on){ advSaveSoon(); return; } let sv = null; try { sv = advLoad(); } catch (e) {} if (!sv){ if (!slotCur()) return; sv = {v:1}; }   /* a save picked but not played yet: they still go in it */ sv.ach = [...ACHS.got]; sv.achN = ACHS.n; advWrite(sv); }
+function achGotSet(disc){ const s = new Set(ACHS.got); (disc || (A.on ? A.disc : [])).forEach(d => s.add(d)); return s; }
+function achHas(id){ achSync(); return ACHS.got.has(id) || (A.on && A.disc.has(id)); }
+// everything a when/near/count needs, from the running game or (on the menu) from the save
+function achCtx(){
+  if (A.on) return {solved:A.solved, crystals:A.crystals, bonus:A.bonus, gates:A.gates || new Set(), disc:A.disc, notes:A.notes || new Set(), lore:A.lore || new Set(), launched:!!A.launched, mapBack:!!A.mapBack, met:!!A.metBarold, got:achGotSet(), n:ACHS.n};
+  achSync(true); let sv = null; try { sv = advLoad(); } catch (e) {} sv = sv || {};
+  const st = k => new Set(Array.isArray(sv[k]) ? sv[k] : []), disc = st('disc');
+  return {solved:st('solved'), crystals:st('crystals'), bonus:st('bonus'), gates:st('gates'), disc, notes:st('notes'), lore:st('lore'), launched:!!sv.launched, mapBack:!!sv.mapBack, met:!!sv.met || st('solved').size > 0, got:achGotSet(disc), n:ACHS.n};
+}
+// award one (never in the gate gym: practice gives no rewards)
+function achAward(id){ return ach(id); }   // (for code where 'ach' is a local name)
+function ach(id){
+  if (GYM.on) return false;
+  const d = ACH_BY[id]; if (!d || d.old || !achLive(d)) return false;
+  if (achHas(id)) return false;
+  ACHS.got.add(id); achWrite(); feed('ach', d.name); achToast(d);
+  if (d.cat === 'toys' && id !== 'megaall' && megaToys().every(t => megaDone(t, ACHS.got))) ach('megaall');
+  return true;
+}
+// counted ones: bonks, pokes, stink clouds, launches
+const ACH_COUNT = {bonk:[3, 'ouch'], poke:[20, 'bigmouth'], sniff:[10, 'sniff'], fly:[10, 'flyer']};
+function achCount(k){
+  if (GYM.on) return; achSync();
+  const v = ACHS.n[k] = (ACHS.n[k] || 0) + 1, rule = ACH_COUNT[k];
+  if (rule && v >= rule[0] && ach(rule[1])) return;
+  if (A.on) advSaveSoon(); else if (rule && v <= rule[0]) achWrite();
+}
+const achNHas = (k, v) => (ACHS.n[k] || []).includes(v);
+function achNAdd(k, v){ const a = Array.isArray(ACHS.n[k]) ? ACHS.n[k] : (ACHS.n[k] = []); if (!a.includes(v)){ a.push(v); if (A.on) advSaveSoon(); } }
+
+/* ---- the toast: icon + name + one funny line, top right, one after another; it never blocks a tap ---- */
+const ACHQ = [];
+function achToast(d){ ACHQ.push(d); if (ACHQ.length === 1) setTimeout(achShowNext, 700); }
+function achShowNext(){
+  const d = ACHQ[0]; if (!d) return;
+  let el = $('#achToast'); if (!el){ el = document.createElement('div'); el.id = 'achToast'; el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite'); document.body.appendChild(el); }
+  el.innerHTML = `<div class="achI">${achIconHTML(d.gate ? 'gate:' + d.gate : d.icon)}</div><div class="achW"><div class="achH">ACHIEVEMENT!</div><div class="achNm"></div><div class="achL"></div></div>`;
+  el.querySelector('.achNm').textContent = d.name; el.querySelector('.achL').textContent = d.line || '';
+  feed('toast', 'ACHIEVEMENT! ' + d.name + (d.line ? ': ' + d.line : ''));
+  void el.offsetWidth; el.classList.add('show'); try { sfx.chime(); } catch (e) {}
+  setTimeout(() => { el.classList.remove('show'); setTimeout(() => { ACHQ.shift(); achShowNext(); }, 450); }, Math.max(4200, 2200 + (d.name.length + (d.line || '').length)*45));
+}
+
+/* ---- the page (menu, the inventory pane, or L in the game) ---- */
+function achPageHTML(){
+  const c = achCtx(), list = ACH_LIST.filter(achLive), got = list.filter(d => c.got.has(d.id)).length;
+  const row = d => {
+    const have = c.got.has(d.id), near = have || !d.near || d.near(c), cnt = d.n ? d.n(c) : null;
+    const bar = cnt && !have && near ? `<div class="achBar" aria-label="${cnt[0]} of ${cnt[1]}"><i style="width:${Math.round(100*Math.min(1, cnt[0]/Math.max(1, cnt[1])))}%"></i></div><small>${cnt[0]} / ${cnt[1]}</small>` : '';
+    const txt = have ? (d.line || '') : near ? (d.clue || '') : '';
+    const gym = d.gate || d.gym, gb = gym && GYM_SRC[gym] && (have || near) ? `<button class="btn gymBtn" data-gym="${gym}">Practise it</button>` : '';
+    return `<div class="achRow${have ? ' got' : ''}"><div class="achI">${have || near ? achIconHTML(d.gate ? 'gate:' + d.gate : d.icon, !have) : achIconHTML('question')}</div><div class="achW"><div class="achNm">${have ? achEsc(d.name) : '???'}</div>${txt ? `<div class="achL">${achEsc(txt)}</div>` : ''}${bar}</div>${gb}</div>`;
+  };
+  return `<p class="achTot"><b>${got} of ${list.length}</b> achievements</p>` + ACH_CATS.map(([k, nm]) => { const l = list.filter(d => d.cat === k); return l.length ? `<h3 class="achCat">${nm} <small>${l.filter(d => c.got.has(d.id)).length} / ${l.length}</small></h3>` + l.map(row).join('') : ''; }).join('');
+}
+const achEsc = s => String(s).replace(/[&<>"]/g, ch => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;'})[ch]);
+function achOpen(){ if (locked) try { document.exitPointerLock(); } catch (_) {} openPane('Achievements', achPageHTML()); }
+function achInvHTML(){ const c = achCtx(), l = ACH_LIST.filter(achLive); return `<p style="margin:12px 0 4px"><button class="btn" data-ach-open="1">Achievements (${l.filter(d => c.got.has(d.id)).length} / ${l.length})</button></p>`; }
+
+/* ---- noticing things: a light check every frame, a scan four times a second, a build check once the build stops changing ---- */
+const ACHF = {t:0, mode:'', sig:'', sigT:0, scanned:true, solved:null, room:null, roomT:0, up:false, fling:null, chute:false, inS:false, sw:'', swAt:0, swCells:null, outs:null, st:0};
+const ACH_WIRE = new Set([...EGG_WIRE, 'rblock']);
+const ACH_SW = new Set(['lever', 'button', 'plate']);
+const ACH_OUT = c => c && (c.t === 'lamp' || c.t === 'fart' || c.t === 'bridge' || (c.t === 'door' && c.wired) || (TOY_SET.has(c.t) && c.t !== 'tnt'));
+const GATE_ACH = {not:'g_not', or:'g_or', and:'g_and', nor:'g_nor', nand:'g_nand', clock:'g_clock', memory:'g_memory', xor:'g_xor'};
+function achFrame(dt){
+  if (GYM.on){ gymFrame(dt); return; }
+  if ($('#hud').hidden || !L) { ACHF.mode = ''; return; }
+  // launches (bounce pads, the bonk glove, a flinging pad), the parachute, stink clouds
+  const up = P.vy >= 9.5 && !P.ground; if (up && !ACHF.up) achCount('fly'); ACHF.up = up;
+  if (P.fling && P.fling !== ACHF.fling){ ACHF.fling = P.fling; achCount('fly'); }
+  if (ACHF.chute && !P.chute && P.ground) ach('chute'); ACHF.chute = !!P.chute;
+  const inS = STINK_TINT.hold > 0; if (inS && !ACHF.inS) achCount('sniff'); ACHF.inS = inS;
+  if ((ACHF.t += dt) < 250) return; ACHF.t = 0;
+  achPoll();
+}
+const achMode = () => A.on ? 'adv' : isFree() ? 'free' : 'lab';
+function achPoll(){
+  const mode = achMode(); if (mode !== ACHF.mode){ ACHF.mode = mode; ACHF.solved = null; ACHF.sig = ''; ACHF.scanned = true; ACHF.sw = ''; ACHF.outs = null; ACHF.room = null; }
+  const now = A.clock || 0;
+  if (A.on){
+    const r = A.rt && A.rt.room; if (r !== ACHF.room){ ACHF.room = r; ACHF.roomT = now; }
+    if (!ACHF.solved) ACHF.solved = new Set(A.solved);
+    else if (A.solved.size !== ACHF.solved.size){ const before = ACHF.solved; ACHF.solved = new Set(A.solved); [...A.solved].filter(id => !before.has(id)).forEach(id => achSolvedRoom(ROOMS.find(q => q.id === id) || SHIP_ROOMS.find(q => q.id === id), before)); }
+    if (now - ACHF.st > 1000){ ACHF.st = now; achState(); }
+  } else if (now - ACHF.st > 1000){ ACHF.st = now; if (megaGot().length && megaGot().length === megaToys().length) ach('megaall'); }
+  achLiveChecks();
+  achSwitches(now);
+  // the build changed: once it settles, see what he's made
+  const sig = achBuildSig(); if (sig !== ACHF.sig){ ACHF.sig = sig; ACHF.sigT = now; ACHF.scanned = false; }
+  else if (!ACHF.scanned && now - ACHF.sigT > 1200){ ACHF.scanned = true; achScanBuild(); }
+}
+function achBuildSig(){ let h = 0, n = 0; for (let i = 0; i < S.grid.length; i++){ const c = S.grid[i]; if (c && !c.locked){ n++; h = (h*31 + i*7 + c.t.charCodeAt(0) + (c.dir || 0)*3 + (c.attach + 1) + (c.delay || 0)*5) | 0; } } return n + ':' + h; }
+// the box he's working in: the room (adventure) or the whole lab / yard
+function achBox(){ if (A.on){ const r = A.rt && A.rt.room; return r ? r.box : null; } return {x0:-1, y0:-1, x1:NX, y1:NY}; }
+const inBox = (b, x, y) => x > b.x0 && x < b.x1 && y > b.y0 && y < b.y1;
+// is this cell his own work? (not locked, not one of the room's or lesson's pre-built loose parts)
+function achPreKeys(room){
+  const k = new Set(), add = p => k.add(p.x + ',' + p.y + p.t);
+  if (A.on){ const r = room || (A.rt && A.rt.room); if (r) (r.loose || []).forEach(add); }
+  else if (L && L.def && !isFree()) (L.def.pre || []).forEach(add);
+  return k;
+}
+const achOwn = (c, pre) => !!c && !c.locked && !c.sheep && !pre.has(c.x + ',' + c.y + c.t);
+// everything upstream of a cell (through wires, blocks, torches, repeaters), stopping at switches
+function achUp(c){
+  const seen = new Set([c.y*NX + c.x]), q = [c], out = [];
+  while (q.length && seen.size < 600){ const n0 = q.shift();
+    for (let d = 0; d < 4; d++){ const n = nb(n0, d); if (!n || seen.has(n.y*NX + n.x) || !ACH_WIRE.has(n.t)) continue; seen.add(n.y*NX + n.x); out.push(n); if (!ACH_SW.has(n.t)) q.push(n); } }
+  return out;
+}
+// a gate counts as HIS when most of its parts (between the switches and the output) are his own
+function achMostlyOwn(o, pre){ const U = achUp(o).filter(n => !ACH_SW.has(n.t)), mine = U.filter(n => achOwn(n, pre)).length; return mine > 0 && mine*2 >= U.length; }
+function achLiveChecks(){
+  const b = achBox(); if (!b) return;
+  const need = ['sparky', 'reprep', 'empty'].filter(id => !achHas(id)); if (!need.length) return;
+  const pre = achPreKeys();
+  for (let x = Math.max(0, b.x0); x <= Math.min(NX - 1, b.x1); x++) for (let y = Math.max(0, b.y0); y <= Math.min(NY - 1, b.y1); y++){
+    const c = at(x, y); if (!c) continue;
+    if (c.t === 'lamp' && c.lit && need.includes('sparky') && achUp(c).some(n => achOwn(n, pre)) && ach('sparky')) need.splice(need.indexOf('sparky'), 1);
+    if (c.t === 'repeater' && c.out && need.includes('reprep') && achOwn(c, pre)){ const i = nb(c, opp(c.dir)); if (i && i.t === 'dust' && i.pw >= 1 && i.pw <= 12 && ach('reprep')) need.splice(need.indexOf('reprep'), 1); }
+    if (c.t === 'dust' && c.pw === 0 && need.includes('empty') && [0, 1, 2, 3].some(d => { const n = nb(c, d); return n && n.t === 'dust' && n.pw === 1; }) && achDustRun(c, pre) && ach('empty')) need.splice(need.indexOf('empty'), 1);
+  }
+}
+// one connected wire: how long, and is any of it his?
+function achDust(c){ const seen = new Set([c.y*NX + c.x]), q = [c]; while (q.length && seen.size < 800){ const n0 = q.shift(); for (let d = 0; d < 4; d++){ const n = nb(n0, d); if (n && n.t === 'dust' && !seen.has(n.y*NX + n.x)){ seen.add(n.y*NX + n.x); q.push(n); } } } return [...seen].map(k => S.grid[k]); }
+function achDustRun(c, pre){ const w = achDust(c); return w.length >= 15 && w.some(n => achOwn(n, pre)); }
+// one switch, two different kinds of thing changed by it (a lamp AND a parp...)
+function achSwitches(now){
+  if (achHas('twojobs')) return;
+  const b = achBox(); if (!b) { ACHF.outs = null; return; }
+  const sws = [], outs = new Map();
+  for (let x = Math.max(0, b.x0); x <= Math.min(NX - 1, b.x1); x++) for (let y = Math.max(0, b.y0); y <= Math.min(NY - 1, b.y1); y++){ const c = at(x, y); if (!c) continue; if (ACH_SW.has(c.t)) sws.push(c); else if (ACH_OUT(c)) outs.set(c, !!c.lit); }
+  const sig = sws.map(c => (c.on || c.timer > 0) ? 1 : 0).join('');
+  if (ACHF.sw && sig !== ACHF.sw && sig.length === ACHF.sw.length && !ACHF.swAt){ ACHF.swAt = now; ACHF.swCells = sws.filter((c, i) => sig[i] !== ACHF.sw[i]); ACHF.before = ACHF.outs; }
+  ACHF.sw = sig;
+  if (ACHF.swAt && now - ACHF.swAt > 900){
+    const before = ACHF.before, flipped = ACHF.swCells || []; ACHF.swAt = 0;
+    if (before && flipped.length === 1){ const pre = achPreKeys(), kinds = new Set();
+      let mine = false; outs.forEach((lit, c) => { if (before.has(c) && before.get(c) !== lit){ const U = achUp(c); if (U.includes(flipped[0])){ kinds.add(c.t); if (U.some(n => achOwn(n, pre))) mine = true; } } });
+      if (kinds.size >= 2 && mine) ach('twojobs'); }
+  }
+  ACHF.outs = outs;
+}
+// the build has settled: a long wire? a gate he built himself? a 4-lever lock?
+function achScanBuild(){
+  const b = achBox(); if (!b) return;
+  const pre = achPreKeys();
+  if (!achHas('wirewiz')){ const seen = new Set(); for (let x = Math.max(0, b.x0); x <= Math.min(NX - 1, b.x1); x++) for (let y = Math.max(0, b.y0); y <= Math.min(NY - 1, b.y1); y++){ const c = at(x, y); if (!c || c.t !== 'dust' || seen.has(c) || !achOwn(c, pre)) continue; const w = achDust(c).filter(n => achOwn(n, pre)); w.forEach(n => seen.add(n)); if (w.length >= 15){ ach('wirewiz'); break; } } }
+  const want = Object.values(GATE_ACH).filter(id => achLive(ACH_BY[id]) && !achHas(id)).length || !achHas('safecrack') || !achHas('bureaucrat');
+  if (!want) return;
+  const outs = [];
+  for (let x = Math.max(0, b.x0); x <= Math.min(NX - 1, b.x1); x++) for (let y = Math.max(0, b.y0); y <= Math.min(NY - 1, b.y1); y++){ const c = at(x, y); if (ACH_OUT(c) && achMostlyOwn(c, pre)) outs.push(c); }
+  outs.slice(0, 8).forEach(o => achGateOf(o));
+}
+function achGateOf(o){
+  let g = null; try { g = eggGate(o); } catch (e) { g = null; }
+  if (g && GATE_ACH[g.gate]) ach(GATE_ACH[g.gate]);
+  else if (!achHas('g_memory') && achMemory(o)) ach('g_memory');
+  if (achHas('safecrack') && achHas('bureaucrat')) return g;
+  const t = achTable(o); if (!t) return g;
+  const {tab, m} = t, ones = r => r.toString(2).split('1').length - 1;
+  if (m === 4 && tab.filter(Boolean).length === 1 && ones(tab.indexOf(true)) === 2) ach('safecrack');
+  if (m >= 3 && tab.some(Boolean) && !tab.every(Boolean)){ const byPop = {}; let sym = true; tab.forEach((v, r) => { const p = ones(r); if (p in byPop && byPop[p] !== v) sym = false; byPop[p] = v; }); if (!sym) ach('bureaucrat'); }
+  return g;
+}
+// a memory, tested from where it is NOW (eggGate tries both buttons held at once first, which leaves a SET/RESET latch
+// flickering until its torches burn out): press each switch and let go, twice round; the answer must change and stay changed
+function achMemory(c){
+  const sw = eggSwitches(c); if (sw.length < 2) return false;
+  return eggSim(() => { const run = n => { for (let t = 0; t < n; t++) step(); return !!c.lit; };
+    sw.forEach(s => eggSet(s, false)); run(10);
+    const after = []; for (const s of [...sw, ...sw]){ eggSet(s, true); run(20); eggSet(s, false); after.push(run(30)); }
+    return sw.every((s, i) => after[i] === after[i + sw.length]) && new Set(after).size > 1; });
+}
+// the truth table of the switches that really matter (like eggGate, on a copy of the grid)
+function achTable(c){
+  const sw = eggSwitches(c); if (sw.length < 3) return null;
+  return eggSim(() => {
+    const run = n => { let v = false; for (let t = 0; t < n; t++){ step(); v = !!c.lit; } return v; };
+    const k = sw.length, rows = [];
+    for (let r = 0; r < (1 << k); r++){ sw.forEach((s, i) => eggSet(s, !!((r >> (k - 1 - i)) & 1))); rows.push(run(40)); }
+    const used = [...Array(k).keys()].filter(i => rows.some((v, r) => v !== rows[r ^ (1 << (k - 1 - i))]));
+    const tab = []; for (let r = 0; r < (1 << used.length); r++){ let full = 0; used.forEach((i, j) => { if ((r >> (used.length - 1 - j)) & 1) full |= 1 << (k - 1 - i); }); tab.push(rows[full]); }
+    return {tab, m:used.length};
+  });
+}
+// a room just got fixed: how?
+function achSolvedRoom(r, before){
+  if (!r || r.play || r.ship) return;
+  const pre = achPreKeys(r), b = r.box, own = [];
+  for (let x = b.x0 + 1; x < b.x1; x++) for (let y = b.y0 + 1; y < b.y1; y++){ const c = at(x, y); if (achOwn(c, pre) && !(r.inputs || []).some(([ix, iy]) => ix === x && iy === y)) own.push(c); }
+  const sol = (r.sol || []).filter(g => g.t !== 'air');
+  if (sol.length >= 4 && own.length && own.length <= sol.length) ach('penny');
+  if (sol.length >= 3 && own.length){ const hit = sol.filter(g => { const c = at(g.x, g.y); return c && c.t === g.t; }).length; if (hit*2 < sol.length) ach('showoff'); }
+  const built = (r.loose || []).length + (r.fixed || []).filter(f => ['dust', 'torch', 'repeater', 'stone'].includes(f.t)).length;
+  if (sol.length && sol.length <= 3 && built >= 4 && ACHF.room === r && (A.clock || 0) - ACHF.roomT < 30000) ach('debugger');
+  // a whole chapter without a hint (counted only for chapters started since achievements began)
+  if (r.ch){ const rooms = ROOMS.filter(q => q.ch === r.ch);
+    if (!rooms.some(q => before.has(q.id))) achNAdd('chT', r.ch);
+    if (rooms.every(q => A.solved.has(q.id)) && achNHas('chT', r.ch) && !achNHas('hintCh', r.ch)) ach('nohints'); }
+}
+// things that are simply true in the save
+function achState(){
+  if (A.bonus.size >= 5) ach('bonus5');
+  if (ACT1_BONUS.length && ACT1_BONUS.every(r => A.bonus.has(r.id))) ach('bonusall');
+  if (ACT1_GATES.length && ACT1_GATES.every(g => A.gates && A.gates.has(g))) ach('keeper');
+  if (TEMPLE_ROOMS.every(r => A.crystals.has(r.id))) ach('crystals');
+  if (A.launched) ach('launched');
+  if (A.mapBack) ach('mapback');
+  if (ACH_SECRETS.every(d => A.disc.has(d))) ach('secrets');
+  if (A.lore && (A.lore.has('notTuesday') || A.lore.has('tuesday'))) ach('tuesday');
+  const m = A.monkey; if (m && m.visible && !m.userData.inBits && m.userData.head && Math.abs(m.userData.head.rotation.y) > 3) ach('backwards');
+  if (A.act === APE_ACT) ach('act2');
+  const pl = PARTY.lvl; if (ACHF.party && ACHF.party < 3 && pl === 3 && A.rt && A.rt.room && A.rt.room.id === 12) ach('party3'); ACHF.party = pl;   // he turned the dial up to 3 (not: it was left there)
+}
+$('#btnHint').addEventListener('click', () => { if (GYM.on || !A.on) return; const r = A.rt && A.rt.room; if (r && r.ch) achNAdd('hintCh', r.ch); });
+// TNT: three piles lit by wires, all in the SAME bang (the TNT Mega mode); watching a bang from behind blast-proof glass
+function achTntBang(list){
+  if (!isFree() || list.length < 3 || list.some(o => o.c.chain)) return;
+  const piles = []; list.forEach(o => { const p = piles.find(q => q.some(e => Math.abs(e.x - o.x) <= 1 && Math.abs(e.y - o.y) <= 1)); if (p) p.push(o); else piles.push([o]); });
+  if (piles.length >= 3) ach('mega_tnt');
+}
+function achBlastWatch(origins, R){
+  if (!inFP() || S.dead || achHas('hideseek')) return;
+  const [px, py] = cellAtWorld(P.x, P.z), fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw);
+  origins.forEach(o => { const w = cellPos(o.x, o.y), dx = w.x - P.x, dz = w.z - P.z, d = Math.hypot(dx, dz); if (d > R*1.6 || d < 1 || (dx*fx + dz*fz)/d < .3) return;
+    const n = Math.ceil(Math.hypot(o.x - px, o.y - py)*2); for (let i = 1; i < n; i++){ const c = at(Math.round(px + (o.x - px)*i/n), Math.round(py + (o.y - py)*i/n)); if (c && c.t === 'rglass'){ setTimeout(() => { if (!S.dead) ach('hideseek'); }, 300); return; } } });
+}
+// a toy went MEGA: its achievement (any toy, including ones still being built)
+{ const eggCheck0 = eggCheck; eggCheck = function(c, opt){ const e = eggCheck0(c, opt); if (e && isFree() && !GYM.on) ach('mega_' + (opt && opt.id || c.t)); return e; }; }
+// the in-game ways in: L (like a games console's achievements button), and a button on the items pane
+window.addEventListener('keydown', e => { if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return; if (e.key.toLowerCase() === 'l' && !$('#hud').hidden && $('#pane').hidden && !GYM.on){ sfx.click(); achOpen(); } });
+document.addEventListener('click', e => {
+  const t = e.target && e.target.closest ? e.target : null; if (!t) return;
+  const a = t.closest('[data-ach-open]'); if (a){ sfx.click(); achOpen(); return; }
+  const g = t.closest('[data-gym]'); if (g){ e.preventDefault(); e.stopPropagation(); if ($('#why').contains(g) && !cardArmed()) return; sfx.click(); gymOpen(g.dataset.gym, g.dataset.toy || null); return; }
+  if (t.closest('[data-gym-back]')){ e.preventDefault(); sfx.click(); gymLeave(); }
+}, true);
+{ const b = document.createElement('button'); b.className = 'btn'; b.id = 'btnAch'; b.textContent = 'Achievements'; b.addEventListener('click', () => { sfx.click(); achOpen(); }); $('#btnGates').after(b); }
+{ const st = document.createElement('style'); st.textContent = `
+#achToast{position:fixed;top:calc(70px + env(safe-area-inset-top,0px));right:16px;z-index:80;display:flex;gap:10px;align-items:center;box-sizing:border-box;width:max-content;max-width:min(380px,calc(100vw - 32px));background:#212121;color:#fff;border:3px solid #6a6a6a;box-shadow:0 0 0 2px #000,0 6px 0 2px rgba(0,0,0,.3);padding:8px 12px;pointer-events:none;transform:translateY(-12px);opacity:0;visibility:hidden;transition:transform .3s ease,opacity .3s ease,visibility 0s .3s;}
+#achToast.show{transform:none;opacity:1;visibility:visible;transition:transform .3s ease,opacity .3s ease;}
+#achToast .achI,.achRow .achI{flex:none;width:40px;height:40px;display:flex;align-items:center;justify-content:center;}
+#achToast .achI img,#achToast .achI svg.px,.achRow .achI img,.achRow .achI svg.px{width:40px;height:40px;image-rendering:pixelated;}
+#achToast .achW,.achRow .achW{min-width:0;flex:1;}
+#achToast .achH{font-family:var(--f-display);color:#ffd84a;font-size:15px;font-weight:700;letter-spacing:.04em;}
+#achToast .achNm{font-weight:700;font-size:17px;line-height:1.15;overflow-wrap:anywhere;word-break:break-word;}
+#achToast .achL{font-size:14px;line-height:1.25;color:#ddd;overflow-wrap:anywhere;}
+.achTot{font-size:17px;margin:0 0 6px;}
+.achCat{margin:14px 0 4px;font-size:18px;} .achCat small{font-weight:600;color:#666;}
+.achRow{display:flex;gap:10px;align-items:center;padding:6px 8px;margin:5px 0;border:2px solid #9a9a9a;background:#e4e4e4;}
+.achRow.got{background:#fff8e0;border-color:#b38f00;}
+.achRow .achNm{font-weight:700;font-size:16px;line-height:1.2;overflow-wrap:anywhere;word-break:break-word;}
+.achRow .achL{font-size:14px;line-height:1.25;color:#444;overflow-wrap:anywhere;}
+.achBar{height:8px;background:#9a9a9a;margin:4px 0 0;border:1px solid #555;} .achBar i{display:block;height:100%;background:#3fae3a;}
+.achRow small{font-size:12px;color:#555;}
+.btn.gymBtn{font-size:14px;min-height:36px;padding:4px 10px;flex:none;}
+#gymBack{display:none;} body.gymOn #gymBack{display:flex;} body.gymOn #btnMenu{display:none;}
+.gymTip{background:#fff8e0;border:2px solid #b38f00;padding:6px 8px;color:#3f3f3f;}
+@media (max-width:420px){ .achRow{gap:7px;padding:5px 6px;} .btn.gymBtn{font-size:13px;padding:4px 7px;} }
+`; document.head.appendChild(st); }
+
+/* ================= THE GATE GYM ("Practise it", Tom 5 Oct, docs/toys.md) =================
+   One generic gym that takes a gate id. It is a Puzzle Lab lesson (LESSONS / loadLesson: its own little world and state) built
+   from that gate's own Lab mission: first the PLAY room (the machine already works: try every mix of switches, play:true), then
+   Barold's WATCH-ME demo on it (why:[{say, at, set}], like the funfair's demos), then a small BUILD (the key parts are taken out,
+   as first taught). It never writes the real save, room progress, crystals or the sandbox build; no rewards (no farming);
+   Back returns you exactly where you were. */
+const GYM_ID = 'gym';
+const GYM = {on:false, gate:null, stage:null, def:null, from:null, tip:'', quiet:false};
+const GYM_SRC = {wire:1, buffer:2, not:3, or:4, and:5, clock:6, nor:7, xor:9, memory:12, nand:'nand', delay:'delay'};
+const GYM_NAME = {wire:'wire', buffer:'Repeater', delay:'DELAY'};
+const gymName = g => GATE_CARDS[g] ? GATE_CARDS[g].name : GYM_NAME[g] || g;
+const GD = (x, y) => ({t:'dust', x, y}), GR = (x, y, delay) => ({t:'repeater', x, y, dir:1, delay});
+// Barold's watch-me lines for each gym (lesson coordinates). set: levers to flip, or buttons to press
+const GYM_WHY = {
+  wire:[{say:'Watch me. This is the lever.', at:[2, 3]}, {say:'I flip it ON... and the power runs along the dust, all the way to the lamp.', at:[7, 3], set:[[2, 3, true]]}, {say:'OFF again. No power, no light. A wire just copies the lever.', at:[7, 3], set:[[2, 3, false]]}],
+  buffer:[{say:'Watch me. Lever ON.', at:[1, 3], set:[[1, 3, true]]}, {say:'See the dust get darker and darker? Power goes down by one on every dust.', at:[6, 3]}, {say:'This Repeater fills the power back up to 15. So it reaches the lamp!', at:[8, 3]}, {say:'Lever OFF. Now I\'ll take the Repeater out...', at:[8, 3], set:[[1, 3, false]]}],
+  not:[{say:'Watch me. The torch is stuck on the side of this block.', at:[4, 3]}, {say:'Lever ON. Power goes INTO the block... and the grumpy torch goes OFF!', at:[3, 3], set:[[1, 3, true]]}, {say:'So the lamp is OFF. Lever OFF, and the torch wakes up again.', at:[7, 3], set:[[1, 3, false]]}, {say:'It always does the OPPOSITE. That\'s a NOT gate.', at:[4, 3]}],
+  or:[{say:'Watch me. Top lever ON... the power runs down to the lamp.', at:[7, 3], set:[[2, 1, true]]}, {say:'Now just the bottom lever. That works too!', at:[7, 3], set:[[2, 1, false], [2, 5, true]]}, {say:'The two wires JOIN here, like two rivers. Either lever can reach the lamp.', at:[4, 3], set:[[2, 5, false]]}],
+  and:[{say:'Watch me. Each lever goes into its own block, with a grumpy torch on it.', at:[4, 2]}, {say:'Top lever ON. Its torch goes OFF. But the other torch is still ON.', at:[4, 2], set:[[1, 2, true]]}, {say:'Any power at all in this last block, and its torch stays OFF. No light yet.', at:[8, 3]}, {say:'BOTH levers ON. Both torches go OFF. The last block has no power... so the last torch wakes up!', at:[10, 3], set:[[1, 4, true]]}],
+  nand:[{say:'Watch me. Two grumpy torches, and their wires join up.', at:[5, 3]}, {say:'Top lever ON. Its torch goes OFF. But the other torch still lights the lamp.', at:[10, 3], set:[[1, 2, true]]}, {say:'BOTH levers ON. Both torches go OFF. Now the lamp is OFF!', at:[10, 3], set:[[1, 4, true]]}, {say:'Only BOTH turns it off. Not both: that\'s NAND.', at:[10, 3]}],
+  nor:[{say:'Watch me. No levers on. The grumpy torch is ON, so the lamp is ON.', at:[6, 3]}, {say:'Top lever ON. Power goes into the block. The torch goes OFF!', at:[5, 3], set:[[2, 2, true]]}, {say:'The bottom lever does it too. ANY lever, and the lamp goes out.', at:[9, 3], set:[[2, 2, false], [2, 4, true]]}, {say:'Only NO levers lights it. Neither, nor: NOR!', at:[9, 3], set:[[2, 4, false]]}],
+  xor:[{say:'Watch me. One switch ON: the light comes on.', at:[11, 7], set:[[1, 7, true]]}, {say:'The other switch ON too... and the light goes OFF!', at:[11, 7], set:[[14, 7, true]]}, {say:'The top part says "at least one". The bottom part says "both". The last torch says "but NOT both".', at:[7, 7]}, {say:'Different switches: light ON. The same: light OFF.', at:[11, 7], set:[[1, 7, false], [14, 7, false]]}],
+  clock:[{say:'Watch me. Nobody is touching anything. Look at the lamp!', at:[5, 2]}, {say:'The torch\'s power goes round the loop... back INTO its own block. So it switches itself OFF.', at:[6, 4]}, {say:'Then the power stops, so it comes back ON. Again and again! The Repeater slows it down, so the torch doesn\'t burn out.', at:[4, 4]}],
+  memory:[{say:'Watch me. I press SET...', at:[6, 4], set:[[6, 4, true]]}, {say:'...and let go. The lamp STAYS on. It remembers!', at:[10, 3]}, {say:'Two grumpy torches hold each other. Whichever one is ON keeps the other one OFF.', at:[5, 5]}, {say:'RESET turns it off. And it stays off.', at:[8, 4], set:[[8, 4, true]]}],
+  delay:[{say:'Watch me. Lever ON...', at:[2, 3], set:[[2, 3, true]]}, {say:'...wait for it... ON! Each Repeater makes the power WAIT a moment.', at:[11, 3]}, {say:'Tap a Repeater to make it wait even longer. Like a queue for the loo.', at:[5, 3], set:[[2, 3, false]]}]
+};
+// the machine for each gym, straight from its Lab mission (NAND: the AND mission without its last torch; DELAY: a wire with slow repeaters)
+function gymBase(g){
+  const src = GYM_SRC[g];
+  if (typeof src === 'number'){ const l = LESSONS.find(q => q.id === src); return {kind:l.kind, inputs:l.inputs, lamp:l.lamp, outputs:l.outputs, labels:l.labels, outName:l.outName, fn:l.fn, pre:l.pre || [], ghosts:l.ghosts, tools:l.tools || ['dust', 'stone', 'torch', 'repeater'], hint:l.hint}; }
+  if (g === 'nand') return {kind:'table', inputs:[[1, 2], [1, 4]], lamp:[10, 3], fn:(a, b) => !(a && b), pre:[], tools:['dust', 'stone', 'torch'],
+    ghosts:[GD(2, 2), GD(2, 4), {t:'stone', x:3, y:2}, {t:'torch', x:4, y:2, attach:3}, {t:'stone', x:3, y:4}, {t:'torch', x:4, y:4, attach:3}, GD(5, 2), GD(5, 3), GD(5, 4), GD(6, 3), GD(7, 3), GD(8, 3), GD(9, 3)],
+    hint:'Flip each lever with its own grumpy torch. Then join the two torch wires and run them to the lamp.'};
+  if (g === 'delay') return {kind:'delay', inputs:[[2, 3]], lamp:[11, 3], fn:a => a, tools:['dust', 'repeater'],
+    pre:[GD(3, 3), GD(4, 3), GD(5, 3), GD(6, 3), GD(7, 3), GD(8, 3), GD(9, 3), GD(10, 3)], ghosts:[GR(5, 3, 4), GR(8, 3, 4)],
+    hint:'Break two dust and put Repeaters there, pointing at the lamp. Tap them to make them slower.'};
+  return null;
+}
+const GYM_KEY = gh => gh.filter(q => q.t !== 'dust').length ? gh.filter(q => q.t !== 'dust') : gh.slice(0, 3);   // the parts taken out for the build (as the Lab shows them)
+function gymDef(g, stage){
+  const B = gymBase(g); if (!B) return null;
+  const nm = gymName(g), base = {id:GYM_ID, gym:true, gymGate:g, gymStage:stage, gate:GATE_CARDS[g] || BOOK[g] ? g : 'wire', inputs:B.inputs, lamp:B.lamp, outputs:B.outputs, labels:B.labels, outName:B.outName, fn:B.fn};
+  if (stage === 'play') return Object.assign(base, {kind:B.kind === 'delay' ? 'table' : B.kind, play:true, name:'Play with it!', pre:[], tools:[],
+    ghosts:[...B.pre, ...B.ghosts].map(p => Object.assign({}, p, {locked:true})),
+    intro:B.kind === 'clock' ? `PLAY TIME! This ${nm} is already built. Don't touch anything. Just watch the lamp!` : B.kind === 'memory' ? `PLAY TIME! This ${nm} is already built. Press SET, let go, then press RESET. What does the lamp do?` : `PLAY TIME! This ${nm} already works. Try every mix of the switches and watch the lamp.`,
+    hint:B.kind === 'clock' ? 'Just watch. Count the blinks.' : B.kind === 'memory' ? 'Press SET. Let go. Is the lamp still on? Then press RESET.' : 'Try every mix: everything OFF, then one ON, then the other, then both.'});
+  const key = GYM_KEY(B.ghosts), rest = B.ghosts.filter(q => !key.includes(q));
+  return Object.assign(base, {kind:B.kind === 'delay' ? 'gymdelay' : B.kind, name:'Your turn!', pre:[...B.pre, ...rest].filter(p => !p.locked), ghosts:[...key, ...rest.filter(p => p.locked)], tools:B.tools,
+    intro:B.kind === 'delay' ? 'Your turn! Make the lamp light up a moment LATER than the lever. Put the Repeaters back.' : `Your turn! Some parts of the ${nm} are missing. Put them back and make it work.`, hint:B.hint || 'Press the lightbulb again to see where the parts go.',
+    card:B.kind === 'delay' ? () => `<h3>Make it WAIT</h3><div class="note">Lever ON... the lamp should light a moment later.${GYM.dl && GYM.dl.last ? `<br>Last try: <b>${GYM.dl.last}</b> ticks (needs 4).` : ''}</div>` : null});
+}
+// where you are now, so Back can put you there again
+function gymHere(){
+  const pane = !$('#pane').hidden ? $('#paneHead').textContent : '';
+  if (A.on) return {kind:'adv', p:{x:P.x, y:P.y, z:P.z, yaw:P.yaw}, pitch:P.pitch, view:viewFP, pane};
+  if ($('#hud').hidden || !L || !L.def) return {kind:'menu', pane};
+  return {kind:isFree() ? 'free' : 'lesson', id:L.def.id, p:{x:P.x, y:P.y, z:P.z, yaw:P.yaw, pitch:P.pitch}, view:viewFP, sel, pane};
+}
+// the Mega mode tip shown again at the end: the line he came from, or a Mega line that uses this gate
+function gymTip(g, toy){ const e = toy && (TOY_EGGS[toy] || []).find(q => q.gate === g); if (e) return e.text; for (const t of Object.keys(TOY_EGGS)) for (const q of TOY_EGGS[t]) if (q.gate === g && ITEMS.some(i => i.id === t)) return q.text; return ''; }
+function gymOpen(g, toy){
+  if (GYM.on || !gymBase(g) || typeof loading !== 'undefined' && loading) return false;
+  const from = gymHere();
+  dlgCancel(true); $('#pane').hidden = true; $('#why').hidden = true;
+  if (from.kind === 'adv'){ from.cards = CARDQ.slice(); stopAdventure(); }
+  else if (from.kind === 'free' || from.kind === 'lesson'){ clearTimeout(saveTimer); writeBuild(L.def.id, serializeBuild()); }   // its own autosave, done now (nothing new): the gym never writes it again
+  Object.assign(GYM, {on:true, gate:g, from, tip:gymTip(g, toy), stage:null, dl:null});
+  document.body.classList.add('gymOn');
+  $('#menu').hidden = true; $('#cele').hidden = true; $('#book').hidden = true; $('#endCard').hidden = true; $('#hud').hidden = false; cam.auto = false; cam.sway = false;
+  gymStage('play');
+  dlgStart(Object.assign([[GUIDE, 'Welcome to the Gate Gym! Nothing here counts, so you can\'t break anything.'], [GUIDE, gymDef(g, 'play').intro.replace('PLAY TIME! ', '')]], {soft:true}));
+  return true;
+}
+function gymStage(stage){
+  GYM.stage = stage; GYM.def = gymDef(GYM.gate, stage); GYM.dl = null;
+  CARDQ.length = 0; loadLesson(GYM_ID, true); refreshHotbar(); selectFirstVisible(); refreshViewUI();
+  $('#lessonNum').textContent = 'Gate gym · ' + gymName(GYM.gate); $('#lessonTitle').textContent = GYM.def.name;
+  gymBarold();
+}
+// Barold stands by the machine (his own copy: the temple's Barold stays where he is)
+function gymBarold(){
+  const d = GYM.def, pts = [...d.inputs, ...(d.lamp ? [d.lamp] : []), ...(d.outputs || []).map(o => [o.x, o.y])], xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  let x = Math.min(NX - 2, Math.max(...xs) + 2), y = Math.min(NY - 2, Math.max(...ys) + 1);
+  for (let k = 0; k < 12 && (at(x, y) || wallAt(x, y)); k++){ x = Math.max(1, x - 1); }
+  const sk = makeSkeleton(), c = cellPos(x, y); sk.position.set(c.x, c.y, c.z); sk.rotation.y = Math.atan2(P.x - c.x, P.z - c.z); labelRoot.add(sk); GYM.barold = sk;
+}
+function gymFocus(cell){
+  A.lookTo = cell;
+  if (GYM.glow && GYM.glow.parent) GYM.glow.parent.remove(GYM.glow);
+  if (!cell) return;
+  if (!GYM.glow){ GYM.glow = glow(new THREE.SpriteMaterial({map:M.glowGold.map, color:0xffe14a, transparent:true, depthWrite:false, depthTest:false, blending:THREE.AdditiveBlending}), 1.8, 0); GYM.glow.renderOrder = 12; }
+  const p = cellPos(cell[0], cell[1]); GYM.glow.position.set(p.x, p.y + .7, p.z); labelRoot.add(GYM.glow);
+}
+// complete() hands a gym stage here (it never touches the Lab's progress)
+function gymStageDone(){
+  const stage = GYM.stage, mine = L; renderCard();
+  if (stage === 'play') setTimeout(() => { if (GYM.on && L === mine) gymDemo(); }, 900);
+  else setTimeout(() => { if (!GYM.on || L !== mine) return; sfx.chime(); confetti();
+    const nm = gymName(GYM.gate), art = /^[aeiou]/i.test(nm) ? 'an' : 'a';
+    showCard('You did it!', `<p>You built ${art} ${achEsc(nm)} all by yourself!</p><p><b>Now try the Mega mode!</b></p>${GYM.tip ? `<p class="gymTip">${achEsc(GYM.tip)}</p>` : ''}<p style="margin-top:10px"><button class="btn red" data-gym-back="1">Back</button></p>`);
+    baroldTellGym('Brilliant! Now go and try the Mega mode!'); }, 700);
+}
+function baroldTellGym(t){ const l = [[GUIDE, t]]; l.soft = true; dlgStart(l); }
+// the watch-me demo, on the machine he just played with (like runWhy: the levers go back after)
+function gymDemo(){
+  const why = GYM_WHY[GYM.gate] || [], keep = L.inputs.map(c => [c.x, c.y, !!c.on]);
+  const setL = ([x, y, v]) => { const c = at(x, y); if (!c) return; if (c.t === 'lever'){ if (!!c.on !== !!v) interact(c); } else if (c.t === 'button' && v){ c.timer = BUTTON_TICKS; sfx.button(); } };
+  const lines = [[GUIDE, 'You worked it out! Now watch me. Here\'s WHY it works.'], ...why.map(w => [GUIDE, w.say, () => { (w.set || []).forEach(setL); gymFocus(w.at || null); }]), [GUIDE, 'Now I\'ll take some parts out. Your turn to build it!', () => { keep.forEach(setL); gymFocus(null); }]];
+  dlgStart(lines, () => { gymFocus(null); if (GYM.on) gymStage('build'); });
+}
+function gymFrame(dt){
+  if (GYM.barold && !reduceMotion){ GYM.barold.position.y = Math.abs(Math.sin((A.clock || 0)*.004))*(DLG.on ? .12 : 0); }
+  const d = L && L.def; if (!d || d.kind !== 'gymdelay' || L.done) return;
+  const lv = L.inputs[0], lamp = L.lampCell, D = GYM.dl = GYM.dl || {};
+  if (!lv.on){ D.done = false; return; }
+  if (!lamp.lit || D.done) return;
+  D.done = true; D.last = gymDelayTicks(lv, lamp); renderCard();   // how long the lamp waits, timed on a copy of the machine (like the Mega checker)
+  if (D.last >= 4){ sfx.row(); complete(); } else showToast(D.last ? 'A bit later than that! Tap a Repeater to make it wait longer.' : 'Straight away! Make it WAIT: swap some dust for Repeaters.');
+}
+function gymDelayTicks(lv, lamp){ return eggSim(() => { lv.on = false; for (let i = 0; i < 40; i++) step(); lv.on = true; for (let i = 0; i < 40; i++){ step(); if (lamp.lit) return i; } return 40; }); }
+// Back: exactly where you were (the adventure from its save, the sandbox with its build, the menu with its page)
+function gymLeave(){
+  if (!GYM.on) return;
+  const f = GYM.from || {kind:'menu'};
+  GYM.on = false; GYM.def = null; GYM.barold = null; document.body.classList.remove('gymOn');
+  dlgCancel(true); gymFocus(null); A.lookTo = null; $('#why').hidden = true; CARDQ.length = 0; $('#pane').hidden = true;
+  if (f.kind === 'adv'){ startAdventure(); if (A.on){ Object.assign(P, f.p); P.vy = 0; P.kb = null; P.fling = null; advSaveNow(); P.pitch = f.pitch; if (viewFP !== f.view) setView(f.view); (f.cards || []).forEach(([h, t]) => showCard(h, t)); } return; }
+  if (f.kind === 'free' || f.kind === 'lesson'){
+    GYM.quiet = true; startLesson(f.id); setTimeout(() => { GYM.quiet = false; }, 1500);
+    Object.assign(P, f.p); P.vy = 0; P.kb = null; P.fling = null; if (viewFP !== f.view) setView(f.view);
+    if (f.sel !== undefined && hotbar.children[f.sel] && !hotbar.children[f.sel].hidden) select(f.sel);
+    stepFP(0); return;
+  }
+  showMenu(); if (f.pane === 'Gate Cards') $('#btnGates').click(); else if (f.pane === 'Achievements') achOpen();
+}
+// the HUD's Back button (the Menu button hides in the gym: going to the menu from here goes Back instead)
+{ const b = document.createElement('button'); b.className = 'btn icon'; b.id = 'gymBack'; b.setAttribute('aria-label', 'Back'); b.title = 'Back to where you were';
+  b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><path d="M14 5l-7 7 7 7"/><path d="M8 12h12"/></svg><span class="lbl">Back</span>';
+  b.addEventListener('click', () => { sfx.click(); gymLeave(); }); $('#btnMenu').before(b); }
+const gymBtnHTML = (g, toy) => GYM_SRC[g] ? `<button class="btn gymBtn" data-gym="${g}"${toy ? ` data-toy="${toy}"` : ''}>Practise it</button>` : '';
 
 /* ================= test hook ================= */
 window.goAct = goAct;
@@ -12121,7 +12668,7 @@ window.__game.opening = {
 // test hooks for TNT and the sandbox (test-tnt.js, test-freebuild.js)
 window.__game.toys = {
   bonuses(){ return TEMPLE_ROOMS.filter(q => q.bonus).map(q => ({id:q.id, reward:q.bonus.reward || null, badge:q.bonus.badge || null, needs:q.bonus.toy || null, why:!!(q.bonus.why || q.bonus.kind === 'dust' || q.bonus.kind === 'pulses'), met:!!q.bonus.reward && TOY_MET[q.bonus.reward] !== undefined && TOY_MET[q.bonus.reward] <= q.id})); },
-  cap:TOY_CAP, eggs:TOY_EGGS, lastGate(){ return SBX.lastGate || null; }, ach(){ return Object.assign({}, progress.sbAch || {}); },
+  cap:TOY_CAP, eggs:TOY_EGGS, lastGate(){ return SBX.lastGate || null; }, ach(){ const o = Object.assign({}, progress.sbAch || {}); achGotSet().forEach(id => { if (SB_ACH[id]) o[id] = o[id] || 1; }); return o; },
   pools(){ return Object.fromEntries(Object.entries(TPOOL).map(([k, q]) => [k, q.list.length])); },
   state(){ return {barrage:!!SBX.barrage, robot:SBX.robot ? +SBX.robot.sc.toFixed(2) : 0, orbit:SBX.orbit ? {t:+SBX.orbit.t.toFixed(2), y:+SBX.orbit.g.position.y.toFixed(1), rider:SBX.orbit.rider} : null, castles:SBX.castles.map(k => ({size:k.size, k:+k.k.toFixed(2)})), geysers:SBX.geysers.length, swing:!!SBX.swing, ride:SBX.ride ? {mecha:!!SBX.ride.mecha} : null, march:!!SBX.march, megaSheep:!!SBX.megaSheep, holyMega:!!SBX.holyMega, holy:(SBX.holy || []).length, planes:(SBX.planes || []).length, balls:SBX.balls.length, slow:SBX.slowT > 0}; },
   goats(){ return SBX.mobs.filter(m => m.kind === 'goat').map(m => ({mecha:!!m.mecha, cell:cellAtWorld(m.g.position.x, m.g.position.z)})); },
@@ -12132,7 +12679,7 @@ window.__game.toys = {
   simSeq(x, y, n){ const c = at(x, y); return eggSim(() => { const q = []; for (let i = 0; i < n; i++){ step(); q.push(c.lit ? 1 : 0); } return q.join(''); }); }, aimFace(yaw){ P.yaw = yaw; stepFP(0); }, walk(yaw, ms){ P.yaw = yaw; keys.w = true; for (let t = 0; t < ms; t += 16){ stepFP(16); sbFrame(16); } keys.w = false; }, frames(ms){ for (let t = 0; t < ms; t += 16){ stepFP(16); runFx(16); sbFrame(16); advFrame(16, t); } }
 };
 window.__game.sbx = {
-  tnts:TNTS, live:tntLive, grow:tntGrow, R:TNT_R, MAX:TNT_LIVE_MAX, ach(){ return Object.assign({}, progress.sbAch || {}); },
+  tnts:TNTS, live:tntLive, grow:tntGrow, R:TNT_R, MAX:TNT_LIVE_MAX, ach(){ achSync(); return Object.fromEntries([...ACHS.got].map(k => [k, 1])); },
   me(){ return {x:P.x, y:P.y, z:P.z, cell:cellAtWorld(P.x, P.z), dead:!!S.dead, tumble:!!S.tumble, roll:P.roll || 0, kb:!!P.kb, deadBox:!$('#dead').hidden}; },
   put(x, y){ const c = cellPos(x, y); P.x = c.x; P.z = c.z; P.y = Math.max(floorAt(x, y), upTop(x, y)); P.vy = 0; P.kb = null; stepFP(0); },
   cell(x, y){ const c = at(x, y); return c ? {t:c.t, lit:c.lit, fuse:c.fuse || 0, on:c.on, sheep:!!c.sheep} : null; },
@@ -12151,6 +12698,27 @@ window.__game.sbx = {
   ride(x, y){ const c = at(x, y); if (c) rideToilet(c); }, riding(){ return !!P.ride; }, chute(){ return !!P.chute; }, beacon(x, y){ const c = at(x, y); if (c) beaconGo(c); }, donkey(){ return SBX.donkey ? {t:SBX.donkey.t, y:SBX.donkey.g ? SBX.donkey.g.position.y : null, broke:!!SBX.donkey.broke, power:SBX.donkey.power} : null; }, skunk(x, y, power){ const c = at(x, y); if (c) skunkGo(c, power || 1); },
   act(mode){ const [cx, cy] = centre(); world.updateMatrixWorld(); act(cx, cy, mode || 'use'); }, hb(){ return {page:HB.page, per:HB.per, pages:HB.pages, shown:[...hotbar.children].filter(b => !b.hidden && !b.classList.contains('pgOff')).length, all:hbVisible().length}; }, flip:hbFlip, inventory:openInventory,
   kit(){ return [...sandboxKit()]; }, eggGate(x, y){ const c = at(x, y); return c ? eggGate(c) : null; }, eggsDone(){ return Object.assign({}, progress.sbEggs || {}); }, mush(){ return !!SBX.mush; }, unlocks:SANDBOX_UNLOCKS, eggs:TOY_EGGS, power:SBX.power, groove(){ return !!SBX.groove; }, minis(){ return SBX.minis.length; }, open:sbOpen, toylog:TOYLOG, gas(){ return TNTS.gas; }
+};
+// test hooks for achievements and the gate gym (test-achievements.js, test-gym.js)
+window.__game.achv = {
+  list(){ return ACH_LIST.map(d => ({id:d.id, cat:d.cat, name:d.name, live:achLive(d), old:!!d.old})); }, got(){ return [...achCtx().got]; }, n(){ return JSON.parse(JSON.stringify(ACHS.n)); },
+  give(id){ return ach(id); }, count(k){ achCount(k); }, poll(){ ACHF.t = 1e9; achFrame(0); }, scan(){ ACHF.sig = achBuildSig(); ACHF.scanned = true; achScanBuild(); }, solvedCheck(id, before){ achSolvedRoom(ROOMS.find(q => q.id === id), new Set(before || [])); },
+  page(){ achOpen(); }, html(){ return achPageHTML(); }, queue(){ return ACHQ.map(d => d.name); }, toast(id){ achToast(ACH_BY[id]); }, clearQ(){ ACHQ.length = 0; const el = $('#achToast'); if (el) el.classList.remove('show'); },
+  gateOf(x, y){ const c = at(x, y); return c ? achGateOf(c) : null; }, tntBang:achTntBang, blastWatch:achBlastWatch, state:achState, mode:() => ACHF.mode,
+  reset(){ ACHS.got.clear(); ACHS.n = {}; ACHQ.length = 0; ACHF.mode = ''; if (!A.on){ const sv = advLoad(); if (sv && (sv.ach || sv.achN)){ delete sv.ach; delete sv.achN; advWrite(sv); } } }, advance(ms){ A.clock = (A.clock || 0) + ms; }, head(r){ const h = A.monkey && A.monkey.userData.head; if (h) h.rotation.y = r; }, discover(id){ discover(id); }, roomAgo(ms){ ACHF.roomT = (A.clock || 0) - ms; },
+  setA(o){ Object.keys(o).forEach(k => { A[k] = Array.isArray(o[k]) ? new Set(o[k]) : o[k]; }); },
+  frames(ms){ for (let t = 0; t < ms; t += 16){ stepFP(16); runFx(16); sbFrame(16); ACHF.t = 0; achFrame(16); } },
+  sniff(){ STINK_TINT.hold = 400; achFrame(0); STINK_TINT.hold = 0; achFrame(0); }, launch(){ P.vy = 11; P.ground = false; achFrame(0); P.vy = 0; P.ground = true; achFrame(0); },
+  debugRooms(){ return ROOMS.filter(r => { const sol = (r.sol || []).filter(g => g.t !== 'air'), built = (r.loose || []).length + (r.fixed || []).filter(f => ['dust', 'torch', 'repeater', 'stone'].includes(f.t)).length; return !r.play && sol.length && sol.length <= 3 && built >= 4; }).map(r => r.id); },
+  freeCell(id){ const r = ROOMS.find(q => q.id === id), b = r.box; for (let y = b.y0 + 1; y < b.y1; y++) for (let x = b.x0 + 1; x < b.x1; x++) if (!at(x, y) && !wallAt(x, y) && !(r.sol || []).some(g => g.x === x && g.y === y)) return [x, y]; return null; },
+  ownIn(id){ const r = ROOMS.find(q => q.id === id), pre = achPreKeys(r), b = r.box, o = []; for (let x = b.x0 + 1; x < b.x1; x++) for (let y = b.y0 + 1; y < b.y1; y++){ const c = at(x, y); if (achOwn(c, pre)) o.push([c.t, x, y]); } return o; },
+  sol(id){ const r = ROOMS.find(q => q.id === id); return (r.sol || []).map(g => ({t:g.t, x:g.x, y:g.y})); }
+};
+window.__game.gym = {
+  open(g, toy){ return gymOpen(g, toy); }, leave(){ gymLeave(); }, on:() => GYM.on, state(){ return {on:GYM.on, gate:GYM.gate, stage:GYM.stage, from:GYM.from && GYM.from.kind, tip:GYM.tip, kind:L && L.def && L.def.kind, done:!!(L && L.done)}; },
+  gates:() => Object.keys(GYM_SRC), def(g, st){ return gymDef(g, st); }, talk(){ let n = 0; while (DLG.on && n++ < 60) dlgAdvance(); return n; },
+  inputs(){ return L ? L.inputs.map(c => [c.x, c.y]) : []; }, rows(){ return L && L.rows ? L.rows.slice() : []; }, ghosts(){ return L ? L.ghosts.map(g => ({t:g.t, x:g.x, y:g.y, dir:g.dir, attach:g.attach, delay:g.delay})) : []; },
+  kit(){ const k = kitFor(); return k ? [...k] : null; }, barold:() => !!(GYM.barold && GYM.barold.parent), frame(){ gymFrame(16); }
 };
 refreshHotbar(); select(1);
 BOOT_IDS = [new THREE.BufferGeometry().id, new THREE.Material().id, new THREE.Texture().id];   // everything made so far is shared (see freeKids)
