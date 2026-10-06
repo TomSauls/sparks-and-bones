@@ -391,6 +391,26 @@ body.pad #topBtns .btn[data-pad]::after{content:attr(data-pad);position:absolute
   #toast{font-size:18px;padding:8px 12px;bottom:calc(126px + env(safe-area-inset-bottom,0px));}
 }
 @media (prefers-reduced-motion: reduce){ #itemName,#toast{transition:none;} }
+/* playtest sweep B6: the panels at the top left mustn't cover half the world. The goal shrinks to its title 10 s after it changes
+   (tap it for all of it), the table can be folded by tapping its heading, and on short screens everything is a bit smaller */
+#goalBox.brief:not(.open) #goalText{display:none;}
+#goalBox.brief:not(.open) #lessonTitle::after{content:'more \25BE';display:inline-block;margin-left:8px;padding:0 6px;font-size:13px;font-weight:700;color:#fff;background:#7a5a20;border-radius:3px;vertical-align:3px;white-space:nowrap;letter-spacing:0;}
+#card h3{cursor:pointer;}
+#card h3::after{content:' \25BE';font-size:.85em;color:var(--panel-ink);}
+#card.fold h3::after{content:' \25B8';}
+#card.fold h3{margin-bottom:0;}
+#card.fold > :not(h3){display:none !important;}
+@media (max-height:700px){
+  #goalBox{padding:7px 12px;}
+  #lessonName{font-size:18px;} #lessonName small{font-size:12px;}
+  #goalText{font-size:15px;}
+  #card{padding:5px 8px;min-width:0;}
+  #card h3{font-size:13px;margin-bottom:3px;}
+  #card th{font-size:13px;} #card svg{width:20px;height:20px;} #card td{padding:0 2px;} #card td.chk{width:20px;font-size:16px;}
+  #card .note{font-size:13px;}
+  #crystals{font-size:17px;padding:4px 8px;} #crystals svg{width:22px;height:22px;}
+  #top{gap:6px;}
+}
 /* while the tutorial is up it IS the instructions: no goal box, no control strip, no duplicate guide line */
 body.tutOn #goalBox, body.tutOn #tip, body.tutOn #mline, body.tutOn #crystals{display:none !important;}
 body.tutOn #tut{top:calc(74px + env(safe-area-inset-top,0px));}
@@ -408,6 +428,7 @@ body.tutOn #tut{top:calc(74px + env(safe-area-inset-top,0px));}
 @media (max-width:600px) and (orientation:portrait){
   #top{flex-direction:column;align-items:stretch;}
   #goalBox{flex:0 0 auto;max-width:none;}
+  #card{align-self:flex-start;max-width:calc(100% - 8px);}   /* (as wide as the table, not the screen: the world shows beside it) */
   #topBtns{justify-content:flex-end;}
   #topBtns #crystals{position:static;margin-right:auto;padding:4px 6px;min-height:40px;font-size:16px;white-space:nowrap;flex:0 0 auto;}
 }
@@ -2077,7 +2098,10 @@ function showCard(head, html){
   w.classList.add('arming'); const armT = cardArmT; setTimeout(() => { if (cardArmT === armT) w.classList.remove('arming'); }, CARD_ARM_MS);   // every button on it (answers, Back to the menu...) waits too
   if (quiz && locked) try { document.exitPointerLock(); } catch (_) {}   // let the mouse reach the answers
 }
-function closeCard(){ if (!cardArmed() || $('#why').hidden) return false; $('#why').hidden = true; sfx.click(); return true; }
+function closeCard(){ if (!cardArmed() || $('#why').hidden) return false; $('#why').hidden = true; sfx.click(); tapQuiet(); return true; }
+// playtest sweep B7: the taps that close a talk box or a card often come in threes. For 0.3 s after one closes, taps on the world do nothing
+const TAPQ = {until:0};
+function tapQuiet(){ TAPQ.until = performance.now() + 300; }
 function promptNext(){
   const k = L.def.inputs.length, cur = rowIndex(combo());
   let best = -1, bestDiff = 99;
@@ -2522,8 +2546,10 @@ function stepFP(dt){
     if (P.ground && !S.deck[li] && !S.pit[li] && S.slide[li] < 0 && !S.ladder[li]) P.safe = [lx, ly];
   }
   knockFrame(s);   // blasted: shoved away from the bang (never through a wall)
+  const x0 = P.x, z0 = P.z;
   const nx = Math.max(-walkX(), Math.min(walkX(), P.x + dx)); if (heightAt(nx, P.z) <= P.y + stepUp) P.x = nx;
   const nz = Math.max(-walkZ(), Math.min(walkZ(), P.z + dzz)); if (heightAt(P.x, nz) <= P.y + stepUp) P.z = nz;
+  cornerSlide(dx, dzz, x0, z0, stepUp);
   if (keys[' ']) jump();
   if (P.ground && S.mode === 'adventure' && (dx || dzz)){ P.stepD = (P.stepD || 0) + Math.hypot(dx, dzz); if (P.stepD > 1.15){ P.stepD = 0; const [sx, sy] = cellAtWorld(P.x, P.z); sfx.step(isQuick(sx, sy) || (S.swamp && inb(sx, sy) && S.swamp[sy*NX + sx]) ? 'sand' : inHall(sx, sy) ? 'gold' : 'grass'); } }
   chuteFrame(s); P.vy -= 28*s; if (P.chute) P.vy = Math.max(P.vy, -3); P.y += P.vy*s;
@@ -2536,6 +2562,22 @@ function stepFP(dt){
   camera.rotation.order = 'YXZ'; camera.rotation.set(P.pitch, P.yaw, P.roll || 0);   // roll + duck: falling over when blasted
   camera.updateMatrixWorld();
   const hand = $('#hand'); if (hand) hand.style.transform = `translate(${bob*60}px, ${Math.abs(bob)*80}px) rotate(-14deg)`;
+}
+// walking into the edge of a doorway (or round any corner): slide sideways round it instead of snagging (playtest sweep B5).
+// Only when the way on is open a little to one side, and only ever into free space, so collision stays solid.
+function cornerSlide(dx, dz, x0, z0, stepUp){
+  const free = (x, z) => heightAt(x, z) <= P.y + stepUp;
+  const try1 = (along, side) => {   // along: the blocked direction's move; side: 'x' or 'z' (the way to slide)
+    for (const o of [.08, .16, .24, .32, .4]) for (const sg of [1, -1]){
+      const sx = side === 'x' ? sg*o : 0, sz = side === 'z' ? sg*o : 0, ax = side === 'x' ? 0 : along, az = side === 'x' ? along : 0;
+      if (!free(P.x + sx, P.z + sz) || !free(P.x + sx + ax, P.z + sz + az)) continue;
+      const step = Math.min(o, Math.abs(along)*1.2), mx = side === 'x' ? sg*step : 0, mz = side === 'z' ? sg*step : 0;
+      if (free(P.x + mx, P.z + mz)){ P.x += mx; P.z += mz; return true; }
+    }
+    return false;
+  };
+  if (dz && P.z === z0 && Math.abs(dz) > Math.abs(dx)*.7) try1(dz, 'x');
+  else if (dx && P.x === x0 && Math.abs(dx) > Math.abs(dz)*.7) try1(dx, 'z');
 }
 function jump(){ if (P.ground){ P.vy = (P.sink || 0) > .2 ? 5.5 : 8.4; P.ground = false; P.sink = Math.max(0, (P.sink || 0) - .35); } }
 function onSafeBridge(){ const [x, y] = cellAtWorld(P.x, P.z); const c = at(x, y); return !!c && c.t === 'bridge' && c.lit; }
@@ -2629,6 +2671,7 @@ const centre = () => { const r = canvas.getBoundingClientRect(); return [r.left 
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 canvas.addEventListener('pointerdown', e => {
   ac();
+  if (performance.now() < TAPQ.until){ e.preventDefault(); return; }   // a fast extra tap just after a talk box or card closed: it was meant for the box, not the world
   const wasTouch = lastTouch; lastTouch = e.pointerType === 'touch';
   if (padMode){ padMode = false; padPrompts(); refreshViewUI(); }   // back to mouse / touch prompts until the pad is used again
   if (wasTouch !== lastTouch) refreshViewUI();
@@ -2852,7 +2895,7 @@ function pokeMonkey(){
 function puffAt(pos){ const a = Math.random()*Math.PI*2; stinkCloud(new THREE.Vector3(pos.x, pos.y + .25, pos.z), Math.cos(a), Math.sin(a), 5, false); }
 function act(cx, cy, mode){
   if (!L) return;
-  if (DLG.on && !dlgSoft()){ dlgAdvance(); return; }
+  if (DLG.on && !dlgSoft()){ dlgAdvance(); if (!DLG.on) tapQuiet(); return; }
   if (A.gRide){ rideTap(cx, cy); return; }   // Act 3's ghost train ride
   if (mode === 'use' && $('#why').hidden && partyDialTap(cx, cy)) return;   // room 12's PARTY POWER button
   if (mode === 'use' && pokeMonkey()) return;
@@ -3571,6 +3614,15 @@ $('#btnGates').addEventListener('click', () => {
 $('#btnNew').addEventListener('click', () => { sfx.click(); openSaves('new'); });   // a new game is a new save: the others stay safe
 $('#btnSaves').addEventListener('click', () => { sfx.click(); openSaves('list'); });
 $('#goalBox').addEventListener('click', () => { $('#goalBox').classList.toggle('open'); });
+$('#card').addEventListener('click', e => { if (e.target.closest('h3')){ const c = $('#card'); c.classList.toggle('fold'); c.dataset.foldAt = String(A.room && A.room.id || A.room || ''); } });   // tap the heading: fold the table away (it opens again in the next room)
+// the goal shrinks to one line 10 s after it last changed (game clock, so tests see it); any new goal shows in full again
+const GOALBRIEF = {t:0};
+function goalBriefFrame(dt){
+  const gb = $('#goalBox'), txt = $('#goalText').textContent; if (!gb) return;
+  if (txt !== GOALBRIEF.last){ GOALBRIEF.last = txt; GOALBRIEF.t = 0; gb.classList.remove('brief'); }
+  if ((GOALBRIEF.t += dt) > 10000 && txt.length > 70 && !gb.classList.contains('brief')) gb.classList.add('brief');   // (a one-line goal stays: folding it saves nothing)
+  const c = $('#card'), here = String(A.room && A.room.id || A.room || ''); if (c.classList.contains('fold') && c.dataset.foldAt !== here) c.classList.remove('fold');
+}
 // folded, the goal panel shows whole sentences only (as many as fit in about two lines), then a "more" tab. Whoever sets the goal just sets its text.
 { const gt = $('#goalText'), FOLD = 110;
   const fold = () => { const t = gt.textContent, parts = t.match(/[^.!?]+[.!?]+["')]*\s*|[^.!?]+$/g) || [t]; let head = parts[0];
@@ -3590,7 +3642,7 @@ $('#goalBox').addEventListener('click', () => { $('#goalBox').classList.toggle('
   b.addEventListener('pointerdown', down); ['pointerup','pointerleave','pointercancel'].forEach(k => b.addEventListener(k, up));
 }
 $('#btnMoveClose').addEventListener('click', () => { $('#move').hidden = true; moveSel = ''; buildTiles(); });
-$('#dlg').addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); dlgAdvance(); });
+$('#dlg').addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); dlgAdvance(); if (!DLG.on) tapQuiet(); });
 $('#paneClose').addEventListener('click', () => { $('#pane').hidden = true; });
 $('#btnTips').addEventListener('click', () => { sfx.click(); const save = advLoad(), solved = new Set(save ? save.solved : []); const list = ROOMS.filter(r => r.mc && solved.has(r.id)); openPane('Things to build in real Minecraft', (list.length ? '<ol style="font-size:16px;line-height:1.4">' + list.map(r => `<li><b>${r.name}:</b> ${r.mc}</li>`).join('') + '</ol>' : '<p>Solve rooms in the temple to collect Minecraft tips here!</p>') + padHelp()); });
 $('#cineSkip').addEventListener('click', e => { e.stopPropagation(); skipCine(); });
@@ -5234,13 +5286,13 @@ const APE_ROOMS = [
     sol:[] },
   { id:208, name:'Odd One Out', give:['dust','torch'], check:'table', inputs:[[1,2],[9,6]], out:[[5,4]], fn:(a, b) => a !== b, gate:'xor',
     fixed:[...XOR_FIXED.filter(c => !(c.t === 'torch' && c.x === 3 && c.y === 5)), ...XOR_CROSS, D(7,4), D(6,4)],
-    why:[{say:'Two halves. The TOP half lights the lamp when the top lever is on and the bottom one is OFF.', at:[7,3]},
-      {say:'Watch. Top lever ON... light ON!', at:[5,4], set:[[1,2,true]]},
-      {say:'Now BOTH on. The bottom lever\'s wire runs up into that block, so its torch goes grumpy. OFF!', at:[7,2], set:[[9,6,true]]},
-      {say:'The bottom half is the same, back to front. It\'s missing its grumpy torch. Your turn!', at:[3,6], set:[[1,2,false],[9,6,false]]}],
-    goal:'The ODD ONE OUT light: on when exactly ONE lever is on. Both on, or both off: light off. The bottom half isn\'t finished.',
+    why:[{say:'Two halves. This half lights the lamp when the lever by the door is on and the far lever is OFF.', at:[7,3]},
+      {say:'Watch. The lever by the door ON... light ON!', at:[5,4], set:[[1,2,true]]},
+      {say:'Now BOTH on. The far lever\'s wire runs into that block, so its torch goes grumpy. OFF!', at:[7,2], set:[[9,6,true]]},
+      {say:'The other half is the same, back to front. It\'s missing its grumpy torch. Your turn!', at:[3,6], set:[[1,2,false],[9,6,false]]}],
+    goal:'The ODD ONE OUT light: on when exactly ONE lever is on. Both on, or both off: light off. One half isn\'t finished.',
     hello:'Test 8. The odd one out. It cannot possibly work out XOR. WE barely worked out XOR.',
-    hint:'The bottom half needs a grumpy torch on its stone block, and a wire from that torch INTO the lamp.',
+    hint:'Find the stone block with NO grumpy torch on it. Give it one, and run a wire from that torch INTO the lamp.',
     win:'Each half says "this lever AND NOT the other one". Put the two halves together: XOR! On when they\'re DIFFERENT.',
     mc:'This is a real Minecraft XOR: two "this AND NOT that" halves feeding one lamp.',
     sol:[K('torch',3,5,{attach:2}),D(3,4),D(4,4)] },
@@ -5583,17 +5635,12 @@ const APE_LAND = () => [
   ['Radio', '*crackle* Greetings, travellers. *crackle*'],
   [GUIDE, 'Aliens! I made tinfoil antennae. Ahem. "TAKE ME TO YOUR LEADER!" ...Too much?']
 ];
+// (short, so you get going: Greg and the VISITOR sticker come later, between the first tests: apeBeatsFrame 'greg', 'sticker'; playtest sweep B4)
 const APE_INTRO = () => [
-  ['Dr Zest', 'You... DIRTY... human.'],
-  ['Dr Zest', '...No, genuinely. You\'re FILTHY. You\'re dripping mud on my nice clean planet.'],
+  ['Dr Zest', 'You... DIRTY... human. ...No, really. You\'re FILTHY.'],
   [GUIDE, 'It\'s APES! Everyone expected aliens. It\'s all APES!'],
-  ['Dr Zest', 'I am Dr Zest, of the Institute of Very Senior Thinkers. Here is your VISITOR sticker. Hold still.'],
-  ['Dr Zest', '*prod* *prod* (She is poking you with a pencil.)'],
-  ['You', 'Get your STINKY paws off me!'],
-  ['Dr Zest', '*sniffs her paw* ...Tuesday WAS a while ago. *writes* "Specimen is RUDE. Also correct."'],
-  ['Greg', 'Take me to your— oh! Sorry. Habit. Hello! I\'m Greg. I\'m an ALIEN. A real one! I do the mopping.'],
-  ['Dr Zest', 'The hairless creature will now do our TESTS. It will fail them all. Up the steps to the Institute!'],
-  [GUIDE, 'Tests? I LOVE tests. Mostly the bit where they end.']
+  ['Dr Zest', 'I\'m Dr Zest. Now you do our TESTS. You\'ll fail them all.'],
+  ['Dr Zest', 'Up the steps to the Institute! Follow the beam.']
 ];
 const APE_PW = [{act:APE_ACT, after:206, words:'TONGS'}, {act:APE_ACT, after:211, words:'BUCKET'}, {act:APE_ACT, after:215, words:'SPLAT'}, {act:APE_ACT, after:219, words:'CHOOCHOO'}];
 function apeFrame(dt){
@@ -5662,6 +5709,8 @@ function apeBeatsFrame(){
       [GUIDE, 'I\'m a SKELETON?! But I\'m YOUNG! And HANDSOME! ...Ish.'], [GUIDE, 'Hang on. That explains the draught. And the rattling.'], [GUIDE, 'I\'m in a MUSEUM. I\'m FAMOUS! Nobody touch me. I\'m an exhibit now.']]); return; } }
   // Sir Reginald stays on the ship ("the air disagrees with me"), and radios his warnings just too late
   const calm = (A.clock || 0) - (A.apeSolvedAt || 0) > 9000;   // a while after the last test was passed
+  if (A.solved.has(201) && calm && beat('greg')){ dlgStart([['Greg', 'Take me to your— oh! Sorry. Habit. Hello! I\'m Greg. I\'m an ALIEN. A real one!'], ['Greg', 'I do the mopping.']]); return; }
+  if (A.solved.has(202) && calm && beat('sticker')){ dlgStart([['Dr Zest', 'Here is your VISITOR sticker. Hold still. *prod* *prod*'], ['You', 'Get your STINKY paws off me!'], ['Dr Zest', '*sniffs her paw* ...Tuesday WAS a while ago. *writes* "Specimen is RUDE. Also correct."']]); return; }
   if (A.solved.has(203) && calm && beat('radio1')){ dlgStart([['Radio', '*crackle* Sir Reginald here, on the ship. I\'m staying put. The air out there disagrees with me.'], ['Radio', 'Ah. Did I mention...? The levers here are upside down. *blub*'], [GUIDE, '...Why does his radio go "blub"?']]); return; }
   // General Grumbletum guards the plaza with his Big Book of Traps (upside down)
   if (A.general && Math.hypot(A.general.position.x - P.x, A.general.position.z - P.z) < 5 && beat('general')){ dlgStart([['General Grumbletum', 'HALT! Nobody passes without... *reads his Big Book of Traps* ...hmm.'], ['General Grumbletum', 'This page is all upside down. Carry on. But I am WATCHING you.']]); return; }
@@ -5671,7 +5720,7 @@ function apeBeatsFrame(){
 // ---- each room's goal on a flat sign on the wall you face as you walk in (one canvas for all 19, merged into one mesh) ----
 const APE_SIGN = {201:'PLAY! Try every mix of the two levers. When is the light ON?', 202:'Light ON only when NOBODY pulls a lever. One lever needs a wire.', 203:'Light ON only when NEITHER lever is on. Build it all!',
   204:'PLAY! Try every mix of the two keys. What turns the LOCKED light off?', 205:'LOCKED light stays on until BOTH keys are on. Finish it!', 206:'The General\'s safe: LOCKED unless BOTH keys are on. Build it all!',
-  207:'PLAY! Two switches, one light. What flips it?', 208:'Light ON when exactly ONE lever is on. Finish the bottom half!', 209:'The door light: ON with exactly ONE key. Join up the wires!',
+  207:'PLAY! Two switches, one light. What flips it?', 208:'Light ON when exactly ONE lever is on. One half needs a torch!', 209:'The door light: ON with exactly ONE key. Join up the wires!',
   210:'PASS: a stamp OR a banana... but NOT if the General is looking.', 211:'PASS: stamp AND banana. OR the King says so.',
   212:'Get the cart to the END. Gold rails: power ON = GO, OFF = STOP.', 213:'The bell rings when the cart ARRIVES. Two bits of track are missing.', 214:'Send the cart to the CRYSTALS, not the SLIME.',
   215:'STOP at the platform. Then GO on to the end.', 216:'Get the cart all the way round. Only dust!', 217:'Points to the CRYSTALS: flag OR seal, AND NOT the gorilla.',
@@ -6088,7 +6137,7 @@ function buildTemple(save){
   // ---- the jungle: a trail from the crashed helicopter to the temple plaza ----
   S.lava = new Uint8Array(NX*NY);
   const trail = new Set(), clear = (x, y, r) => { for (let dx=-r; dx<=r; dx++) for (let dy=-r; dy<=r; dy++) if (dx*dx + dy*dy <= r*r + 1 && inb(x+dx, y+dy)) trail.add(I(x+dx, y+dy)); };
-  for (let k=0; k<TRAIL.length-1; k++){ const [x0, y0] = TRAIL[k], [x1, y1] = TRAIL[k+1], n = Math.max(Math.abs(x1-x0), Math.abs(y1-y0)); for (let t=0; t<=n; t++) clear(Math.round(x0 + (x1-x0)*t/n), Math.round(y0 + (y1-y0)*t/n), 1); }
+  for (let k=0; k<TRAIL.length-1; k++){ const [x0, y0] = TRAIL[k], [x1, y1] = TRAIL[k+1], n = Math.max(Math.abs(x1-x0), Math.abs(y1-y0)); for (let t=0; t<=n; t++) clear(Math.round(x0 + (x1-x0)*t/n), Math.round(y0 + (y1-y0)*t/n), 2); }   // (5 wide: a clear, trampled path you can't lose; playtest sweep A1)
   clear(SPAWN[0], SPAWN[1], 5); clear(TUT_SPOT[0], TUT_SPOT[1], 2);
   // the swamp your helicopter came down in, right behind where you wake up
   S.swamp = new Uint8Array(NX*NY);
@@ -7592,6 +7641,7 @@ const HELI_MATS = (() => {
   return {red:panel(['#c8281c', '#bd2519', '#d23121', '#c42a1d'], '#5e100a', '#8e1a12', '#f08a6a'), white:panel(['#e8e4dc', '#dedad0', '#f0ece4'], '#8a867c', '#b8b4aa'), dark:panel(['#2e2e33', '#28282c', '#36363b'], '#111113', '#1c1c20', '#6a6a72'),
     glass:new THREE.MeshLambertMaterial({map:tex(cv16(g => { g.fillStyle = '#8fc8e8'; g.fillRect(0, 0, 16, 16); g.fillStyle = '#d8f0ff'; for (let k = 0; k < 5; k++) g.fillRect(3 + k, 9 - k, 1, 1); g.fillStyle = '#3a4a5a'; g.fillRect(0, 0, 16, 1); g.fillRect(0, 15, 16, 1); g.fillRect(0, 0, 1, 16); g.fillRect(15, 0, 1, 16); }), null, true), transparent:true, opacity:.75})};
 })();
+let TRAMPLED_MAT = null;   // the trampled leaves along the jungle trail (made once, shared)
 function buildCrash(){
   if (A.crash) decorRoot.remove(A.crash);
   if (A.jungle) decorRoot.remove(A.jungle);
@@ -7613,11 +7663,13 @@ function buildCrash(){
     if (w < .16){ const lp = new THREE.Mesh(new THREE.CylinderGeometry(.38, .38, .04, 7), pad); lp.position.set(c.x + (whash(x, y, 42) - .5)*.5, .17, c.z + (whash(x, y, 43) - .5)*.5); lp.raycast = () => {}; J.add(lp); if (w < .05){ add(.16, .12, .16, flower, lp.position.x, .26, lp.position.z, 0, J); } }
     else if (edge && w < .7 && Math.hypot(x - SPAWN[0], y - SPAWN[1]) > 3.5){ for (let k = 0; k < 3; k++){ const h = .9 + whash(x, y, 44 + k)*1.1, rx = c.x + (whash(x, y, 47 + k) - .5)*.8, rz = c.z + (whash(x, y, 50 + k) - .5)*.8; add(.07, h, .07, reed, rx, h/2, rz, 0, J); if (k === 0) add(.13, .35, .13, cat, rx, h - .1, rz, 0, J); } }
   });
-  // a worn dirt path along the trail, so it's obvious which way to go
-  { const seen = new Set(), cells = []; for (let k=0; k<TRAIL.length-1; k++){ const [x0, y0] = TRAIL[k], [x1, y1] = TRAIL[k+1], n = Math.max(Math.abs(x1-x0), Math.abs(y1-y0)); for (let t=0; t<=n; t++){ const cx = Math.round(x0 + (x1-x0)*t/n), cy = Math.round(y0 + (y1-y0)*t/n); for (let dx=-1; dx<=1; dx++) for (let dy=-1; dy<=1; dy++){ const x = cx+dx, y = cy+dy, key = x + ',' + y; if (seen.has(key) || !inb(x, y) || S.walls[y*NX + x] || (S.swamp && S.swamp[y*NX + x]) || S.elev[y*NX + x] > 0) continue; if ((dx || dy) && whash(x, y, 61) < .35) continue; seen.add(key); cells.push([x, y]); } } }
-    if (cells.length){ const dm = new THREE.InstancedMesh(cbox(1, .04, 1), lam(CV.dirt), cells.length), mt = new THREE.Matrix4(); cells.forEach(([x, y], k) => { const c = cellPos(x, y); mt.makeTranslation(c.x, .02, c.z); dm.setMatrixAt(k, mt); }); dm.instanceMatrix.needsUpdate = true; dm.raycast = () => {}; dm.frustumCulled = false; J.add(dm); } }
+  // a worn dirt path along the trail, so it's obvious which way to go: a solid 3-wide dirt track with trampled, flattened leaves either side
+  { const seen = new Set(), cells = [], edge = []; for (let k=0; k<TRAIL.length-1; k++){ const [x0, y0] = TRAIL[k], [x1, y1] = TRAIL[k+1], n = Math.max(Math.abs(x1-x0), Math.abs(y1-y0)); for (let t=0; t<=n; t++){ const cx = Math.round(x0 + (x1-x0)*t/n), cy = Math.round(y0 + (y1-y0)*t/n); for (let dx=-2; dx<=2; dx++) for (let dy=-2; dy<=2; dy++){ const x = cx+dx, y = cy+dy, key = x + ',' + y; if (seen.has(key) || !inb(x, y) || S.walls[y*NX + x] || (S.swamp && S.swamp[y*NX + x]) || S.elev[y*NX + x] > 0) continue; const ring = Math.max(Math.abs(dx), Math.abs(dy)); if (ring === 2 && whash(x, y, 61) < .3) continue; seen.add(key); (ring < 2 ? cells : edge).push([x, y]); } } }
+    const lay = (list, mat, h) => { if (!list.length) return; const dm = new THREE.InstancedMesh(cbox(1, .04, 1), mat, list.length), mt = new THREE.Matrix4(); list.forEach(([x, y], k) => { const c = cellPos(x, y); mt.makeTranslation(c.x, h, c.z); dm.setMatrixAt(k, mt); }); dm.instanceMatrix.needsUpdate = true; dm.raycast = () => {}; dm.frustumCulled = false; J.add(dm); };
+    lay(cells, lam(CV.dirt), .02); lay(edge, TRAMPLED_MAT || (TRAMPLED_MAT = lam(cv16(g => speckle(g, ['#6b5a2a', '#5e6a26', '#7a6230', '#556020'])))), .015); }
   // shafts of sunlight poking through the canopy
   const shaft = new THREE.MeshBasicMaterial({color:0xfff2b0, transparent:true, opacity:.14, depthWrite:false, blending:THREE.AdditiveBlending});
+  A.shaftMat = shaft;   // (dimmed while the map thief leads, so a sunbeam can't be mistaken for the monkey's beam: jungleFrame)
   [[52, 176], [44, 170], [36, 166], [27, 160], [58, 180], [47, 186], [20, 156]].forEach(([x, y], k) => { const c = cellPos(x, y), m = new THREE.Mesh(cbox(1.6, 15, 1.6), shaft); m.position.set(c.x, 7.5, c.z); m.rotation.set(.18, k, .12); m.raycast = () => {}; J.add(m); });
   // fireflies
   for (let k = 0; k < 46; k++){ const t = TRAIL[Math.floor(Math.random()*(TRAIL.length - 2))], c = cellPos(t[0] + (Math.random() - .5)*16, t[1] + (Math.random() - .5)*10); const f = glowAdd(J, c.x, .6 + Math.random()*2.6, c.z, .32, 0xc8f05a); A.flies.push({s:f, o:f.position.clone(), ph:Math.random()*9, sp:.4 + Math.random()*.8}); }
@@ -7629,9 +7681,11 @@ function buildCrash(){
 function jungleFrame(dt){
   if (!A.jungle || A.launched) return;
   const s = dt/1000, t = performance.now()/1000;
+  if (A.shaftMat){ const want = A.thiefLeading && A.thiefLeading() ? .035 : .14; A.shaftMat.opacity += (want - A.shaftMat.opacity)*Math.min(1, s*2); }
   A.flies.forEach(f => { f.s.position.set(f.o.x + Math.sin(t*f.sp + f.ph)*1.2, f.o.y + Math.sin(t*f.sp*1.7 + f.ph)*.4, f.o.z + Math.cos(t*f.sp*.8 + f.ph)*1.2); const k = .2 + Math.max(0, Math.sin(t*2.2 + f.ph*3))*.25; f.s.scale.set(k, k, 1); });
   A.eyes.forEach(e => { if (e.gone) return; e.t -= s; const blink = e.t < .15; e.g.scale.y = blink ? .1 : 1; if (e.t < 0) e.t = 2 + Math.random()*4;
-    if (Math.hypot(e.g.position.x - P.x, e.g.position.z - P.z) < 3.2){ e.gone = true; e.g.visible = false; noise(.25, .05, 900); sfx.ook(700); showToast(bag('eyes', ['Eek! Something scampered off!', 'Whatever it was, it\'s more scared of you!', 'Rustle rustle... just a shy monkey.', 'Two shiny eyes... and then, gone.'])); } });
+    if (Math.hypot(e.g.position.x - P.x, e.g.position.z - P.z) < 3.2){ e.gone = true; e.g.visible = false; noise(.25, .05, 900); if ((A.thiefLeading && A.thiefLeading()) || !playerSees(e.g.position.x, e.g.position.y, e.g.position.z)) return;   // (not while you chase the map thief, or it looks like the thief ran off)
+      sfx.ook(700); showToast(bag('eyes', ['Eek! Something scampered off!', 'Whatever it was, it\'s more scared of you!', 'Rustle rustle... just a shy monkey.', 'Two shiny eyes... and then, gone.'])); } });
   // bubbles glugging up from the sunken helicopter, frogs, and the odd spooky hoot
   if (A.crash && !reduceMotion){ A.bubT = (A.bubT || 0) - dt; if (A.bubT <= 0){ A.bubT = 500 + Math.random()*900; const b = new THREE.Mesh(new THREE.SphereGeometry(.09, 6, 4), new THREE.MeshLambertMaterial({color:0x9fbf8a, transparent:true, opacity:.7})); b.position.set(A.crash.position.x + (Math.random() - .5)*2.4, .15, A.crash.position.z + (Math.random() - .5)*2.4); b.raycast = () => {}; A.jungle.add(b); A.bubbles.push({m:b, t:0}); } }
   A.bubbles = A.bubbles.filter(b => { b.t += s; b.m.position.y = .15 + Math.sin(b.t*3)*.03; b.m.scale.setScalar(1 + b.t); if (b.t > .9){ A.jungle.remove(b.m); return false; } return true; });
@@ -7668,13 +7722,13 @@ function trailPath(){ const pts = TRAIL.map(([x, y]) => cellPos(x, y)), cum = [0
 function trailAt(TP, s){ s = Math.max(0, Math.min(TP.len, s)); let i = 1; while (i < TP.cum.length - 1 && TP.cum[i] < s) i++; const a = TP.pts[i-1], b = TP.pts[i], k = (s - TP.cum[i-1]) / Math.max(1e-6, TP.cum[i] - TP.cum[i-1]); return {x:a.x + (b.x - a.x)*k, z:a.z + (b.z - a.z)*k, dx:b.x - a.x, dz:b.z - a.z}; }
 function trailNear(TP, x, z){ let best = 1e9, bs = 0; for (let i = 1; i < TP.pts.length; i++){ const a = TP.pts[i-1], b = TP.pts[i], vx = b.x - a.x, vz = b.z - a.z, l2 = vx*vx + vz*vz, k = Math.max(0, Math.min(1, ((x - a.x)*vx + (z - a.z)*vz) / l2)), d = Math.hypot(a.x + vx*k - x, a.z + vz*k - z); if (d < best){ best = d; bs = TP.cum[i-1] + k*Math.sqrt(l2); } } return {s:bs, d:best}; }
 // could you see this spot right now? (on screen, not too far, no wall or tree in the way)
-function playerSees(x, y, z){
+function playerSees(x, y, z, frac){   // (frac: only the middle part of the screen counts, e.g. .6 = the middle 60%)
   const ex = P.x, ey = P.y + EYE, ez = P.z, dx = x - ex, dy = y - ey, dz = z - ez, dist = Math.hypot(dx, dz);
   if (dist > 40) return false;
   const fwd = -dx*Math.sin(P.yaw) - dz*Math.cos(P.yaw), side = dx*Math.cos(P.yaw) - dz*Math.sin(P.yaw), cp = Math.cos(P.pitch), sp = Math.sin(P.pitch), depth = fwd*cp + dy*sp, up = dy*cp - fwd*sp;
   if (depth < .05) return false;
-  const th = Math.tan(camera.fov*Math.PI/360)*1.1, tw = th*(camera.aspect || 1);
-  if (Math.abs(up) > th*depth + .3 || Math.abs(side) > tw*depth + .3) return false;
+  const th = Math.tan(camera.fov*Math.PI/360)*(frac || 1.1), tw = th*(camera.aspect || 1), pad = frac ? 0 : .3;
+  if (Math.abs(up) > th*depth + pad || Math.abs(side) > tw*depth + pad) return false;
   const n = Math.ceil(dist*3), [tx, ty] = cellAtWorld(x, z);
   for (let k = 1; k < n; k++){ const [cx, cy] = cellAtWorld(ex + dx*k/n, ez + dz*k/n); if (cx === tx && cy === ty) break; if (wallAt(cx, cy)) return false; }
   return true;
@@ -7723,10 +7777,26 @@ function startThief(){
   A.thief = Object.assign(D, {TP, hand, phase:'drop', t:0, s:0, pace:0, pt:0, said:0, stuck:0, prog:0, progS:0});
   if (tut) $('#tutTxt').textContent = 'You get out your map. Now, which way is the temple...? Hang on. What\'s that, up in the tree?';
 }
+function thiefRedrop(T){
+  let land = null;   // on the trail, 3.5-8 blocks from you with nothing in the way (your view is turned to it), ahead of where it was if it can
+  { const here = trailNear(T.TP, P.x, P.z).s, from = Math.max(0, T.s - 6); let best = null, bs = 1e9;
+    for (let k = -14; k <= 14; k += .5){ const s2 = here + k; if (s2 < 0 || s2 > T.TP.len - 1) continue; const q = trailAt(T.TP, s2), d = Math.hypot(q.x - P.x, q.z - P.z);
+      if (d < 3.5 || d > 8 || !passableCell(...cellAtWorld(q.x, q.z)) || !lineFree(P, {x:q.x, z:q.z})) continue;
+      let off = Math.atan2(-(q.x - P.x), -(q.z - P.z)) - P.yaw; off = Math.abs(Math.atan2(Math.sin(off), Math.cos(off)));
+      const score = off + (s2 < from ? 2 : 0) + Math.abs(d - 5)*.15; if (score < bs){ bs = score; best = new THREE.Vector3(q.x, 0, q.z); } }
+    land = best; }
+  if (!land) for (const r of [4.5, 3.5, 5.5, 2.6]){ for (const da of [0, .3, -.3, .6, -.6, .9, -.9]){ const a = P.yaw + da, x = P.x - Math.sin(a)*r, z = P.z - Math.cos(a)*r, [cx, cy] = cellAtWorld(x, z); if (passableCell(cx, cy) && !at(cx, cy) && lineFree(P, {x, z})){ land = new THREE.Vector3(x, 0, z); break; } } if (land) break; }
+  if (!land) land = landSpot(null);
+  const m = T.m, fl = floorAtWorld(land.x, land.z);
+  T.backTo = Math.max(0, T.s - 6);   // then it leads you back to the trail, no further back than where you were
+  T.phase = 'redrop'; T.t = 0; T.fl = fl; T.landed = false; T.path = null; T.jump = null; T.lostT = 0; T.cenAt = A.clock || 0;
+  m.position.set(land.x, fl + 6.5, land.z); m.rotation.y = Math.atan2(P.x - land.x, P.z - land.z); A.chaseBack = (A.chaseBack || 0) + 1;
+}
 function thiefLead(T){
   const m = T.m; T.phase = 'lead'; T.t = 0;
   if (T.hand){ decorRoot.remove(T.hand); T.hand = null; } T.map.visible = true; m.userData.arms[0].rotation.x = m.userData.arms[1].rotation.x = 0;
   const h = trailNear(T.TP, m.position.x, m.position.z); T.s = h.s;
+  if (T.backTo > h.s){ const q = trailAt(T.TP, T.backTo); h.s = T.backTo; h.d = Math.hypot(q.x - m.position.x, q.z - m.position.z); T.s = h.s; } T.backTo = 0;
   if (h.d > .6){ T.s = Math.min(T.TP.len, h.s + 1.5); const q = trailAt(T.TP, T.s); T.path = bfsPath(cellAtWorld(m.position.x, m.position.z), cellAtWorld(q.x, q.z)); if (T.path) T.path.push(new THREE.Vector3(q.x, 0, q.z)); }
   T.progS = T.s; T.prog = 0; renderCard();
 }
@@ -7754,6 +7824,7 @@ function thiefFrame(dt){
   const T = A.thief; if (!T) return;
   const m = T.m, u = m.userData, s = Math.min(.05, dt/1000), dP = Math.hypot(m.position.x - P.x, m.position.z - P.z);
   T.t += dt; T.seen = seenAt(m.position.x, m.position.z);
+  T.cen = T.seen && playerSees(m.position.x, floorAtWorld(m.position.x, m.position.z) + .7, m.position.z, .65); if (T.cen) T.cenAt = A.clock || 0;   // in the middle part of your screen
   let moving = false, faceYou = false;
   if (T.phase === 'drop' || T.phase === 'grab'){
     // it happens right in front of you, and your view turns to it so nobody misses it
@@ -7767,19 +7838,30 @@ function thiefFrame(dt){
       if (T.t > 2300 || dP > 8) thiefLead(T);
     }
   }
+  else if (T.phase === 'redrop'){
+    // you lost it for ages: it drops out of the trees right in front of you again, chatters, then runs back to the trail
+    if (T.t < 1100) lookTowards(m.position.x, T.fl + .9, m.position.z, dt); faceYou = true;   // (your view turns to where it lands: gently, like the first grab)
+    if (!T.landed){ if (dropFrame(T, T.t - 200)){ T.t = 0; u.hop = .6; sayOn(m, 'Ook ook! (Over here! Follow me!)', 2600); sfx.ook(760); } }
+    else if (T.t > 1100) thiefLead(T);
+  }
   else if (T.phase === 'lead'){
     const here = trailNear(T.TP, P.x, P.z), gap = T.s - here.s;
+    // it only runs on while it's in the middle of your screen (or right under your nose): it never runs off where you can't see (playtest sweep A1)
+    const look = (A.clock || 0) - (T.cenAt === undefined ? -1e9 : T.cenAt) < 1200 || (T.seen && dP < 3);
     let v = 0;
+    T.lostT = T.seen || T.jump ? 0 : (T.lostT || 0) + dt;
     if (A.metBarold){ T.phase = 'hide'; T.path = null; }
-    else if (T.path && T.path.length){ moving = followPath(T, dP < THIEF_NEAR ? THIEF_RUN : 3.6, s); }   // off the trail: back onto it first
+    else if (T.lostT > 18000 && !A.introAt && here.s < T.TP.len - 4){ thiefRedrop(T); return; }   // lost for ~20 s: it comes back to find you
+    else if (T.path && T.path.length){ if (look || dP < 2) moving = followPath(T, dP < 2.5 ? 5.5 : 3.8, s); }   // off the trail: back onto it first (while you watch)
     else if (gap < -1){
       // you took a shortcut and got ahead: it pops up again further on, where you can't see (never in front of your eyes)
-      if (!T.seen){ const s2 = thiefAhead(T, here.s); if (s2 !== null){ T.s = s2; T.pace = 0; T.progS = s2; } else if (dP > 6) v = THIEF_RUN; }
+      if (!T.seen){ const s2 = thiefAhead(T, here.s); if (s2 !== null){ T.s = s2; T.pace = 0; T.progS = s2; } }
       else if (dP < THIEF_NEAR){ if (T.s > .5) v = -THIEF_RUN; else { T.phase = 'hide'; T.back = true; T.path = null; } thiefSay(T, ['Eek! Hee hee!'], 4000); }
     } else {
       if (dP < THIEF_NEAR || gap < 2.5){ v = THIEF_RUN; if (dP < 3){ const was = T.said; thiefSay(T, ['Ook! (Too slow!)', 'Hee hee! (Can\'t catch me!)', 'Ook ook! (Nope!)'], 4000); if (T.said !== was) sfx.ook(640); } }
       else if (T.waiting ? dP < THIEF_FAR - 2.5 : dP <= THIEF_FAR) v = dP < 6 ? 4.8 : 3.4;
     }
+    if (v > 0 && !look && dP >= 2) v = 0;   // not looking at it: it waits for you, fidgeting in its beam
     T.waiting = v === 0 && !(T.path && T.path.length);
     if (v){
       const ns = Math.max(0, Math.min(T.TP.len, T.s + v*s)), q = trailAt(T.TP, ns + T.pace);
@@ -7814,12 +7896,13 @@ function thiefFrame(dt){
   }
   if (faceYou) T.dir = Math.atan2(P.x - m.position.x, P.z - m.position.z);
   if (T.dir !== undefined){ const d = Math.atan2(Math.sin(T.dir - m.rotation.y), Math.cos(T.dir - m.rotation.y)); m.rotation.y += d*Math.min(1, s*12); }
-  if (T.phase !== 'drop'){
+  const falling = T.phase === 'drop' || (T.phase === 'redrop' && !T.landed);
+  if (!falling){
     const fl = floorAtWorld(m.position.x, m.position.z);
     if (u.hop > 0 && !reduceMotion){ u.hop = Math.max(0, u.hop - s*1.1); m.position.y = fl + Math.abs(Math.sin(u.hop*Math.PI*3))*.35; } else m.position.y = fl + (T.waiting && !reduceMotion ? Math.abs(Math.sin(T.pt*2))*.12 : 0);
     if (T.jump && !reduceMotion){ const J = T.jump, q = trailAt(T.TP, J.s), dur = Math.max(300, Math.hypot(q.x - J.from.x, q.z - J.from.z)/5*1000); m.position.y += Math.sin(Math.min(1, J.t/dur)*Math.PI)*1.2; }
   }
-  if (T.phase !== 'drop' && T.phase !== 'grab'){ u.phase += s*(moving ? 14 : 0); const sw = moving && !reduceMotion ? Math.sin(u.phase)*.7 : 0; u.legs[0].rotation.x = sw; u.legs[1].rotation.x = -sw; u.arms[0].rotation.x = -sw; u.arms[1].rotation.x = T.waiting ? -2.6 + Math.sin(T.pt*3)*.4 : -1.1; }   // one arm hugs the map; when it waits, it waves
+  if (!falling && T.phase !== 'grab'){ u.phase += s*(moving ? 14 : 0); const sw = moving && !reduceMotion ? Math.sin(u.phase)*.7 : 0; u.legs[0].rotation.x = sw; u.legs[1].rotation.x = -sw; u.arms[0].rotation.x = -sw; u.arms[1].rotation.x = T.waiting ? -2.6 + Math.sin(T.pt*3)*.4 : -1.1; }   // one arm hugs the map; when it waits, it waves
   // first sight of the temple: a little moment, once
   const [, cy] = cellAtWorld(P.x, P.z);
   if (!A.revealed && cy <= TRAIL[TRAIL.length - 2][1] + 2){ A.revealed = true; sfx.gong(); showToast('Whoa...'); if (typeof musicCue === 'function') musicCue('reveal'); }
@@ -7827,15 +7910,13 @@ function thiefFrame(dt){
 // Barold has been waiting at the foot of the great stair
 // you hear him before you see him... and he is NOT what you were expecting
 const CALLS = ['Hellooo? Is somebody there?', 'I saw a helicopter come down! Are you OK?', 'Over HERE! By the big stairs!', 'Follow my voice! This way!', 'Hello? Helicopter person? I\'m by the GIANT temple. You can\'t miss it.'];
+// (short: a kid who skips text gets to play fast. The rest comes later, at calm moments: LORE 'fifteen', 'visitor', 'lighting')
 const INTRO = [
-  'Oh! A VISITOR! Hello hello hello! ...Why are you making that face?',
-  'Oh, you\'re comparing me to my painting. It\'s the lighting. Temples have TERRIBLE lighting.',
-  'Is it the cobwebs? Sorry. I\'ve been waiting for a visitor for AGES. Well. Since before Tuesday.',
-  ['I\'m Barold, the temple guide! See my card? GUIDE, LEVEL 1. You\'re my very first visitor!', () => showIdCard(1, 12000)],
-  'Fifteen rooms with you, and I go up to LEVEL 2! Bigger hat! Shinier badge! No pressure.',
-  'Also: a famous explorer went in three days ago and never came out. And all the machines inside are broken. So... shall we?'
+  'Oh! A VISITOR! My very first one! Hello hello hello!',
+  ['I\'m Barold, the temple guide! See my card? GUIDE, LEVEL 1.', () => showIdCard(1, 12000)],
+  'All the machines in the temple are broken. Let\'s fix them together!'
 ];
-A.thiefLeading = () => !!(A.thief && ['drop', 'grab', 'lead'].includes(A.thief.phase));
+A.thiefLeading = () => !!(A.thief && ['drop', 'grab', 'lead', 'redrop'].includes(A.thief.phase));
 A.thiefGrabbing = () => !!(A.thief && (A.thief.phase === 'drop' || A.thief.phase === 'grab'));
 function introFrame(dt){
   if (A.metBarold && !A.gotKit && !tut && A.kitDue !== undefined){ A.kitDue -= dt; if (A.kitDue <= 0){ A.kitDue = undefined; startTutorial('B'); } return; }
@@ -7849,7 +7930,7 @@ function introFrame(dt){
   }
   if (!A.introAt && d < 4.5){ A.introAt = 1; A.introT = 0; A.introI = -1; const bb = A.monkey.userData.bubble; if (bb){ A.monkey.remove(bb); A.monkey.userData.bubble = null; } A.monkey.rotation.y = Math.atan2(P.x - A.monkey.position.x, P.z - A.monkey.position.z); tone(196, .25, 'square', .05); tone(185, .25, 'square', .05, .28); tone(147, .7, 'square', .06, .56); }
   if (A.introAt && !A.introStarted){ A.introStarted = true; P.yaw = Math.atan2(-(A.monkey.position.x - P.x), -(A.monkey.position.z - P.z)); P.pitch = -.05;
-    dlgStart(INTRO.map(l => Array.isArray(l) ? [GUIDE, ...l] : [GUIDE, l]).concat(A.gotKit ? [] : [[GUIDE, 'Oh! You\'ll need this. Every machine in there runs on REDSTONE. Here: a bag of dust.']]), () => { A.metBarold = true; advSaveSoon(); renderCard(); if (!A.gotKit) A.kitDue = 400; }); }
+    dlgStart(INTRO.map(l => Array.isArray(l) ? [GUIDE, ...l] : [GUIDE, l]).concat(A.gotKit ? [] : [[GUIDE, 'They all run on REDSTONE. Here: a bag of dust!']]), () => { A.metBarold = true; advSaveSoon(); renderCard(); if (!A.gotKit) A.kitDue = 400; }); }
 }
 /* ---- music: a small generative composer, Minecraft-style.
    Like the C418 and Lena Raine soundtracks: a calm piece of a minute or two, then a long silence, then another piece.
@@ -8396,7 +8477,7 @@ const ROOM_DECOR = {
     props:[['flags'], ['telescope'], ['spools']]},
   22:{who:'giant', use:'the giants\' sun deck', ceil:0, sign:'The wire is too long. Put a Repeater in it!',
     props:[['deckchair'], ['poster', 'SUN CREAM. Giant size.'], ['flags']]},
-  23:{who:'work', use:'the sorting deck', ceil:0, sign:'Lever A lights BOTH lamps. Lever B lights only the bottom one!',
+  23:{who:'work', use:'the sorting deck', ceil:0, sign:'Lever A lights BOTH lamps. Lever B: only the lamp across from it!',
     props:[['poster', 'ONE WAY -->'], ['pipes'], ['poster', '<-- ONE WAY'], ['flags']]},
   24:{who:'work', use:'the power deck', ceil:0, sign:'Fix the power line! THREE things are broken.',
     props:[['pylon'], ['spools'], ['poster', 'DANGER: SPARKS!'], ['gauge']]},
@@ -9253,11 +9334,14 @@ function climbTo(next){
 // the hint button, once a room is done: show the way on (the glowing trail, now)
 function forceTrail(c){ if (!c) return; const W = A.wf || (A.wf = {key:'', best:1e9, t:0, crumbs:[], age:0}); W.key = c.join(); W.best = 1e9; W.forced = true; W.age = 0; }
 function objectiveFrame(dt){
+  beamTurnArm();
   const c = S.mode === 'adventure' && inFP() ? objectiveCell() : null, el = $('#objArrow');
   if (!A.beacon){ const g = new THREE.Group(), mat = new THREE.MeshBasicMaterial({color:0xffe27a, transparent:true, opacity:.22, depthWrite:false, blending:THREE.AdditiveBlending}); const col = new THREE.Mesh(cbox(.9, 60, .9), mat); col.position.y = 30; g.add(col); const core = new THREE.Mesh(cbox(.35, 60, .35), mat); core.position.y = 30; g.add(core); g.add(glow(M.glowGold, 2.2, 1.2)); g.traverse(o => o.raycast = () => {}); A.beacon = g; }
   if (!c){ if (A.beacon.parent) decorRoot.remove(A.beacon); if (el) el.hidden = true; if (A.wf && A.wf.crumbs.length){ A.wf.crumbs.forEach(m => decorRoot.remove(m)); A.wf.crumbs = []; A.wf.t = 0; } return; }
   if (!A.beacon.parent) decorRoot.add(A.beacon);
   const p = cellPos(...c); A.beacon.position.set(p.x, p.y, p.z); A.beacon.rotation.y += dt*.001;
+  { const wide = A.act === 1 && !A.metBarold ? 1.8 : 1; A.beacon.scale.set(wide, 1, wide); }   // fatter in the jungle, so it shows between the trees
+  beamTurnFrame(dt, c, p);
   if (Math.hypot(p.x - P.x, p.z - P.z) < 3){ A.beacon.visible = false; if (el) el.hidden = true; return; }
   A.beacon.visible = true;
   if (el) el.hidden = true;
@@ -9273,6 +9357,31 @@ function objectiveFrame(dt){
     if (!W.said && path.length){ W.said = true; showToast('Follow the glowing redstone trail!'); } }
   if (!want && W.crumbs.length){ W.crumbs.forEach(m => decorRoot.remove(m)); W.crumbs = []; W.said = false; }
   if (W.crumbs.length){ const tt = performance.now()/120; W.crumbs.forEach(m => { const k = .4 + .35*Math.max(0, Math.sin(tt - m.userData.i*.5)); m.scale.set(k, k, 1); }); }
+}
+// after a room is solved (and its cards and talk are done): the view turns gently towards the next beam, once (playtest B5: 5 turns to find it,
+// the view kept ending at the floor or the ceiling). Under a second, never a lock: any turn of your own stops it. Reduced motion: no turn.
+function beamTurnArm(){   // (every frame: a room just got solved?)
+  if (!A.on || (A.act !== 1 && A.act !== APE_ACT)) return;
+  const n = A.solved.size; if (A.turnN === undefined || n < A.turnN) A.turnN = n;
+  if (n > A.turnN){ A.turnN = n; A.beamTurn = {at:A.clock || 0, t:-1}; }
+}
+function beamTurnFrame(dt, c, p){
+  const B = A.beamTurn; if (!B) return;
+  const now = A.clock || 0, dist = Math.hypot(p.x - P.x, p.z - P.z);
+  if (now - B.at > 25000 || dist < 4 || S.dead){ A.beamTurn = null; return; }
+  const wantYaw = Math.atan2(-(p.x - P.x), -(p.z - P.z)), wantPitch = .08, off = Math.atan2(Math.sin(wantYaw - P.yaw), Math.cos(wantYaw - P.yaw));
+  if (B.t < 0){
+    const moving = keys.w || keys.a || keys.s || keys.d || keys.arrowup || keys.arrowdown || touchMove.f || touchMove.r || padMove.f || padMove.r;   // (walking: wait till you stop)
+    const busy = moving || !$('#why').hidden || (DLG.on && !dlgSoft()) || CINE.on || LOOK_UP.on || A.launching || !inFP() || A.room === 'hall';
+    if (busy || now - B.at < 1200){ B.calm = 0; return; } if ((B.calm = (B.calm || 0) + dt) < 500) return;
+    if (Math.abs(off) < .3 && Math.abs(P.pitch - wantPitch) < .5){ lookStick(c, 1100); A.beamTurn = null; return; }   // already looking that way
+    if (reduceMotion){ A.beamTurn = null; return; }
+    B.t = 0; B.yaw = P.yaw; B.pitch = P.pitch;
+  }
+  if (Math.abs(P.yaw - B.yaw) > .02 || Math.abs(P.pitch - B.pitch) > .02){ A.beamTurn = null; return; }   // you turned yourself: it lets go
+  const s = Math.min(.05, dt/1000), k = Math.min(1, s*4.5); B.t += s;
+  P.yaw += off*k; P.pitch += (wantPitch - P.pitch)*k; B.yaw = P.yaw; B.pitch = P.pitch; A.beamTurned = (A.beamTurned || 0) + (B.t === s ? 1 : 0);
+  if (B.t > .9 || (Math.abs(off) < .04 && Math.abs(P.pitch - wantPitch) < .04)){ lookStick(c, 1100); A.beamTurn = null; }
 }
 function entryOf(r){
   const d = r.entry, b = r.box;
@@ -9480,6 +9589,8 @@ const LORE = {1:[
   {id:'name', say:['Mum wanted to call me Barry. Dad wanted Harold. They argued all week.', 'So they wrote both names on a scroll. The goat ate the middle bit. Hello! I\'m Barold.']},
   {id:'sign', say:['How did I get this job? I came into the jungle looking for the toilets.', 'I found a sign: "GUIDE WANTED. ASK INSIDE." Nobody was inside. So I asked myself. I said yes!']},
   {id:'note', say:['The guide before me left a note on the main door: "Back on Tuesday!"', 'She isn\'t back yet. So it isn\'t Tuesday yet. Simple!']},
+  {id:'fifteen', say:['Fifteen rooms with you, and I go up to LEVEL 2!', 'Bigger hat! Shinier badge! No pressure.']},   // (moved out of the welcome: playtest sweep A7)
+  {id:'visitor', say:['Sorry about the cobwebs. I waited AGES for a visitor. Since before Tuesday!', 'Well. A famous explorer went in three days ago. He never came out. So he doesn\'t count.']},
   {id:'legend', when:() => loreTemple() >= 3, say:['They say there\'s something AMAZING at the very top of the temple.', 'Something that goes WHOOSH! Nobody\'s been up there to look. Not even me.']},   // the liftoff, before it arrives
   {id:'torch', when:() => loreTemple() >= 4, say:['I always carry my torch. Not because I\'m scared of the dark.', 'I\'m TERRIFIED of the dark. That\'s completely different.']},
   {id:'lighting', when:() => loreTemple() >= 5, card:0, say:['Here\'s my Guide card. People say I don\'t look like my photo.', 'It\'s the lighting. Temples have TERRIBLE lighting.']},
@@ -9497,7 +9608,8 @@ const LORE = {1:[
   {id:'duke', when:() => (A.disc && A.disc.has('secret1')) || loreTemple() >= 19, say:['The Temple Rules were carved by a duke. A VERY famous monkey.', 'Never heard of him. Don\'t know his name. Why are you looking at me?']},
   {id:'top2', hall:1, when:() => A.room === 'hall' && !A.launched, say:['Look! It says "THE WAY HOME"! Up there!', '...It\'s a wall. Very disappointing wall.']},
 ], 2:[
-  {id:'antennae', say:['I kept my tinfoil antennae. In case a REAL alien turns up.', 'Greg says they\'re "very old-fashioned". I think that means good.']},
+  {id:'tests', say:['Tests? I LOVE tests.', 'Mostly the bit where they end.']},
+  {id:'antennae', when:() => A.apeBeats.has('greg'), say:['I kept my tinfoil antennae. In case a REAL alien turns up.', 'Greg says they\'re "very old-fashioned". I think that means good.']},
   {id:'greg1', when:() => loreApe() >= 2, say:['Greg has THREE eyes. Show-off.', 'I\'ve got two. They work FINE.']},
   {id:'mop', when:() => loreApe() >= 4, say:['I can do mopping too. Look. I\'m mopping.', '...Nobody gave me a mop. I\'m mopping with my sash.']},
   {id:'funnybone', when:() => A.apeBeats.has('museum') && loreApe() >= 6, say:['So I\'m a skeleton. That explains the draught. And the rattling.', 'That\'s my funny bone. All of them are, actually.']},
@@ -9560,7 +9672,7 @@ function loreFrame(dt){
 let advFrameT = 0;
 function advFrame(dt, now){
   A.clock = (A.clock || 0) + dt;
-  ghostBobFrame(A.clock);
+  ghostBobFrame(A.clock); goalBriefFrame(dt);
   dlgFrame(dt); bubblesFrame(dt); whyFrame(dt);
   if (!A.on) return;
   const [cx, cy] = cellAtWorld(P.x, P.z);
@@ -10791,7 +10903,7 @@ function advStart(given){
   if (save && save.layout !== LAYOUT){ save.player = null; save.cells = []; save.cellsAct = 0; save.levers = {}; }   // the map changed since this save: keep progress, drop positions
   A.on = true; A.room = null; A.launching = false; advRootsShow(true); sbClear();
   A.act = (save && save.act) || 1; ROOMS = actRooms(A.act); A.funMet = !!(save && save.funMet); A.whySeen = new Set((save && save.whySeen) || []); A.helloSeen = new Set(); A.funDone = !!(save && save.funDone); A.funIntroT = 0; A.funIntroI = -1; A.funBeats = new Set((save && save.funBeats) || []); A.funDue = []; A.funLanded = A.funMet; A.funCine = null; A.funEnd = null; A.funFinAt = 0; A.funHostRoom = undefined; A.funCap = null; A.baroldBack = !!(save && save.baroldBack); A.gRide = null; A.gtCut = null; A.gNear = false; A.gRode = !!(save && save.gRode); A.ghostBest = (save && save.ghostBest) || 0; A.ghostMedal = (save && save.ghostMedal) || ''; A.gLast = 0; A.gSecret = !!(save && save.gSecret); A.snuggles = !!(save && save.snuggles); if (document.body.classList.contains('gride')){ document.body.classList.remove('gride'); A.freeze = false; } if (typeof rideHud === 'function' && $('#rideHud')) rideHud(false); A.apeMet = !!(save && save.apeMet); A.apeDone = !!(save && save.apeDone); A.apeBeats = new Set((save && save.apeBeats) || []); A.apeLanded = A.apeMet; A.apeCine = null; A.rode = !!(save && save.rode); A.ride = null; if (CINE.on) cineEnd(); A.expressCut = null; A.teleT = 0; A.apeDue = []; A.apeIntroT = 0; A.apeHostRoom = undefined;
-  A.chaseHints = 0; A.chaseTrail = false;   // (the map-thief chase hint starts over in a new game)
+  A.chaseHints = 0; A.chaseTrail = false; A.chaseBack = 0; A.turnN = undefined; A.beamTurn = null;   // (the map-thief chase hint starts over in a new game)
   A.shrineOpen = !!(save && save.shrine); A.metBarold = !!(save && (save.met || (save.solved && save.solved.length))); A.gotKit = !!(save && (save.kit || save.met || (save.solved && save.solved.length))); A.gates = new Set(save && save.gates ? save.gates : []); A.found = new Set(save && save.found ? save.found : ['dust']); if (save && !save.found){ const top = Math.max(0, ...(save.solved || [])); ROOMS.filter(q => q.id <= top + 1).forEach(q => (q.give || []).forEach(t => A.found.add(t))); } A.doorTrapOff = !!(save && (save.trapOff || (save.solved && save.solved.length))); A.trapMet = !!(save && save.trapMet); A.leadToDoor = A.gotKit; document.body.classList.toggle('emptyHands', !A.gotKit); A.introAt = 0; A.introStarted = false; A.thief = null; A.revealed = A.metBarold; A.callK = undefined; A.callT = undefined; A.trapHint = 0; A.gapHint = false; A.bothSaid = false;
   achLoad(save);   // achievements: this save slot's
   A.disc = new Set(save && save.disc ? save.disc : []); A.notes = new Set(save && save.notes ? save.notes : []); A.secrets = new Set(save && save.secrets ? save.secrets : []); A.chests = new Set(save && save.chests ? save.chests : []);
@@ -13102,10 +13214,10 @@ const GYM_WHY = {
   wire:[{say:'Watch me. This is the lever.', at:[2, 3]}, {say:'I flip it ON... and the power runs along the dust, all the way to the lamp.', at:[7, 3], set:[[2, 3, true]]}, {say:'OFF again. No power, no light. A wire just copies the lever.', at:[7, 3], set:[[2, 3, false]]}],
   buffer:[{say:'Watch me. Lever ON.', at:[1, 3], set:[[1, 3, true]]}, {say:'See the dust get darker and darker? Power goes down by one on every dust.', at:[6, 3]}, {say:'This Repeater fills the power back up to 15. So it reaches the lamp!', at:[8, 3]}, {say:'Lever OFF. Now I\'ll take the Repeater out...', at:[8, 3], set:[[1, 3, false]]}],
   not:[{say:'Watch me. The torch is stuck on the side of this block.', at:[4, 3]}, {say:'Lever ON. Power goes INTO the block... and the grumpy torch goes OFF!', at:[3, 3], set:[[1, 3, true]]}, {say:'So the lamp is OFF. Lever OFF, and the torch wakes up again.', at:[7, 3], set:[[1, 3, false]]}, {say:'It always does the OPPOSITE. That\'s a NOT gate.', at:[4, 3]}],
-  or:[{say:'Watch me. Top lever ON... the power runs down to the lamp.', at:[7, 3], set:[[2, 1, true]]}, {say:'Now just the bottom lever. That works too!', at:[7, 3], set:[[2, 1, false], [2, 5, true]]}, {say:'The two wires JOIN here, like two rivers. Either lever can reach the lamp.', at:[4, 3], set:[[2, 5, false]]}],
-  and:[{say:'Watch me. Each lever goes into its own block, with a grumpy torch on it.', at:[4, 2]}, {say:'Top lever ON. Its torch goes OFF. But the other torch is still ON.', at:[4, 2], set:[[1, 2, true]]}, {say:'Any power at all in this last block, and its torch stays OFF. No light yet.', at:[8, 3]}, {say:'BOTH levers ON. Both torches go OFF. The last block has no power... so the last torch wakes up!', at:[10, 3], set:[[1, 4, true]]}],
-  nand:[{say:'Watch me. Two grumpy torches, and their wires join up.', at:[5, 3]}, {say:'Top lever ON. Its torch goes OFF. But the other torch still lights the lamp.', at:[10, 3], set:[[1, 2, true]]}, {say:'BOTH levers ON. Both torches go OFF. Now the lamp is OFF!', at:[10, 3], set:[[1, 4, true]]}, {say:'Only BOTH turns it off. Not both: that\'s NAND.', at:[10, 3]}],
-  nor:[{say:'Watch me. No levers on. The grumpy torch is ON, so the lamp is ON.', at:[6, 3]}, {say:'Top lever ON. Power goes into the block. The torch goes OFF!', at:[5, 3], set:[[2, 2, true]]}, {say:'The bottom lever does it too. ANY lever, and the lamp goes out.', at:[9, 3], set:[[2, 2, false], [2, 4, true]]}, {say:'Only NO levers lights it. Neither, nor: NOR!', at:[9, 3], set:[[2, 4, false]]}],
+  or:[{say:'Watch me. One lever ON... the power runs along to the lamp.', at:[7, 3], set:[[2, 1, true]]}, {say:'Now just the OTHER lever. That works too!', at:[7, 3], set:[[2, 1, false], [2, 5, true]]}, {say:'The two wires JOIN here, like two rivers. Either lever can reach the lamp.', at:[4, 3], set:[[2, 5, false]]}],
+  and:[{say:'Watch me. Each lever goes into its own block, with a grumpy torch on it.', at:[4, 2]}, {say:'One lever ON. Its torch goes OFF. But the other torch is still ON.', at:[4, 2], set:[[1, 2, true]]}, {say:'Any power at all in this last block, and its torch stays OFF. No light yet.', at:[8, 3]}, {say:'BOTH levers ON. Both torches go OFF. The last block has no power... so the last torch wakes up!', at:[10, 3], set:[[1, 4, true]]}],
+  nand:[{say:'Watch me. Two grumpy torches, and their wires join up.', at:[5, 3]}, {say:'One lever ON. Its torch goes OFF. But the other torch still lights the lamp.', at:[10, 3], set:[[1, 2, true]]}, {say:'BOTH levers ON. Both torches go OFF. Now the lamp is OFF!', at:[10, 3], set:[[1, 4, true]]}, {say:'Only BOTH turns it off. Not both: that\'s NAND.', at:[10, 3]}],
+  nor:[{say:'Watch me. No levers on. The grumpy torch is ON, so the lamp is ON.', at:[6, 3]}, {say:'One lever ON. Power goes into the block. The torch goes OFF!', at:[5, 3], set:[[2, 2, true]]}, {say:'The OTHER lever does it too. ANY lever, and the lamp goes out.', at:[9, 3], set:[[2, 2, false], [2, 4, true]]}, {say:'Only NO levers lights it. Neither, nor: NOR!', at:[9, 3], set:[[2, 4, false]]}],
   xor:[{say:'Watch me. One switch ON: the light comes on.', at:[11, 7], set:[[1, 7, true]]}, {say:'The other switch ON too... and the light goes OFF!', at:[11, 7], set:[[14, 7, true]]}, {say:'The top part says "at least one". The bottom part says "both". The last torch says "but NOT both".', at:[7, 7]}, {say:'Different switches: light ON. The same: light OFF.', at:[11, 7], set:[[1, 7, false], [14, 7, false]]}],
   clock:[{say:'Watch me. Nobody is touching anything. Look at the lamp!', at:[5, 2]}, {say:'The torch\'s power goes round the loop... back INTO its own block. So it switches itself OFF.', at:[6, 4]}, {say:'Then the power stops, so it comes back ON. Again and again! The Repeater slows it down, so the torch doesn\'t burn out.', at:[4, 4]}],
   memory:[{say:'Watch me. I press SET...', at:[6, 4], set:[[6, 4, true]]}, {say:'...and let go. The lamp STAYS on. It remembers!', at:[10, 3]}, {say:'Two grumpy torches hold each other. Whichever one is ON keeps the other one OFF.', at:[5, 5]}, {say:'RESET turns it off. And it stays off.', at:[8, 4], set:[[8, 4, true]]}],
@@ -15563,7 +15675,9 @@ window.__game = {
     bubbleFit(text, opts){ return textSprite(text, opts || {tail:true}).userData.textFit; }, gateCard(k){ showCard('NEW GATE CARD: ' + GATE_CARDS[k].name + '!', gateCardHTML(k, true) + quizHTML(k)); }, earnGate(k){ earnGate(k); }, idCard(level){ if (level) showIdCard(level, 600000); else hideIdCard(); }, sel(){ return sel; },
     lore(){ return {told:[...(A.lore || [])], cur:A.loreCur ? A.loreCur.d.id : null, at:A.loreAt, clock:A.clock, all:Object.fromEntries(Object.entries(LORE).map(([k, v]) => [k, v.map(d => ({id:d.id, say:d.say}))]))}; }, quizDone(){ return [...(A.quizDone || [])]; }, quizText(){ return Object.fromEntries(Object.entries(GATE_QUIZ).map(([k, Q]) => [k, Q])); },
     finishLaunch(){ for (let i=0;i<4000 && A.launching;i++) advFrame(16, i*16); return !!A.launched; },
-    thiefInfo(){ const T = A.thief; if (!T) return {gone:!!A.thiefDone, end:!!A.thiefEnd, last:A.thiefLast ? [A.thiefLast.x, A.thiefLast.y, A.thiefLast.z] : null}; const m = T.m; return {phase:T.phase, x:m.position.x, y:m.position.y, z:m.position.z, cell:cellAtWorld(m.position.x, m.position.z), s:T.s, len:T.TP.len, hasMap:!!T.map.visible, seen:!!T.seen, end:!!A.thiefEnd, freeze:!!A.freeze}; },
+    beamTurn(){ return {armed:!!A.beamTurn, turned:A.beamTurned || 0}; },
+    posAt(x, z){ P.x = x; P.z = z; stepFP(0); },   // (a spot inside a cell: test-playtest.js walks at doorway edges)   // (test-playtest.js: the view turns to the next beam after a solve)
+    thiefInfo(){ const T = A.thief; if (!T) return {gone:!!A.thiefDone, end:!!A.thiefEnd, last:A.thiefLast ? [A.thiefLast.x, A.thiefLast.y, A.thiefLast.z] : null}; const m = T.m; return {phase:T.phase, x:m.position.x, y:m.position.y, z:m.position.z, cell:cellAtWorld(m.position.x, m.position.z), s:T.s, len:T.TP.len, hasMap:!!T.map.visible, seen:!!T.seen, cen:!!T.cen, lost:T.lostT || 0, back:A.chaseBack || 0, end:!!A.thiefEnd, freeze:!!A.freeze}; },
     view(){ return {x:P.x, y:P.y + EYE, z:P.z, yaw:P.yaw, pitch:P.pitch, fov:camera.fov, aspect:camera.aspect}; },
     trail(){ return TRAIL.map(([x, y]) => { const c = cellPos(x, y); return [c.x, c.z]; }); },
     endSeq(){ return {step:A.endSeq ? A.endSeq.step : null, mapBack:!!A.mapBack, mapCard:!$('#mapCard').hidden, endCard:!$('#endCard').hidden, endText:$('#endCard').hidden ? '' : $('#endCard').textContent.replace(/\s+/g, ' ').trim()}; },
