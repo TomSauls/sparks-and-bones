@@ -1449,7 +1449,8 @@ const M = {
   glowRed: new THREE.SpriteMaterial({map:new THREE.CanvasTexture(glowCV('255,70,40')), blending:THREE.AdditiveBlending, depthWrite:false, transparent:true}),
   glowGold: new THREE.SpriteMaterial({map:new THREE.CanvasTexture(glowCV('255,210,110')), blending:THREE.AdditiveBlending, depthWrite:false, transparent:true})
 };
-M.tnt = [lam(CV.tntSide), lam(CV.tntSide), lam(CV.tntTop), lam(CV.tntTop), lam(CV.tntSide), lam(CV.tntSide)];
+{ const ts = lam(CV.tntSide), tt = lam(CV.tntTop); M.tnt = [ts, ts, tt, tt, ts, ts]; }   // (one material per kind of face: see boxFaces)
+M.tntWhite = new THREE.MeshBasicMaterial();   // the white flash of a burning fuse
 M.cushion = lam(CV.cushion, {emissive:0x30081a}); M.cushionDark = lam(CV.cushionDark, {emissive:0x220412});   // a touch of glow: bright toy pink even in the dark jungle
 M.cushionTop = [M.cushion, M.cushion, lam(CV.cushionPrint, {emissive:0x0c0206}), M.cushion, M.cushion, M.cushion];   // the fart logo on top
 CV.cracked = cv16(g => { g.drawImage(CV.brick, 0, 0); g.fillStyle = '#3a3a34'; [[3,1],[4,2],[4,3],[5,4],[6,5],[6,6],[7,7],[9,8],[10,9],[10,10],[11,11],[12,13],[2,9],[3,10],[3,11]].forEach(([x,y]) => g.fillRect(x, y, 1, 1)); });
@@ -1514,6 +1515,14 @@ const clouds = [];
   [[-20,16,-14,7,4],[8,18,-24,9,5],[22,15,6,6,4],[-10,17,18,8,3],[30,19,-10,5,3]].forEach(([x,y,z,w,d]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w,1,d), cm); m.position.set(x,y,z); scene.add(m); clouds.push(m); }); }
 
 const G = { cube:new THREE.BoxGeometry(1,1,1).translate(0,.5,0) };
+// the same box with its faces sorted into fewer groups (a BoxGeometry has one group per face: 6 draw calls with an array of materials).
+// faces: 0 +x, 1 -x, 2 +y, 3 -y, 4 +z, 5 -z; groups: [[faces], material index]
+function boxFaces(geo, groups){ const ix = geo.index.array, out = [], g = new THREE.BufferGeometry(); let at = 0;
+  for (const k in geo.attributes) g.setAttribute(k, geo.attributes[k]);
+  groups.forEach(([faces, mi]) => { faces.forEach(f => { for (let k = 0; k < 6; k++) out.push(ix[f*6 + k]); }); g.addGroup(at, faces.length*6, mi); at += faces.length*6; });
+  g.setIndex(out); g.computeBoundingSphere(); g.computeBoundingBox(); return g; }
+const SIDES_TOP = [[[0, 1, 3, 4, 5], 0], [[2], 2]];   // sides and bottom share material 0 (they're all the same), the top is material 2
+G.tnt = boxFaces(G.cube, [[[0, 1, 4, 5], 0], [[2, 3], 2]]); G.cubeTop = boxFaces(G.cube, SIDES_TOP);
 const box = (w,h,d) => new THREE.BoxGeometry(w,h,d);
 const geoCache = {};
 function cbox(w,h,d){ const k = w+'_'+h+'_'+d; return geoCache[k] || (geoCache[k] = box(w,h,d)); }
@@ -1565,7 +1574,7 @@ function buildMesh(c, ghost){
     case 'rblock': if (c.sheep) sbMesh(c, g, add); else add(G.cube, M.rblock); break;   // a redstone sheep carries an invisible redstone block about
     case 'steel': case 'rglass': case 'monkeys': case 'beacon': case 'bananabomb': case 'madcow': case 'skunk': case 'groovitron':
     case 'goat': case 'granny': case 'sheepstrike': case 'holybanana': case 'ninjarope': case 'chickencannon': case 'whoopeemine': case 'bouncy': case 'slimefountain': case 'teleporter': sbMesh(c, g, add); break;
-    case 'tnt': add(G.cube, (c.fuse > 0 && c.fuse % 4 < 2) ? M.tntFlash : M.tnt); break;
+    case 'tnt': add((c.fuse > 0 && c.fuse % 4 < 2) ? G.cube : G.tnt, (c.fuse > 0 && c.fuse % 4 < 2) ? M.tntWhite : M.tnt); break;
     case 'glass': add(G.cube, M.glass); break;
     case 'rail': case 'prail': case 'drail': {   // one merged mesh per material, cached per look (a mine room has dozens of rails: keep the draw calls down)
       const key = vkey(c) + (ghost ? 'g' : ''); let parts = RAIL_CACHE.get(key);
@@ -1803,7 +1812,7 @@ function buildWalls(){
       rot.makeRotationY(Math.atan2(dx, dy)); mtx.makeTranslation(p.x + dx*.51, p.y + j - .5, p.z + dy*.51).multiply(rot); vineMesh.setMatrixAt(vi++, mtx);
     }
   });
-  meshes.forEach((m, k) => { if (m){ m.frustumCulled = false; m.count = used[k]; m.instanceMatrix.needsUpdate = true; m.userData.wall = true; wallRoot.add(m); } });
+  meshes.forEach((m, k) => { if (m){ m.frustumCulled = false; m.count = used[k]; m.instanceMatrix.needsUpdate = true; m.userData.wall = true; wallRoot.add(m); skinInst(m); } });
   [lipMesh, vineMesh].forEach(m => { if (m){ m.instanceMatrix.needsUpdate = true; m.raycast = () => {}; wallRoot.add(m); } });
   // proper leafy canopies on every tree trunk: a big blocky crown, not a matchstick (they fall away with the jungle when the temple flies)
   const leaves = [];
@@ -1819,6 +1828,32 @@ function buildWalls(){
   }
   if (hang.length){ const hm = new THREE.InstancedMesh(new THREE.PlaneGeometry(.7, 1), M.vine, hang.length*2), mtx3 = new THREE.Matrix4(), sc3 = new THREE.Matrix4(), ro3 = new THREE.Matrix4(); hang.forEach(([hx, hy, hz, len, rot], k) => { for (let j = 0; j < 2; j++){ mtx3.makeTranslation(hx, hy - len/2, hz).multiply(ro3.makeRotationY(rot + j*Math.PI/2)).multiply(sc3.makeScale(1, len, 1)); hm.setMatrixAt(k*2 + j, mtx3); } }); hm.instanceMatrix.needsUpdate = true; hm.raycast = () => {}; hm.frustumCulled = false; wallRoot.add(hm); }
   if (leaves.length){ const lm = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), M.leaves, leaves.length), mtx2 = new THREE.Matrix4(), sc = new THREE.Matrix4(); leaves.forEach(([lx, ly, lz, sx, sy, sz], k) => { mtx2.makeTranslation(lx, ly, lz).multiply(sc.makeScale(sx, sy, sz)); lm.setMatrixAt(k, mtx2); }); lm.instanceMatrix.needsUpdate = true; lm.raycast = () => {}; lm.frustumCulled = false; wallRoot.add(lm); }
+}
+// ---- the walls and raised floors as one skin per material with only the faces that touch air (perf): a block face pressed
+// against another block is never seen. The InstancedMeshes stay (hidden) so clicks and rays still hit them exactly as before.
+function colSolid(x, y){   // [bottom, top] of the solid stuff in a cell: the raised floor and the wall on it
+  if (!inb(x, y) || !S.walls) return null; const i = y*NX + x, e = S.elev ? S.elev[i] : 0, h = S.walls[i] && S.wallKind[i] !== 9 ? S.walls[i] : 0;
+  const hollow = (S.pit && S.pit[i]) || (S.deck && S.deck[i]); if (hollow) return h ? [e, e + h] : null; return [-1e9, e + h]; }
+function skinInst(inst){
+  const geo = inst.geometry, Pa = geo.attributes.position, Na = geo.attributes.normal, Ua = geo.attributes.uv, mats = inst.material, buckets = new Map(), e = inst.instanceMatrix.array, eps = .01;
+  if (!geo.boundingBox) geo.computeBoundingBox();
+  const bb = geo.boundingBox, cols = new Map(), col = (x, y) => { const k = y*NX + x; let c = cols.get(k); if (c === undefined){ c = colSolid(x, y); cols.set(k, c); } return c; };
+  const covers = (c, y0, y1) => !!c && c[0] <= y0 + eps && c[1] >= y1 - eps;
+  for (let n = 0; n < inst.count; n++){ const o = n*16, tx = e[o+12], ty = e[o+13], tz = e[o+14], x = Math.floor(tx + NX/2), y = Math.floor(tz + NY/2), y0 = ty + bb.min.y, y1 = ty + bb.max.y, own = col(x, y);
+    for (let f = 0; f < 6; f++){
+      let hid = false;
+      if (f === 2) hid = !!own && own[1] > y1 + eps; else if (f === 3) hid = !!own && own[0] < y0 - eps;
+      else { const d = f === 0 ? [1, 0] : f === 1 ? [-1, 0] : f === 4 ? [0, 1] : [0, -1]; hid = covers(col(x + d[0], y + d[1]), y0, y1); }
+      if (hid) continue;
+      const mat = Array.isArray(mats) ? mats[f] : mats; let b = buckets.get(mat); if (!b) buckets.set(mat, b = []); b.push(tx, ty, tz, f); } }
+  const root = inst.parent;
+  buckets.forEach((list, mat) => { const nf = list.length/4, pos = new Float32Array(nf*12), nor = new Float32Array(nf*12), uv = new Float32Array(nf*8), idx = nf*4 > 65535 ? new Uint32Array(nf*6) : new Uint16Array(nf*6);
+    for (let q = 0; q < nf; q++){ const tx = list[q*4], ty = list[q*4+1], tz = list[q*4+2], f = list[q*4+3];
+      for (let v = 0; v < 4; v++){ const s = f*4 + v, d = q*4 + v; pos[d*3] = Pa.getX(s) + tx; pos[d*3+1] = Pa.getY(s) + ty; pos[d*3+2] = Pa.getZ(s) + tz; nor[d*3] = Na.getX(s); nor[d*3+1] = Na.getY(s); nor[d*3+2] = Na.getZ(s); uv[d*2] = Ua.getX(s); uv[d*2+1] = Ua.getY(s); }
+      const b = q*4; idx.set([b, b + 2, b + 1, b + 2, b + 3, b + 1], q*6); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); g.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); g.setIndex(new THREE.BufferAttribute(idx, 1)); g.computeBoundingSphere();
+    const m = new THREE.Mesh(g, mat); m.raycast = () => {}; m.userData.skin = true; root.add(m); });
+  inst.visible = false;
 }
 function setWorld(nx, ny, mode){
   S.mode = mode;
@@ -1894,7 +1929,7 @@ function clearWorld(){
   S.grid.fill(null); S.gridDirty = true; S.lastSnap = ''; S.stable = false;
   S.carts = [];
   while (ghostRoot.children.length) ghostRoot.remove(ghostRoot.children[0]);
-  while (labelRoot.children.length) labelRoot.remove(labelRoot.children[0]);
+  freeKids(labelRoot);   // (each label has its own canvas texture: let it go)
 }
 function serializeBuild(){
   return {cells: S.grid.filter(c => c && !c.locked).map(c => [c.t, c.x, c.y, c.dir, c.delay, c.attach, onBit(c)]),
@@ -3778,7 +3813,7 @@ function runFx(dt){
 let acc = 0, last = performance.now();
 let tipClock = 0;
 function frame(now){
-  const dt = Math.min(250, now - last); last = now;
+  const dt = Math.min(250, now - last); prFrame(now - last); last = now;
   if (!S.paused){
     acc += dt;
     let n = 0;
@@ -5464,8 +5499,8 @@ function buildTerrain(){
   const at3 = (mtx, [x, y, yy]) => { const p = cellPos(x, y); mtx.makeTranslation(p.x, yy, p.z); };
   for (let k = -1; k < tops.length; k++){
     const mats = k < 0 ? side : [side, side, tops[k], side, side, side];
-    const m = inst(G.cube, mats, cubes.filter(c => c[3] === k), at3); if (m) m.userData.terrain = true;
-    const ms = inst(cbox(1, .5, 1), mats, slabs.filter(c => c[3] === k), at3); if (ms) ms.userData.terrain = true;
+    const m = inst(k < 0 ? G.cube : G.cubeTop, mats, cubes.filter(c => c[3] === k), at3); if (m){ m.userData.terrain = true; skinInst(m); }
+    const ms = inst(k < 0 ? cbox(1, .5, 1) : (G.slabTop || (G.slabTop = boxFaces(cbox(1, .5, 1), SIDES_TOP))), mats, slabs.filter(c => c[3] === k), at3); if (ms){ ms.userData.terrain = true; skinInst(ms); }
   }
   // rope-bridge planks, with posts and rope rails
   const dk = inst(cbox(1, .14, .96), M.plank, decks, (mtx, [x, y, e]) => { const p = cellPos(x, y); mtx.makeTranslation(p.x, e - .07, p.z); }); if (dk) dk.userData.terrain = true;
@@ -12719,6 +12754,212 @@ window.__game.gym = {
   gates:() => Object.keys(GYM_SRC), def(g, st){ return gymDef(g, st); }, talk(){ let n = 0; while (DLG.on && n++ < 60) dlgAdvance(); return n; },
   inputs(){ return L ? L.inputs.map(c => [c.x, c.y]) : []; }, rows(){ return L && L.rows ? L.rows.slice() : []; }, ghosts(){ return L ? L.ghosts.map(g => ({t:g.t, x:g.x, y:g.y, dir:g.dir, attach:g.attach, delay:g.delay})) : []; },
   kit(){ const k = kitFor(); return k ? [...k] : null; }, barold:() => !!(GYM.barold && GYM.barold.parent), frame(){ gymFrame(16); }
+};
+// ---- the pixel-ratio governor: on a slow iPad/iPhone, draw fewer pixels rather than drop frames. Steps the resolution down
+// (2 -> 1.75 -> 1.5 -> 1.25 -> 1) after ~1.5 s of slow frames, and back up after ~8 s of smooth ones (never straight back to
+// a step that was too slow a moment ago). Off at device pixel ratio 1 (nothing to give).
+const PR = {steps:[2, 1.75, 1.5, 1.25, 1].filter(v => v <= Math.min(window.devicePixelRatio || 1, 2) + 1e-6), i:0, ema:16.7, bad:0, good:0, noUp:0, clock:0, log:[]};
+function prFrame(dt){
+  if (PR.steps.length < 2 || dt > 400 || document.hidden) return;   // (a hitch or a tab switch isn't the drawing)
+  PR.clock += dt; PR.ema += (dt - PR.ema)*.06;
+  if (PR.ema > 21){ PR.bad += dt; PR.good = 0; } else if (PR.ema < 17.8){ PR.good += dt; PR.bad = 0; } else { PR.bad = 0; PR.good = 0; }
+  if (PR.bad > 1500 && PR.i < PR.steps.length - 1){ PR.i++; PR.noUp = PR.clock + 30000; prApply(); }
+  else if (PR.good > 8000 && PR.i > 0 && PR.clock > PR.noUp){ PR.i--; prApply(); }
+}
+function prApply(){ PR.bad = PR.good = 0; PR.ema = 16.7; renderer.setPixelRatio(PR.steps[PR.i]); PR.log.push(PR.steps[PR.i]); if (PR.log.length > 20) PR.log.shift(); }
+/* ================= drawing cost (perf): rooms you can't see into aren't drawn =================
+   The temple's rooms are walled boxes. While RENDERING ONLY (the renderer.render wrapper below hides things, draws, and puts
+   them straight back), a room's cells, power numbers and the decor standing inside it are skipped unless the camera could
+   see in: from inside it, over its lowest wall, or through one of its openings (a gap in its walls) that's on screen.
+   Game code and raycasts see every object exactly as before (rays hit hidden things too). Nothing tall enough to show over
+   the walls is ever skipped. Nothing past the fog is drawn either (the fog already paints it the sky's colour). */
+const CULL = {walls:null, rooms:null, zone:null, zones:[], hid:[], n:0, off:false, fr:new THREE.Frustum(), m:new THREE.Matrix4(), b:new THREE.Box3(), b2:new THREE.Box3(), v:new THREE.Vector3(), rel:new WeakMap(), vis:null, corners:[[.1, .1], [.9, .1], [.1, .9], [.9, .9], [.5, .5]]};
+function cullZones(){
+  if (CULL.walls === S.walls && CULL.rooms === ROOMS && CULL.nx === NX) return;
+  CULL.walls = S.walls; CULL.rooms = ROOMS; CULL.nx = NX; CULL.zone = new Int16Array(NX*NY); CULL.zones = [];
+  const temple = ROOMS === TEMPLE_ROOMS, boxes = [...ROOMS, ...(temple ? SHIP_ROOMS : [])].filter(r => r.box).map(r => r.box); if (temple) boxes.push(HALL);
+  boxes.forEach(b => { const z = CULL.zones.length + 1; let n = 0;
+    for (let y = Math.max(0, b.y0 + 1); y < Math.min(NY, b.y1); y++) for (let x = Math.max(0, b.x0 + 1); x < Math.min(NX, b.x1); x++){ const i = y*NX + x; if (!CULL.zone[i]){ CULL.zone[i] = z; n++; } }
+    CULL.zones.push({b, z, top:0, lo:0, open:[], rim:[], vis:true, none:!n}); });
+  CULL.vis = new Uint8Array(CULL.zones.length + 1);
+  cullTops();
+}
+// round each room's edge: the lowest wall top (a camera above it can see in) and the gaps in the walls (doorways);
+// and how high the solid stuff (raised floor + wall) reaches in every cell, for the line-of-sight checks
+function cullTops(){
+  const n = NX*NY; if (!CULL.solid || CULL.solid.length !== n) CULL.solid = new Float32Array(n);
+  for (let i = 0; i < n; i++) CULL.solid[i] = (S.pit[i] ? -50 : S.elev[i]) + (S.walls[i] && S.wallKind[i] !== 9 ? S.walls[i] : 0);
+  CULL.zones.forEach(Z => { const b = Z.b; let lo = Infinity, flo = Infinity; Z.open.length = 0; Z.rim = [];
+    const edge = (x, y) => { if (!inb(x, y)) return; const i = y*NX + x, e = S.elev[i]; flo = Math.min(flo, e);
+      if (S.walls[i] && S.wallKind[i] !== 9){ lo = Math.min(lo, e + S.walls[i]); Z.rim.push(x, y, e + S.walls[i]); } else Z.open.push(x, y, e); };
+    for (let x = b.x0; x <= b.x1; x++){ edge(x, b.y0); edge(x, b.y1); } for (let y = b.y0 + 1; y < b.y1; y++){ edge(b.x0, y); edge(b.x1, y); }
+    Z.top = lo === Infinity ? -1e9 : lo; Z.lo = flo === Infinity ? 0 : flo; });
+}
+// is there a clear line from a to b (world coords) over the walls and raised floors? (2D walk through the grid; the end cells don't count)
+function cullLOS(ax, ay, az, bx, by, bz){
+  const gx = ax + NX/2, gz = az + NY/2, hx = bx + NX/2, hz = bz + NY/2, dx = hx - gx, dz = hz - gz, solid = CULL.solid;
+  let x = Math.floor(gx), z = Math.floor(gz); const tx = Math.floor(hx), tz = Math.floor(hz), sx = dx > 0 ? 1 : -1, sz = dz > 0 ? 1 : -1;
+  const ddx = dx ? Math.abs(1/dx) : Infinity, ddz = dz ? Math.abs(1/dz) : Infinity;
+  let mx = dx ? (dx > 0 ? x + 1 - gx : gx - x)*ddx : Infinity, mz = dz ? (dz > 0 ? z + 1 - gz : gz - z)*ddz : Infinity, t0 = 0;
+  for (let k = 0; k < 400; k++){
+    if (x === tx && z === tz) return true;
+    const t1 = Math.min(mx, mz, 1);
+    if (k && x >= 0 && z >= 0 && x < NX && z < NY && ay + (by - ay)*(by < ay ? t1 : t0) < solid[z*NX + x] - .02) return false;
+    if (t1 >= 1) return true;
+    if (mx < mz){ x += sx; t0 = mx; mx += ddx; } else { z += sz; t0 = mz; mz += ddz; }
+  }
+  return true;
+}
+function cullActive(){ return !CULL.off && S.mode === 'adventure' && !!S.walls && !!S.elev && A.on && !A.launching && !A.launched && $('#menu').hidden; }
+// can the camera see into zone Z this frame? Inside it; or a doorway of it on screen with a clear line to it; or (camera above
+// its lowest wall) the room on screen with a clear line to the top of a wall you could look over
+function cullSees(Z, cx, cy, cz, los){
+  const b = Z.b, h = NX/2, hz = NY/2, x0 = b.x0 - h, x1 = b.x1 + 1 - h, z0 = b.y0 - hz, z1 = b.y1 + 1 - hz, B = CULL.b;
+  if (cx >= x0 && cx <= x1 && cz >= z0 && cz <= z1) return true;   // inside it (or in its doorway)
+  if (cy > Z.top - .3){ B.min.set(x0, Z.lo - 1, z0); B.max.set(x1, Math.max(Z.top, Z.lo) + 40, z1);
+    if (CULL.fr.intersectsBox(B)){ if (!los) return true; const r = Z.rim;
+      for (let k = 0; k < r.length; k += 3) if (r[k+2] < cy && cullLOS(cx, cy, cz, r[k] + .5 - h, r[k+2] + .05, r[k+1] + .5 - hz)) return true; } }
+  const o = Z.open;
+  for (let k = 0; k < o.length; k += 3){ const ox = o[k] - h, oz = o[k+1] - hz, e = o[k+2]; B.min.set(ox, e - .5, oz); B.max.set(ox + 1, e + 6, oz + 1);
+    if (!CULL.fr.intersectsBox(B)) continue; if (!los) return true;
+    for (let q = 0; q < 2; q++){ const yy = e + (q ? 2.6 : .3); for (let c = 0; c < CULL.corners.length; c++) if (cullLOS(cx, cy, cz, ox + CULL.corners[c][0], yy, oz + CULL.corners[c][1])) return true; } }
+  return false;
+}
+// the box round an object, relative to where it stands (worked out once; again if its children change)
+function cullRel(o){ let r = CULL.rel.get(o); const n = o.children.length;
+  if (!r || r.n !== n){ o.updateMatrixWorld(true); const B = CULL.b2.setFromObject(o), p = CULL.v.setFromMatrixPosition(o.matrixWorld);
+    r = B.isEmpty() ? {n, e:true} : {n, x0:B.min.x - p.x, x1:B.max.x - p.x, y1:B.max.y - p.y, z0:B.min.z - p.z, z1:B.max.z - p.z}; CULL.rel.set(o, r); }
+  return r; }
+// which zone holds the whole of this object (0: none, or it pokes out over the walls)
+function cullZoneOf(o){
+  const r = cullRel(o); if (r.e) return 0;
+  const e = o.matrixWorld.elements, px = e[12], py = e[13], pz = e[14], h = NX/2, hz = NY/2;
+  const xa = Math.floor(px + r.x0 + h + .02), xb = Math.floor(px + r.x1 + h - .02), ya = Math.floor(pz + r.z0 + hz + .02), yb = Math.floor(pz + r.z1 + hz - .02);
+  if (!inb(xa, ya) || !inb(xb, yb)) return 0;
+  const z = CULL.zone[ya*NX + xa]; if (!z || CULL.zone[yb*NX + xb] !== z || CULL.zone[ya*NX + xb] !== z || CULL.zone[yb*NX + xa] !== z) return 0;
+  return py + r.y1 < CULL.zones[z - 1].top - .05 ? z : 0;
+}
+function cullHide(o){ if (o.visible){ o.visible = false; CULL.hid.push(o); } }
+// the decor: whole pieces, or the parts of a big group that spans rooms (a level or two down)
+function cullUnit(o, d){ if (!o.visible || o.userData.merged) return; const z = cullZoneOf(o);
+  if (z){ if (!CULL.vis[z]) cullHide(o); return; }
+  if (d < 2 && o.children.length > 1) for (let k = 0; k < o.children.length; k++) cullUnit(o.children[k], d + 1); }
+/* ---- many small boxes, one draw call: while drawing, the visible opaque meshes that share a shape and a material (every
+   monkey's arms, every lamp, every lever) are drawn as one InstancedMesh, and the originals are hidden for that draw only.
+   Boxes of any size from cbox() and the block cube all count as one shape (a scaled unit cube: the same UVs). */
+const BATCH = {root:new THREE.Group(), pools:new Map(), canon:new WeakMap(), unit:new THREE.BoxGeometry(1, 1, 1), keys:new Map(), arrOK:new WeakMap(), arrId:new WeakMap(), arrN:0, m:new THREE.Matrix4(), s:new THREE.Sphere(), off:false, n:0, min:2, proto:THREE.Object3D.prototype.onBeforeRender};
+BATCH.root.matrixAutoUpdate = false; BATCH.root.visible = false; scene.add(BATCH.root);
+// the shape a geometry really is: a unit cube with a matrix (cbox/G.cube), or itself
+function batchCanon(geo){
+  let c = BATCH.canon.get(geo); if (c) return c;
+  const p = geo.parameters;
+  if (geo === G.cube) c = {base:BATCH.unit, m:new THREE.Matrix4().makeTranslation(0, .5, 0)};
+  else if (geo.type === 'BoxGeometry' && p && geoCache[p.width + '_' + p.height + '_' + p.depth] === geo) c = {base:BATCH.unit, m:new THREE.Matrix4().makeScale(p.width, p.height, p.depth)};
+  else c = {base:geo, m:null};
+  if (!geo.boundingSphere) geo.computeBoundingSphere();
+  BATCH.canon.set(geo, c); return c;
+}
+const batchOne = m => m.visible && (!m.transparent || (m.alphaTest > 0 && m.opacity === 1) || (m.blending === THREE.AdditiveBlending && !m.depthWrite));   // (adding light up doesn't care about order)
+function batchMatOK(mat){ if (!Array.isArray(mat)) return batchOne(mat); let ok = BATCH.arrOK.get(mat); if (ok === undefined){ ok = mat.every(batchOne); BATCH.arrOK.set(mat, ok); } return ok; }
+function batchArrId(mat){ let id = BATCH.arrId.get(mat); if (!id){ id = 50000 + (++BATCH.arrN % 40000); BATCH.arrId.set(mat, id); } return id; }
+function batchWalk(o){
+  if (!o.visible) return;
+  if (o.isMesh && o.children.length === 0){
+    const mat = o.material;
+    if (o.isInstancedMesh || o.isSkinnedMesh || o.renderOrder !== 0 || o.onBeforeRender !== BATCH.proto || o.morphTargetInfluences || !o.geometry || o.geometry.morphAttributes.position || !batchMatOK(mat)) return;
+    const e = o.matrixWorld.elements, det = e[0]*(e[5]*e[10] - e[6]*e[9]) - e[1]*(e[4]*e[10] - e[6]*e[8]) + e[2]*(e[4]*e[9] - e[5]*e[8]);
+    if (det <= 0) return;   // (mirrored: it would be drawn inside out)
+    const c = batchCanon(o.geometry);
+    if (o.frustumCulled && !CULL.fr.intersectsSphere(BATCH.s.copy(o.geometry.boundingSphere).applyMatrix4(o.matrixWorld))) return;
+    const key = c.base.id*100000 + (Array.isArray(mat) ? batchArrId(mat) : mat.id); let l = BATCH.keys.get(key); if (!l) BATCH.keys.set(key, l = {c, mat, list:[], n:0});
+    if (l.n < l.list.length) l.list[l.n] = o; else l.list.push(o); l.n++;
+    return;
+  }
+  const k = o.children; for (let i = 0; i < k.length; i++) batchWalk(k[i]);
+}
+function batchBegin(roots){
+  BATCH.n++; BATCH.keys.forEach(l => l.n = 0);
+  if (BATCH.off) return;
+  for (const r of roots) if (r && r.visible) batchWalk(r);
+  BATCH.pools.forEach(p => p.used = 0);
+  BATCH.keys.forEach((l, key) => {
+    if (l.n < BATCH.min){ return; }
+    let p = BATCH.pools.get(key);
+    if (!p || p.cap < l.n){ if (p){ BATCH.root.remove(p.mesh); p.mesh.dispose(); }
+      const cap = Math.max(16, 1 << Math.ceil(Math.log2(l.n))), mesh = new THREE.InstancedMesh(l.c.base, l.mat, cap);
+      mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); mesh.frustumCulled = false; mesh.raycast = () => {}; mesh.matrixAutoUpdate = false;
+      p = {mesh, cap, idle:0}; BATCH.pools.set(key, p); BATCH.root.add(mesh); }
+    const arr = p.mesh.instanceMatrix.array, m = BATCH.m;
+    for (let i = 0; i < l.n; i++){ const o = l.list[i];
+      const cm = BATCH.canon.get(o.geometry).m; if (cm){ m.multiplyMatrices(o.matrixWorld, cm); m.toArray(arr, i*16); } else o.matrixWorld.toArray(arr, i*16);   // (each box its own size)
+      o.visible = false; CULL.hid.push(o); }
+    p.mesh.count = l.n; p.used = l.n; p.mesh.instanceMatrix.updateRange.offset = 0; p.mesh.instanceMatrix.updateRange.count = l.n*16; p.mesh.instanceMatrix.needsUpdate = true;
+  });
+  // let go of meshes that are gone (no references kept), and forget shapes/materials not seen for a while
+  BATCH.keys.forEach((l, key) => { for (let i = l.n; i < l.list.length && l.list[i]; i++) l.list[i] = null; if (l.n) l.idle = 0; else if (++l.idle > 300 && !BATCH.pools.has(key)) BATCH.keys.delete(key); });
+  BATCH.pools.forEach((p, key) => { p.mesh.visible = p.used > 0; if (p.used) p.idle = 0; else if (++p.idle > 600){ BATCH.root.remove(p.mesh); p.mesh.dispose(); BATCH.pools.delete(key); BATCH.keys.delete(key); } });
+  BATCH.root.visible = true;
+}
+function perfBegin(){
+  CULL.hid.length = 0; CULL.n++;
+  const play = S.mode === 'adventure' && A.on && !A.launching && !A.launched && scene.fog && scene.fog.far < 400;
+  const far = play ? Math.max(40, scene.fog.far + 2) : 600; if (camera.far !== far){ camera.far = far; camera.updateProjectionMatrix(); }
+  scene.updateMatrixWorld(); camera.updateMatrixWorld();
+  CULL.fr.setFromProjectionMatrix(CULL.m.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+  if (cullActive()) perfCull();
+  batchBegin([cellRoot, decorRoot, fxRoot, SBX.root, upRoot, MENU3D.g]);
+}
+function perfCull(){
+  cullZones(); if (CULL.n % 20 === 0) cullTops();
+  const cx = camera.position.x, cy = camera.position.y, cz = camera.position.z, vis = CULL.vis; let any = false;
+  for (let k = 0; k < CULL.zones.length; k++){ const Z = CULL.zones[k]; Z.vis = Z.none || cullSees(Z, cx, cy, cz, viewFP); vis[k + 1] = Z.vis ? 1 : 0; if (!Z.vis) any = true; }
+  if (!any) return;
+  const zone = CULL.zone;
+  for (const g of cellRoot.children){ const i = g.userData.idx; if (i === undefined || !g.visible) continue; const z = zone[i]; if (z && !vis[z] && cullZoneOf(g) === z) cullHide(g); }
+  for (const s of labelRoot.children){ if (!s.visible) continue; const x = Math.floor(s.position.x + NX/2), y = Math.floor(s.position.z + NY/2); if (inb(x, y)){ const z = zone[y*NX + x]; if (z && !vis[z]) cullHide(s); } }
+  for (const o of decorRoot.children) cullUnit(o, 0);
+}
+function perfEnd(){ const hid = CULL.hid; for (let i = 0; i < hid.length; i++) hid[i].visible = true; hid.length = 0; BATCH.root.visible = false; }
+{ const draw = renderer.render.bind(renderer); renderer.render = (s, c) => { if (s !== scene || c !== camera){ draw(s, c); return; } perfBegin(); const au = scene.autoUpdate; scene.autoUpdate = false; try { draw(s, c); } finally { scene.autoUpdate = au; perfEnd(); } }; }
+// test hooks for the drawing cost (test-perf.js): draw calls and triangles, which part of the world they come from, frame time
+window.__game.perf = {
+  render(){ menuSceneFrame(performance.now()); roomDecorFrame(); scene.updateMatrixWorld(); renderer.render(scene, camera); const i = renderer.info; return {calls:i.render.calls, tris:i.render.triangles, geos:i.memory.geometries, texs:i.memory.textures, progs:(i.programs || []).length}; },
+  // estimated draw calls/triangles per part of the scene (what the frustum lets through)
+  parts(deep){
+    const R = {walls:wallRoot, terrain:terrainRoot, decor:decorRoot, cells:cellRoot, floor:floorRoot, roomDecor:roomDecorRoot, fx:fxRoot, up:upRoot, ghosts:ghostRoot, labels:labelRoot, preview:previewRoot, menu:MENU3D.g, sbx:SBX.root, floorDecor, batch:BATCH.root};
+    const tag = new Map(); Object.entries(R).forEach(([k, r]) => { if (r) tag.set(r, k); });
+    roomDecorFrame(); scene.updateMatrixWorld(); camera.updateMatrixWorld();
+    const fr = new THREE.Frustum().setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse)), out = {};
+    const walk = (o, t) => { if (!o.visible) return; if (tag.has(o)) t = tag.get(o); else if (deep && o.parent && tag.has(o.parent)) t = t + '/' + (o.name || Object.keys(o.userData).join('.') || o.type + o.parent.children.indexOf(o));
+      if ((o.isMesh || o.isSprite || o.isPoints || o.isLine) && (!o.frustumCulled || (o.isSprite ? fr.intersectsSprite(o) : fr.intersectsObject(o)))){
+        const g = o.geometry, n = o.isInstancedMesh ? o.count : 1, groups = Array.isArray(o.material) ? Math.max(1, g.groups.length) : 1;
+        const tri = o.isSprite ? 2 : g.index ? g.index.count/3 : g.attributes.position.count/3;
+        const e = out[t] || (out[t] = {calls:0, tris:0, objs:0}); e.calls += groups; e.tris += tri*n; e.objs++;
+      }
+      o.children.forEach(c => walk(c, t)); };
+    perfBegin(); try { walk(scene, 'scene'); } finally { perfEnd(); }
+    Object.values(out).forEach(e => e.tris = Math.round(e.tris)); return out;
+  },
+  // ms per rendered frame with the camera held still (waits for the GPU)
+  time(n){ n = n || 5; const gl = renderer.getContext(), px = new Uint8Array(4); this.render(); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); const t0 = performance.now();
+    for (let i = 0; i < n; i++){ renderer.render(scene, camera); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); } return (performance.now() - t0)/n; },
+  lights(){ let n = 0; scene.traverse(o => { if (o.isLight && o.visible && o.intensity > 0) n++; }); return n; },
+  pixelRatio(){ return renderer.getPixelRatio(); }, governor:PR, prFrame,
+  // what's still drawn one by one (by root, and why it isn't batched)
+  unbatched(){ const out = {}; perfBegin(); try { const walk = (o, t) => { if (!o.visible) return; if (o.isMesh || o.isSprite){ const m = o.material, why = o.isSprite ? 'sprite' : o.isInstancedMesh ? (o.parent === BATCH.root ? 'batch' : 'inst') : Array.isArray(m) ? 'array' : m.transparent ? 'transp' : o.children.length ? 'kids' : 'single'; const k = t + ':' + why + ':' + (o.geometry && o.geometry.type) + ':' + (Array.isArray(m) ? 'arr' : m.type + (m.name || '')); if (!o.frustumCulled || (o.isSprite || CULL.fr.intersectsObject(o))) out[k] = (out[k] || 0) + (Array.isArray(m) ? o.geometry.groups.length : 1); } o.children.forEach(c => walk(c, t)); };
+    [['cells', cellRoot], ['decor', decorRoot], ['fx', fxRoot], ['labels', labelRoot], ['scene', scene]].forEach(([t, r]) => { if (t === 'scene'){ scene.children.forEach(c => { if (c !== world && c !== BATCH.root) walk(c, t); }); world.children.forEach(c => { if (![cellRoot, decorRoot, fxRoot, labelRoot].includes(c)) walk(c, 'world'); }); } else walk(r, t); }); } finally { perfEnd(); }
+    return Object.entries(out).sort((p, q) => q[1] - p[1]).slice(0, 25); },
+  faces(){ // wall blocks and their faces that touch air (a rough count)
+    let blocks = 0, faces = 0; const sol = (x, y, yy) => { if (!inb(x, y)) return false; const i = y*NX + x; if (S.pit[i]) return false; const e = S.elev[i], t = e + (S.walls[i] && S.wallKind[i] !== 9 ? S.walls[i] : 0); return yy >= 0 && yy + 1 <= t + 1e-3; };
+    for (let y = 0; y < NY; y++) for (let x = 0; x < NX; x++){ const i = y*NX + x, h = S.walls[i]; if (!h || S.wallKind[i] === 9) continue; const e = S.elev[i];
+      for (let j = 0; j < h; j++){ const yy = e + j; let f = 0; if (j === h - 1) f++; for (const [dx, dy] of DIRS) if (!sol(x + dx, y + dy, yy)) f++; if (f){ blocks++; faces += f; } } }
+    let inst = 0; wallRoot.children.forEach(m => { if (m.isInstancedMesh) inst += m.count; }); let tinst = 0; terrainRoot.children.forEach(m => { if (m.isInstancedMesh) tinst += m.count; });
+    return {blocks, faces, inst, tinst}; },
+  zoneAt(x, y){ cullZones(); return CULL.zone[y*NX + x]; },
+  visibleCount(){ let before = 0, after = 0; scene.traverse(o => { if (o.visible) before++; }); renderer.render(scene, camera); scene.traverse(o => { if (o.visible) after++; }); return {before, after}; },
+  cull(off){ CULL.off = !!off; }, batch(off){ BATCH.off = !!off; }, cullMs(n){ n = n || 20; const t0 = performance.now(); for (let i = 0; i < n; i++){ perfBegin(); perfEnd(); } return (performance.now() - t0)/n; }, zones(){ return CULL.zones.map(Z => ({vis:Z.vis, top:Z.top, open:Z.open.length/3})); },
+  // free build: set off the big Mega toys at once (robot on a goldfish, the holy banana, MEGA SHEEP)
+  mega(fish, holy){ const f = at(...fish), h = at(...holy); if (f) robotMega(f, 3); if (h) holyMega(h, 3); megaSheep(); return {robot:!!SBX.robot, holy:!!SBX.holyMega, sheep:!!SBX.megaSheep}; }
 };
 refreshHotbar(); select(1);
 BOOT_IDS = [new THREE.BufferGeometry().id, new THREE.Material().id, new THREE.Texture().id];   // everything made so far is shared (see freeKids)
