@@ -607,7 +607,11 @@ const ITEMS = [
   {id:'whoopeemine', name:'Whoopee Mine', tip:'A whoopee cushion hidden in the floor. Give it power: PARP!'},
   {id:'bouncy', name:'Bouncy Castle', tip:'Give it power and it blows up into a bouncy castle. Jump on!'},
   {id:'slimefountain', name:'Slime Fountain', tip:'Give it power: SPLURT! Stand on it for a slimy bounce'},
-  {id:'teleporter', name:'Teleporter Pad', tip:'Put down TWO. Stand on one and give it power: ZWOOP, you pop out of the other!'}
+  {id:'teleporter', name:'Teleporter Pad', tip:'Put down TWO. Stand on one and give it power: ZWOOP, you pop out of the other!'},
+  // the Crystal Mine (Act 2): minecart track
+  {id:'rail', name:'Rail', tip:'Minecart track. Three rails round one make POINTS: power them and they switch'},
+  {id:'prail', name:'Powered Rail', tip:'With power: GO! Without power: STOP (it\'s a brake)'},
+  {id:'drail', name:'Detector Rail', tip:'A cart rolling over it makes power, like a pressure plate'}
 ];
 
 /* ================= lessons ================= */
@@ -775,6 +779,7 @@ function srcPower(c, d){
     case 'lever': return c.on ? 15 : 0;
     case 'button': return c.timer > 0 ? 15 : 0;
     case 'plate': return (c.on || c.timer > 0) ? 15 : 0;
+    case 'drail': return (c.on || c.timer > 0) ? 15 : 0;   // a detector rail is a power source while a cart is on it (Java)
     case 'rblock': return 15;
     case 'torch': return (c.lit && d !== effAttach(c)) ? 15 : 0;
     case 'repeater': return (c.out && d === c.dir) ? 15 : 0;
@@ -786,7 +791,7 @@ function srcPower(c, d){
 function connects(c, d){
   if (!c) return false;
   switch (c.t){
-    case 'dust': case 'lever': case 'button': case 'rblock': case 'torch': case 'plate': return true;
+    case 'dust': case 'lever': case 'button': case 'rblock': case 'torch': case 'plate': case 'drail': return true;
     case 'repeater': return (d % 2) === (c.dir % 2);
   }
   return false;
@@ -802,10 +807,11 @@ function layout(){
     c.ptsMask = c.pts.map(b => b?1:0).join('');
     c.isDot = n === 0;
   }
+  for (const c of S.grid) if (c && RAIL_T.has(c.t)) railShape(c);
   S.gridDirty = false;
 }
 // which of a dust's pointed ends go INTO something it powers (1), or into a door slab further away (2)
-const PLUG_INTO = new Set(['lamp','tnt','fart','socket','bridge','stone','vein', ...TOY_SET]);
+const PLUG_INTO = new Set(['lamp','tnt','fart','socket','bridge','stone','vein','prail','rail', ...TOY_SET]);
 function dustPlugs(c){ return [0,1,2,3].map(d => { if (!c.pts || !c.pts[d]) return 0; const n = nb(c, d); if (!n) return 0; if (n.t === 'door') return n.wired ? 2 : 0; return PLUG_INTO.has(n.t) ? 1 : 0; }); }
 function dustInto(n, d){ return n && n.t==='dust' && n.pw > 0 && n.pts[d]; } // dust n points in direction d with power
 
@@ -833,9 +839,76 @@ function powerPass(cells, dust){
   }
 }
 const torchWant = c => { const ea = effAttach(c); return ea < 0 ? true : !nb(c, ea).powered; };
+/* ---- minecarts (Act 2's Crystal Mine): rails, powered rails, detector rails, and carts that roll from cell to cell ----
+   Java rules where they matter: a powered rail is GO when powered and a BRAKE when not; it passes power along up to 8 more
+   powered rails in a straight line; powered and detector rails only go straight; a detector rail is a power source while a
+   cart is on it; a plain rail with three rails round it is a set of points: it always joins its stem, turns to its default
+   arm (east before west, south before north), and FLIPS to the other arm while it has power. A cart resting on a powered
+   rail is launched when the rail gets power, away from a block (or the end of the track) behind it. Carts move in step(),
+   so tests drive them with step() like everything else. */
+const RAIL_T = new Set(['rail', 'prail', 'drail']), DRAIL_TICKS = 5;
+const CART_VMAX = .4, CART_BOOST = .08, CART_BRAKE = .15, CART_FRICT = .99, CART_PUSH = .22;   // cells per tick (top speed 4 blocks a second)
+const isRail = c => !!c && RAIL_T.has(c.t);
+function cartOnCell(x, y){ return !!S.carts && S.carts.some(k => k.x === x && k.y === y); }
+const railJoins = (c, side) => !!c && !!c.conn && (c.conn.includes(side) || (c.arms && c.arms.includes(side)));
+function railShape(c){
+  const cand = [0,1,2,3].filter(d => isRail(nb(c, d)));
+  c.arms = null; c.stem = -1;
+  if (c.t !== 'rail'){   // powered and detector rails only go straight
+    const ns = cand.includes(0) && cand.includes(2) ? true : cand.includes(1) && cand.includes(3) ? false : cand.some(d => d % 2 === 0) && !cand.some(d => d % 2) ? true : cand.some(d => d % 2) && !cand.some(d => d % 2 === 0) ? false : c.dir % 2 === 0;
+    c.conn = ns ? [0, 2] : [1, 3]; return; }
+  if (cand.length === 3){ const stem = cand.find(d => !cand.includes(opp(d))), arms = cand.filter(d => d !== stem), def = arms.includes(1) ? 1 : 2;
+    c.stem = stem; c.arms = arms; c.def = def; c.conn = [stem, c.lit ? opp(def) : def]; return; }
+  c.conn = cand.length === 4 ? [1, 3] : cand.length === 2 ? cand : cand.length === 1 ? [cand[0], opp(cand[0])] : (c.dir % 2 === 0 ? [0, 2] : [1, 3]);
+}
+function railsPower(cells){
+  const rails = cells.filter(isRail); if (!rails.length) return;
+  rails.forEach(railShape);
+  for (const c of rails){ if (c.t === 'drail') continue; let p = false;
+    for (let d=0; d<4 && !p; d++){ const n = nb(c,d); if (isRail(n) && n.t !== 'drail') continue; if (srcPower(n, opp(d)) > 0 || dustInto(n, opp(d)) || (n && n.t === 'stone' && n.powered)) p = true; }
+    c.direct = p; c.lit = p; }
+  // a powered rail passes its power along: up to 8 more powered rails in a straight line (Java)
+  for (const c of rails) if (c.t === 'prail' && c.direct) c.conn.forEach(d => { let n = nb(c, d), k = 0; while (n && n.t === 'prail' && n.conn && n.conn.includes(opp(d)) && k < 8){ n.lit = true; n = nb(n, d); k++; } });
+  rails.forEach(c => { if (c.t === 'rail') railShape(c); });   // points flip with power
+}
+// the way out of a rail cell for a cart that came in from side `from`
+function cartExit(c, from, prev){
+  const cn = c.conn || [1, 3];
+  if (c.arms && c.arms.includes(from) && !cn.includes(from)) return opp(from);   // in on the arm the points aren't set to: straight across
+  if (cn.includes(from)) return cn[0] === from ? cn[1] : cn[0];
+  if (cn.includes(prev)) return prev;
+  return cn[0];
+}
+// a cart at rest on a powered rail goes the way AWAY from a block (or the end of the track) behind it
+function launchDir(c){
+  const cn = c.conn || [1, 3], shut = cn.filter(d => !railJoins(nb(c, d), opp(d)));
+  return shut.length === 1 ? opp(shut[0]) : -1;
+}
+function cartsStep(){
+  for (const k of S.carts){
+    const c = at(k.x, k.y); k.moved = false;
+    if (!isRail(c)){ k.v = 0; continue; }
+    if (!c.conn) railShape(c);
+    k.exit = cartExit(c, k.from, k.exit);
+    if (c.t === 'prail'){
+      if (c.lit){ if (k.v < .02){ const d = launchDir(c); if (d >= 0){ if (d !== k.exit){ k.t = 1 - k.t; k.from = k.exit; k.exit = d; } k.v = CART_BOOST; if (!S.simulating) S.events.push(['cartgo', k]); } }
+        else k.v = Math.min(CART_VMAX, k.v + CART_BOOST); }
+      else if (k.v > 0){ k.v = Math.max(0, k.v - CART_BRAKE); if (!k.v && !S.simulating) S.events.push(['cartbrake', k]); }
+    } else { k.v *= CART_FRICT; if (k.v < .02) k.v = 0; }
+    if (!k.v) continue;
+    // the next cell: is there track that joins this one? (no: the cart stops in the middle of this cell, at the buffer)
+    const d = k.exit, nx = k.x + DIRS[d][0], ny = k.y + DIRS[d][1], n = at(nx, ny);
+    const open = isRail(n) && (railJoins(n, opp(d)) || (n.arms && n.stem !== -1 && [n.stem, ...n.arms].includes(opp(d)))) && !S.carts.some(q => q !== k && q.x === nx && q.y === ny);
+    if (!open && k.t + k.v >= .5){ k.t = Math.max(k.t, .5); k.v = 0; if (!S.simulating) S.events.push(['cartstop', k]); continue; }
+    k.t += k.v; k.moved = true;
+    if (k.t >= 1){ k.t -= 1; k.x = nx; k.y = ny; k.from = opp(d); const c2 = n; if (!c2.conn) railShape(c2); k.exit = cartExit(c2, k.from, d); k.cells = (k.cells || 0) + 1; }
+  }
+  for (const k of S.carts) k.rest = k.v ? 0 : (k.rest || 0) + 1;   // ticks at a standstill (the rooms' checks use it)
+}
 function step(){
   if (S.gridDirty) layout();
   let cells = S.grid.filter(Boolean);
+  for (const c of cells) if (c.t === 'drail'){ const was = c.on || c.timer > 0; c.on = cartOnCell(c.x, c.y); if (c.on){ c.timer = DRAIL_TICKS; if (!was && !S.simulating) sfx.plate(); } }   // a cart on a detector rail; it stays on a moment after the cart has gone
   for (const c of cells) if (c.t === 'plate'){ const was = c.on || c.timer > 0; c.on = playerOnCell(c.x, c.y) || (typeof troopOnCell === 'function' && troopOnCell(c.x, c.y)); if (c.on){ c.timer = PLATE_TICKS; if (!was && !S.simulating) sfx.plate(); } }   // you or a monkey press it; like Java it stays down about a second after they step off
   // like Java: a torch, lever or button pops off when the block it's stuck on is gone
   for (const c of cells) if ((c.t === 'torch' || c.t === 'lever' || c.t === 'button') && c.attach >= 0 && !c.locked && !S.simulating && at(c.x, c.y) === c){ const b = nb(c, c.attach); if (!b || !SOLID.has(b.t)){ setCell(c.x, c.y, null); S.events.push(['popoff', c]); } }
@@ -863,6 +936,7 @@ function step(){
   // a wired door (room 3) opens as one piece if any part of it has power
   for (const c of cells) if (c.t === 'door' && c.wired && c.lit && !c.spread){ const stack = [c]; c.spread = true; while (stack.length){ const b = stack.pop(); b.lit = true; for (let d=0; d<4; d++){ const n = nb(b, d); if (n && n.t === 'door' && n.wired && !n.spread){ n.spread = true; stack.push(n); } } } }
   for (const c of cells) if (c.t === 'door') c.spread = false;
+  railsPower(cells);
   // 4. next states (applied after everything is computed)
   const next = [];
   for (const c of cells){
@@ -881,7 +955,7 @@ function step(){
       if (!c.buf || c.buf.length !== len) c.buf = new Array(len).fill(c.out);
       c.buf.push(input);
       next.push([c, 'out', c.buf.shift()]);
-    } else if ((c.t === 'button' || c.t === 'plate') && c.timer > 0){
+    } else if ((c.t === 'button' || c.t === 'plate' || (c.t === 'drail' && !c.on)) && c.timer > 0){
       next.push([c, 'timer', c.timer - 1]);
     } else if (c.t === 'tnt'){
       if (c.fuse > 0) next.push([c, 'fuse', c.fuse - 1]);
@@ -895,11 +969,12 @@ function step(){
     }
   }
   for (const [c,k,v] of next){ c[k] = v; if (k === 'fuse' && v === 1) S.events.push(['boom', c]); }
+  if (S.carts && S.carts.length && !S.simulating) cartsStep();
   S.tick++;
   if (L && L.def.kind === 'free' && !S.notShown && cells.some(c => c.t === 'torch' && effAttach(c) >= 0 && !c.lit)){
     S.notShown = true; S.events.push(['not']);
   }
-  const snap = cells.map(c => c.t[0]+c.x+','+c.y+(c.on?1:0)+c.timer+(c.lit?1:0)+(c.out?1:0)+(c.buf?c.buf.map(b=>b?1:0).join(''):'')+c.pw+(c.powered?1:0)+(c.fuse||0)).join('|');
+  const snap = cells.map(c => c.t[0]+c.x+','+c.y+(c.on?1:0)+c.timer+(c.lit?1:0)+(c.out?1:0)+(c.buf?c.buf.map(b=>b?1:0).join(''):'')+c.pw+(c.powered?1:0)+(c.fuse||0)).join('|') + (S.carts && S.carts.length ? S.carts.map(k => '#' + k.x + ',' + k.y + ',' + k.t.toFixed(2) + ',' + k.v.toFixed(3)).join('') : '');
   S.stable = snap === S.lastSnap;
   S.lastSnap = snap;
   if (S.simulating) return;
@@ -1299,6 +1374,9 @@ ICONS.banana = icon(g => { g.fillStyle = '#ffd83a'; [[3,11],[4,12],[5,12],[6,13]
 ICONS.sheep = icon(g => { g.fillStyle = '#eeeeee'; g.fillRect(3,5,9,6); g.fillStyle = '#ff3b1f'; [[4,6],[7,8],[10,6],[5,9],[9,9]].forEach(([x,y]) => g.fillRect(x,y,1,1)); g.fillStyle = '#3a2a22'; g.fillRect(11,3,4,5); g.fillStyle = '#fff'; g.fillRect(12,4,1,1); g.fillStyle = '#3a2a22'; g.fillRect(4,11,2,3); g.fillRect(9,11,2,3); g.fillStyle = '#ffd84a'; g.fillRect(1,2,1,1); g.fillRect(14,11,1,1); });
 ICONS.bananabomb = icon(g => { g.fillStyle = '#ffd83a'; g.fillRect(3,6,4,8); g.fillRect(7,5,3,9); g.fillRect(10,6,3,8); g.fillStyle = '#f2b800'; g.fillRect(6,7,1,7); g.fillRect(10,7,1,7); g.fillStyle = '#6b4a24'; g.fillRect(7,3,3,2); g.fillStyle = '#ff5a1c'; g.fillRect(9,1,1,2); g.fillStyle = '#ffe36b'; g.fillRect(10,0,1,1); });
 ICONS.madcow = icon(g => { g.fillStyle = '#a8322a'; g.fillRect(1,6,14,9); g.fillStyle = '#7a1e18'; g.fillRect(0,4,16,3); g.fillStyle = '#f2f2ee'; g.fillRect(5,9,6,6); g.fillStyle = '#222'; g.fillRect(6,10,2,2); g.fillStyle = '#f0a0b0'; g.fillRect(6,13,4,2); g.fillStyle = '#111'; g.fillRect(7,10,1,1); g.fillRect(9,10,1,1); });
+ICONS.rail = icon(g => { g.fillStyle = '#7a5530'; for (let y = 1; y < 16; y += 3) g.fillRect(2, y, 12, 2); g.fillStyle = '#5a5a62'; g.fillRect(3, 0, 2, 16); g.fillRect(11, 0, 2, 16); g.fillStyle = '#b8b8c2'; g.fillRect(3, 0, 1, 16); g.fillRect(11, 0, 1, 16); });
+ICONS.prail = icon(g => { g.fillStyle = '#7a5530'; for (let y = 1; y < 16; y += 3) g.fillRect(2, y, 12, 2); g.fillStyle = '#d8261a'; g.fillRect(7, 0, 2, 16); g.fillStyle = '#b8901a'; g.fillRect(3, 0, 2, 16); g.fillRect(11, 0, 2, 16); g.fillStyle = '#ffe14a'; g.fillRect(3, 0, 1, 16); g.fillRect(11, 0, 1, 16); });
+ICONS.drail = icon(g => { g.fillStyle = '#7a5530'; for (let y = 1; y < 16; y += 3) g.fillRect(2, y, 12, 2); g.fillStyle = '#8a8a8a'; g.fillRect(5, 5, 6, 6); g.fillStyle = '#d8261a'; g.fillRect(6, 6, 4, 4); g.fillStyle = '#5a5a62'; g.fillRect(3, 0, 2, 16); g.fillRect(11, 0, 2, 16); g.fillStyle = '#b8b8c2'; g.fillRect(3, 0, 1, 16); g.fillRect(11, 0, 1, 16); });
 ICONS.skunk = icon(g => { g.fillStyle = '#1a1a1a'; g.fillRect(2,8,8,5); g.fillRect(9,7,4,4); g.fillRect(1,2,3,7); g.fillStyle = '#f2f2f2'; g.fillRect(4,8,5,1); g.fillRect(2,2,1,6); g.fillRect(11,7,1,2); g.fillStyle = '#97a83a'; g.fillRect(5,3,1,1); g.fillRect(6,2,1,1); g.fillRect(7,3,1,1); g.fillStyle = '#fff'; g.fillRect(12,8,1,1); });
 ICONS.groovitron = icon(g => { g.fillStyle = '#dfe6ee'; g.fillRect(4,3,8,8); g.fillStyle = '#ff7fb0'; g.fillRect(5,4,2,2); g.fillStyle = '#4fa3ff'; g.fillRect(9,6,2,2); g.fillStyle = '#ffd84a'; g.fillRect(6,8,2,2); g.fillStyle = '#6a6a6a'; g.fillRect(7,11,2,4); g.fillStyle = '#fff'; g.fillRect(1,1,1,1); g.fillRect(14,2,1,1); g.fillRect(13,12,1,1); });
 ICONS.beacon = icon(g => { g.fillStyle = '#4a4a4a'; g.fillRect(3,11,10,4); g.fillStyle = '#7a7a7a'; g.fillRect(5,8,6,3); g.fillStyle = '#ff3b1f'; g.fillRect(6,5,4,3); g.fillStyle = '#fff8a0'; g.fillRect(7,0,2,5); g.fillStyle = '#ffe36b'; g.fillRect(4,2,1,1); g.fillRect(11,2,1,1); });
@@ -1464,6 +1542,21 @@ function arrowMesh(y){
 // a group that sits on the floor (a < 0), or flat on the face of the block in direction a, its "up" pointing out of the block
 const wadd = (w, geo, mat, y) => { const m = new THREE.Mesh(geo, mat); m.position.y = y; w.add(m); return m; };
 function wallMount(g, a){ const w = new THREE.Group(); g.add(w); if (a >= 0){ const [dx, dz] = DIRS[a]; w.position.set(dx*.5, .5, dz*.5); if (dx) w.rotation.z = dx*Math.PI/2; else w.rotation.x = -dz*Math.PI/2; } return w; }
+// minecart track: sleepers, and a pair of rails from the middle out to each side it joins (so a curve is an L, and the points show which way they're set)
+const RAILM = {}, RAIL_CACHE = new Map();
+function railMats(){ if (!RAILM.iron){ RAILM.iron = new THREE.MeshLambertMaterial({color:0xa8a8b2}); RAILM.gold = new THREE.MeshLambertMaterial({color:0xe8c23a}); RAILM.dim = new THREE.MeshLambertMaterial({color:0x55555c});
+  RAILM.sleeper = new THREE.MeshLambertMaterial({color:0x7a5530}); RAILM.rsOff = new THREE.MeshLambertMaterial({color:0x5a0e08}); RAILM.rsOn = new THREE.MeshBasicMaterial({color:0xff3b1f}); RAILM.plate = new THREE.MeshLambertMaterial({color:0x8a8a8a}); } return RAILM; }
+function railMesh(c, add, ghost){
+  const Mt = railMats(); if (!c.conn) railShape(c);
+  const metal = c.t === 'prail' ? Mt.gold : Mt.iron, seg = (d, m, h, side) => { const [dx, dz] = DIRS[d], along = dx !== 0; [-.3, .3].forEach(o => { const q = add(cbox(along ? .5 : .08, h, along ? .08 : .5), m, dx*.25 + (along ? 0 : o), .05 + h/2, dz*.25 + (along ? o : 0)); if (side) q.position.y -= .02; }); };
+  const ns = c.conn.every(d => d % 2 === 0), ew = c.conn.every(d => d % 2 === 1);
+  for (let k = -2; k <= 2; k++) add(cbox(ns ? .86 : .16, .05, ns ? .16 : .86), Mt.sleeper, ew ? k*.2 : 0, .025, ns ? k*.2 : 0);
+  if (!ns && !ew) for (let k = -2; k <= 2; k++) add(cbox(.16, .05, .86), Mt.sleeper, k*.2, .026, 0);
+  c.conn.forEach(d => seg(d, metal, .07));
+  if (c.arms) c.arms.filter(d => !c.conn.includes(d)).forEach(d => seg(d, Mt.dim, .04, true));   // the arm the points AREN'T set to: low and dark
+  if (c.t === 'prail'){ const L = ns ? [.12, .04, 1] : [1, .04, .12]; add(cbox(...L), c.lit ? Mt.rsOn : Mt.rsOff, 0, .06, 0); if (c.lit && !ghost) add(cbox(L[0]*.6 + .02, .02, L[2]*.6 + .02), Mt.rsOn, 0, .09, 0); }
+  if (c.t === 'drail'){ const on = c.on || c.timer > 0; add(cbox(.44, .06, .44), Mt.plate, 0, .06, 0); add(cbox(.3, .02, .3), on ? Mt.rsOn : Mt.rsOff, 0, .1, 0); }
+}
 function buildMesh(c, ghost){
   const g = new THREE.Group();
   const add = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x||0, y||0, z||0); g.add(m); return m; };
@@ -1474,6 +1567,10 @@ function buildMesh(c, ghost){
     case 'goat': case 'granny': case 'sheepstrike': case 'holybanana': case 'ninjarope': case 'chickencannon': case 'whoopeemine': case 'bouncy': case 'slimefountain': case 'teleporter': sbMesh(c, g, add); break;
     case 'tnt': add(G.cube, (c.fuse > 0 && c.fuse % 4 < 2) ? M.tntFlash : M.tnt); break;
     case 'glass': add(G.cube, M.glass); break;
+    case 'rail': case 'prail': case 'drail': {   // one merged mesh per material, cached per look (a mine room has dozens of rails: keep the draw calls down)
+      const key = vkey(c) + (ghost ? 'g' : ''); let parts = RAIL_CACHE.get(key);
+      if (!parts){ const tmp = new THREE.Group(); railMesh(c, (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x || 0, y || 0, z || 0); tmp.add(m); return m; }, ghost); mergeStatic(tmp); parts = tmp.children.filter(m => m.isMesh).map(m => [m.geometry, m.material]); RAIL_CACHE.set(key, parts); }
+      parts.forEach(([geo, mat]) => add(geo, mat)); break; }
     case 'bridge': {
       if (c.lit){ add(cbox(1,.12,.9), M.plank, 0,.08,0); add(cbox(.08,.5,.08), M.wood, -.42,.3,.4); add(cbox(.08,.5,.08), M.wood, .42,.3,.4); add(cbox(.08,.5,.08), M.wood, -.42,.3,-.4); add(cbox(.08,.5,.08), M.wood, .42,.3,-.4); }
       else { add(cbox(.9,.03,.12), M.plank, 0,.03,.3); add(cbox(.7,.03,.12), M.plank, .05,.03,-.2); }
@@ -1666,7 +1763,7 @@ function labelSprite(text, wide){
 
 /* temple walls: static, tall, drawn with instancing */
 const wallRoot = new THREE.Group(); world.add(wallRoot);
-const WALL_MATS = () => [null, M.brick, M.mossy, M.gold, M.leaves, M.log, M.cracked, M.glyph, M.frieze, ...M.glyphs.slice(1), M.stripeR, M.stripeB, M.crate, M.moon];
+const WALL_MATS = () => [null, M.brick, M.mossy, M.gold, M.leaves, M.log, M.cracked, M.glyph, M.frieze, ...M.glyphs.slice(1), M.stripeR, M.stripeB, M.crate, M.moon, M.sand, M.terra, M.lab, M.mrock];
 // which block goes where: mostly brick, about 1 in 5 mossy, a few cracked, glyph blocks framing doorways, a painted frieze on the gold hall
 const whash = (x, y, j) => { let h = (x*374761393 + y*668265263 + j*1442695041) | 0; h = (h ^ (h >>> 13)) * 1274126177; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 function wallMatIndex(x, y, j, k, h){
@@ -1760,6 +1857,7 @@ function vkey(c){
     case 'bananacannon': return c.t + c.lit + c.dir;
     case 'goat': case 'granny': case 'sheepstrike': case 'holybanana': case 'ninjarope': case 'chickencannon': case 'whoopeemine': case 'bouncy': case 'slimefountain': case 'teleporter': return c.t + c.lit + c.dir + (c.away ? 'a' : '');
     case 'vein': return 'V' + !!c.open;
+    case 'rail': case 'prail': case 'drail': if (!c.conn) railShape(c); return 'R' + c.t + c.conn.join('') + (c.lit ? 1 : 0) + (c.on || c.timer > 0 ? 1 : 0) + (c.arms ? c.arms.join('') : '');
   }
   return c.t;
 }
@@ -1794,6 +1892,7 @@ function syncGhosts(){
 }
 function clearWorld(){
   S.grid.fill(null); S.gridDirty = true; S.lastSnap = ''; S.stable = false;
+  S.carts = [];
   while (ghostRoot.children.length) ghostRoot.remove(ghostRoot.children[0]);
   while (labelRoot.children.length) labelRoot.remove(labelRoot.children[0]);
 }
@@ -2148,6 +2247,7 @@ function renderCard(){
     if (r.check === 'pulse'){ card.innerHTML = `<h3>Parps</h3><div class="blinks">${[...Array(r.count)].map((_, i) => `<span style="font-size:24px">${i < rt.pulses ? '&#10003;' : '&#9675;'}</span>`).join('')}</div>${r.need === 'lever' ? '<div class="note">Lever ON, OFF, ON</div>' : ''}`; return; }
     if (r.check === 'latch'){ const ph = rt.phase || 0; card.innerHTML = `<h3>Memory test</h3><div class="note">${ph ? '&#10003; It remembered ON' : '&#9675; Step on the plate, step off: does it stay ringing?'}<br>&#9675; Reset: does it stay OFF?</div>`; return; }
     if (r.check === 'stopclock'){ card.innerHTML = `<h3>Haunted lamp</h3><div class="note">${rt.calmSeen ? '&#10003;' : '&#9675;'} Lever ON: it stays calm<br>${rt.blinkSeen ? '&#10003;' : '&#9675;'} Then lever OFF: it flickers again</div>`; return; }
+    if (CART_CHECKS.has(r.check)){ card.innerHTML = `<h3>${r.check === 'stopgo' ? (rt.stopped ? 'Stopped! Now GO' : 'Stop, then go') : r.check === 'route' ? 'Crystals, not slime' : r.check === 'ding' ? 'Ding when it arrives' : 'All the way'}</h3><div class="note">Start lever ON: the cart goes. OFF: the diggers bring it back. Tap a cart to push it.</div>`; return; }
     if (['delay', 'clock', 'alt', 'order'].includes(r.check)){ card.hidden = true; card.innerHTML = ''; return; }
     if (r.check === 'seq'){ card.innerHTML = `<h3>Fuel valves</h3><div class="note">Press the button. They must open <b>1</b>, then <b>2</b>, then <b>3</b>.${rt.seqText ? '<br>Last try: <b>' + rt.seqText + '</b>' : ''}</div>`; return; }
     if (r.inputs && r.inputs.length > 2){ card.innerHTML = `<h3>Try every mix</h3><div class="note"><b style="font-size:22px">${(rt.rows || []).filter(Boolean).length} / ${(rt.rows || []).length}</b> mixes work</div>`; return; }
@@ -2695,6 +2795,7 @@ function act(cx, cy, mode){
   if (asking){ explain(c, h); return; }
   if (sbAct(h, mode, item)) return;   // free build: stacking, creatures, rides
   if (c){
+    if (mode === 'use' && isRail(c) && cartPush(c.x, c.y)) return;   // tap a minecart: push it away from you
     if (mode === 'use' && ['lever','button','repeater','plate'].includes(c.t) && interact(c)){ syncVisuals(); return; }
     if (mode === 'break' || item === 'pick'){ breakCell(c); return; }
     if (interact(c)) { syncVisuals(); return; }
@@ -2979,8 +3080,8 @@ function buildTiles(){
   const sv = advLoad(), n = sv ? (sv.solved || []).length : 0;
   const started = !!sv && !!(n || sv.met || sv.player);
   // count only the act you're in: temple rooms in Act 1, rides at the funfair
-  const act2 = sv && sv.act === 2, list = act2 ? FUN_ROOMS : TEMPLE_ROOMS, done = sv ? list.filter(r => (sv.solved || []).includes(r.id)).length : 0;
-  $('#btnPlay').textContent = started ? `Continue (${done}/${list.length} ${act2 ? 'rides' : 'rooms'})` : 'New game';
+  const act2 = sv && (sv.act || 1) !== 1, list = actRooms(sv && sv.act), done = sv ? list.filter(r => (sv.solved || []).includes(r.id)).length : 0;
+  $('#btnPlay').textContent = started ? `Continue (${done}/${list.length} ${act2 && sv.act === FUN_ACT ? 'rides' : 'rooms'})` : 'New game';
   $('#btnNew').hidden = !started;
   { const x = slotIdx(), e = slotEntry(x.cur, x), sn = $('#slotNote'); sn.textContent = e && started ? `${e.name} · last played ${slotWhen(e.played).replace(/^T|^Y/, c => c.toLowerCase())}` : ''; sn.hidden = !sn.textContent; $('#btnSaves').hidden = !x.slots.length; }
   { const n = $('#menuNote'); n.textContent = menuMsg || (storeOK ? '' : 'This browser can\'t remember your game. Use passwords, or ask a grown-up to back up your save.'); n.hidden = !n.textContent; }
@@ -3183,7 +3284,7 @@ function slotDelete(id, quiet){
 }
 function slotTut(){ const e = slotEntry(slotCur()); return !!(e && e.tut); }
 function slotTutSet(){ const id = slotCur(true), x = slotIdx(), e = slotEntry(id, x); if (e && !e.tut){ e.tut = 1; slotIdxPut(x); } }
-function slotSum(s){ const sol = new Set(s && Array.isArray(s.solved) ? s.solved : []); return {act:(s && s.act) || 1, rooms:TEMPLE_ROOMS.filter(r => sol.has(r.id)).length, rides:FUN_ROOMS.filter(r => sol.has(r.id)).length, solved:sol.size, crystals:(s && Array.isArray(s.crystals) ? s.crystals : []).length, gates:(s && Array.isArray(s.gates) ? s.gates : []).length, launched:!!(s && s.launched), started:!!s && !!(sol.size || s.met || s.player)}; }
+function slotSum(s){ const sol = new Set(s && Array.isArray(s.solved) ? s.solved : []); return {act:s && s.actV !== 2 && s.act === 2 ? FUN_ACT : (s && s.act) || 1, rooms:TEMPLE_ROOMS.filter(r => sol.has(r.id)).length, rides:FUN_ROOMS.filter(r => sol.has(r.id)).length, ape:APE_ROOMS.filter(r => sol.has(r.id)).length, solved:sol.size, crystals:(s && Array.isArray(s.crystals) ? s.crystals : []).length, gates:(s && Array.isArray(s.gates) ? s.gates : []).length, launched:!!(s && s.launched), started:!!s && !!(sol.size || s.met || s.player)}; }
 const slotProg = m => m ? (m.solved || 0) * 1000 + (m.crystals || 0) : 0;   // how far along a game is: rooms first, then crystals
 // SaveStore: the one way in and out of the saves. This browser's copy is always there (and works offline); a family server is optional (REMOTE, below)
 const SAVES = {
@@ -3208,7 +3309,7 @@ function famMake(){ const b = new Uint32Array(FAM_LEN); crypto.getRandomValues(b
 const syncJSON = raw => JSON.parse(raw, (k, v) => k === '__proto__' || k === 'constructor' || k === 'prototype' ? undefined : v);
 const syncNum = (v, max) => typeof v === 'number' && isFinite(v) && v > 0 ? Math.min(Math.floor(v), max || 9e15) : 0;
 const syncObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
-function syncSum(m){ m = syncObj(m) ? m : {}; return {act:m.act === 2 ? 2 : 1, rooms:syncNum(m.rooms, 999), rides:syncNum(m.rides, 999), solved:syncNum(m.solved, 9999), crystals:syncNum(m.crystals, 9999), gates:syncNum(m.gates, 99), launched:m.launched === true, started:m.started === true}; }
+function syncSum(m){ m = syncObj(m) ? m : {}; return {act:[1, APE_ACT, FUN_ACT].includes(m.act) ? m.act : 1, rooms:syncNum(m.rooms, 999), rides:syncNum(m.rides, 999), ape:syncNum(m.ape, 999), solved:syncNum(m.solved, 9999), crystals:syncNum(m.crystals, 9999), gates:syncNum(m.gates, 99), launched:m.launched === true, started:m.started === true}; }
 function syncMeta(r){ return syncObj(r) && typeof r.id === 'string' && SLOT_ID.test(r.id) ? {id:r.id, name:slotClean(r.name), updatedAt:syncNum(r.updatedAt), sum:syncSum(r.sum), deleted:r.deleted === true} : null; }
 function syncRec(r, id){
   if (!syncObj(r) || r.id !== id) return null; let save = null;
@@ -3428,7 +3529,7 @@ const updBright = () => { $('#btnBright').textContent = 'Brightness: ' + (S.brig
 $('#btnBright').addEventListener('click', () => { S.bright = !S.bright; try { localStorage.setItem('redstone-academy.bright', S.bright ? '1' : '0'); } catch (e) {} updBright(); sfx.click(); });
 $('#btnPass').addEventListener('click', () => {
   sfx.click();
-  const kept = pwKept().filter(w => { const pw = pwFind(w); return pw && pw.act !== 2; });   // the funfair isn't open yet: its passwords aren't listed
+  const kept = pwKept().filter(w => { const pw = pwFind(w); return pw && pw.act !== FUN_ACT; });   // the funfair isn't open yet: its passwords aren't listed
   const list = kept.length ? `<p><b>Your passwords</b> (tap one to jump back there):</p><div class="pwList">${kept.map(w => { const pw = pwFind(w); return `<button class="btn pwBtn" data-w="${w}">${w}<small>${pw.after === 'launch' ? 'after the liftoff' : 'rooms 1 to ' + pw.after + ' done'}</small></button>`; }).join('')}</div>` : '<p><i>No passwords yet. The temple gives you one every few rooms.</i></p>';
   openPane('Passwords', `<p><b>What's a password?</b> It's a secret code the game gives you every few rooms. Old games used them instead of saving!</p><p>When you get one, grab a <b>pencil and paper</b> and <b>write it down</b> (ask a grown-up to help). Keep the paper safe: stick it on the fridge! If the game ever forgets where you were, or you play on a different computer or tablet, type it in here and you'll jump straight back.</p>${list}<p><b>Type a password:</b></p><input id="passIn" autocomplete="off" style="font-size:22px;width:100%;padding:8px;text-transform:uppercase" placeholder="e.g. ONE SILLY WORD"><div class="row"><button class="btn red" id="passGo">Go!</button><span id="passMsg" class="msg" role="status"></span></div><div id="passWhere" hidden></div>`);
   let busy = false;
@@ -3456,11 +3557,11 @@ const escH = t => String(t).replace(/[&<>"']/g, c => ({'&':'&amp;', '<':'&lt;', 
 function slotWhen(t){ if (!t) return 'a while ago'; const d = new Date(t), now = new Date(), day = q => new Date(q.getFullYear(), q.getMonth(), q.getDate()).getTime(), n = Math.round((day(now) - day(d)) / 864e5);
   return n <= 0 ? 'Today' : n === 1 ? 'Yesterday' : d.toLocaleDateString('en-GB', d.getFullYear() === now.getFullYear() ? {day:'numeric', month:'long'} : {day:'numeric', month:'long', year:'numeric'}); }
 function slotProgress(m){ if (!m.started) return 'Not started yet'; const pl = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
-  return (m.act === 2 ? `Act 2: ${m.rides} of ${FUN_ROOMS.length} rides` : m.launched ? 'Act 1 finished!' : `Act 1: ${m.rooms} of ${TEMPLE_ROOMS.length} rooms`) + ' · ' + pl(m.crystals, 'crystal') + (m.gates ? ' · ' + pl(m.gates, 'Gate Card') : ''); }
+  return (m.act === APE_ACT ? `Act 2: ${m.ape || 0} of ${APE_ROOMS.length} tests` : m.act === FUN_ACT ? `Act 3: ${m.rides} of ${FUN_ROOMS.length} rides` : m.launched ? 'Act 1 finished!' : `Act 1: ${m.rooms} of ${TEMPLE_ROOMS.length} rooms`) + ' · ' + pl(m.crystals, 'crystal') + (m.gates ? ' · ' + pl(m.gates, 'Gate Card') : ''); }
 // a little pixel picture for each save: the act's crystal on its ground (a grass block for a game that hasn't started)
 function slotIcon(m){
   if (!m.started) return '<svg viewBox="0 0 16 16" class="px" aria-hidden="true"><rect width="16" height="16" fill="#8a5a33"/><path d="M2 8h2v2H2zM9 10h2v2H9zM5 13h2v2H5zM12 6h2v2h-2z" fill="#6b4224"/><rect width="16" height="5" fill="#5d9c3a"/><path d="M0 5h2v2H0zM5 5h1v2H5zM9 5h2v1H9zM13 5h3v2h-3z" fill="#5d9c3a"/><path d="M3 1h2v1H3zM10 2h2v1h-2z" fill="#7cc04f"/></svg>';
-  const [g1, g2, c1, c2, ed] = m.act === 2 ? ['#262b55', '#333a72', '#4fd6ff', '#c2f3ff', '#0c3a50'] : ['#56614a', '#66744f', '#c75cff', '#e3a8ff', '#3a0d50'];
+  const [g1, g2, c1, c2, ed] = m.act === FUN_ACT ? ['#262b55', '#333a72', '#4fd6ff', '#c2f3ff', '#0c3a50'] : m.act === APE_ACT ? ['#2a8a7c', '#33a894', '#c75cff', '#e3a8ff', '#3a0d50'] : ['#56614a', '#66744f', '#c75cff', '#e3a8ff', '#3a0d50'];
   return `<svg viewBox="0 0 16 16" class="px" aria-hidden="true"><rect width="16" height="16" fill="${g1}"/><path d="M0 0h4v4H0zM8 4h4v4H8zM4 10h4v4H4zM12 12h4v4h-4z" fill="${g2}"/><path d="M8 1l5 5-5 9-5-9z" fill="${c1}" stroke="${ed}" stroke-width="1"/><path d="M8 1l2 5-2 9-2-9z" fill="${c2}"/>${m.launched && m.act !== 2 ? '<path d="M13 1h2v3h-2z" fill="#ffd84a"/>' : ''}</svg>`;
 }
 function openSaves(mode){ const ov = $('#saves'); try { if (CV.dirt) ov.style.backgroundImage = 'url(' + CV.dirt.toDataURL() + ')'; } catch (e) {}
@@ -3707,6 +3808,9 @@ function frame(now){
 const LAYOUT = 'L3D2';   // bump whenever the map moves, so old saves don't drop you inside a wall
 // Rooms are 10 x 8 boxes with gaps between them for the journeys (stairs, bridges, ladders, tunnels, slides).
 const ADV_W = 70, ADV_H = 192, ADV_KEY = 'redstone-academy.adventure';
+// the acts: 1 the temple, 2 the Ape Planet + Crystal Mine, 3 the funfair (hidden until its seaside re-theme; it was Act 2 in older saves: migrateFun moves them)
+const APE_ACT = 2, FUN_ACT = 3;
+const actRooms = n => n === FUN_ACT ? FUN_ROOMS : n === APE_ACT && typeof APE_ROOMS !== 'undefined' ? APE_ROOMS : TEMPLE_ROOMS;
 // rooms are 12 x 10: the 10 x 8 puzzle plus a walkway all round
 const COLX = [2, 19, 36, 53], ROWY = [20, 36, 52, 68, 84, 100, 116];
 const roomBox = (c, r) => ({x0: COLX[c], x1: COLX[c] + 12, y0: ROWY[r], y1: ROWY[r] + 10});
@@ -4331,9 +4435,9 @@ const FUN_INTRO = [
   ['Barold', '(whispering) Is it just me, or does EVERYONE here have an eye patch?'],
   ['Captain', 'It\'s for the sun. Very bright in space.']
 ];
-const FUN_PW = [{act:2, after:105, words:'PANTS', old:'PARROT PANTS PICNIC'}, {act:2, after:110, words:'DODGEM', old:'DODGEM DUCK DISASTER'}, {act:2, after:115, words:'BLONKY', old:'BLINKY BLONKY SKELETON'}, {act:2, after:120, words:'EYEPATCH', old:'DEFINITELY NOT PIRATES'}];
+const FUN_PW = [{act:FUN_ACT, after:105, words:'PANTS', old:'PARROT PANTS PICNIC'}, {act:FUN_ACT, after:110, words:'DODGEM', old:'DODGEM DUCK DISASTER'}, {act:FUN_ACT, after:115, words:'BLONKY', old:'BLINKY BLONKY SKELETON'}, {act:FUN_ACT, after:120, words:'EYEPATCH', old:'DEFINITELY NOT PIRATES'}];
 function funFrame(dt){
-  if (A.act !== 2 || !A.on) return;
+  if (A.act !== FUN_ACT || !A.on) return;
   if (A.funWheel && !reduceMotion){ A.funWheel.rotation.z += dt*.0003; A.funWheel.children.forEach(c => { if (c.userData.cab) c.rotation.z = -A.funWheel.rotation.z; }); }
   if (A.funCarousel && !reduceMotion) A.funCarousel.rotation.y += dt*.0006;
   const cap = A.captain; if (cap){ cap.rotation.y = Math.atan2(P.x - cap.position.x, P.z - cap.position.z); if (cap.userData.parrot && !reduceMotion) cap.userData.parrot.rotation.y = Math.sin(performance.now()*.004)*.4; }
@@ -4351,8 +4455,665 @@ function funFinale(){
 // moving between acts: rebuild the world for the new act, keep everything you've earned
 function goAct(n){
   $('#why').hidden = true; stopAdventure();   // saves where you are in the old act first
-  const save = advLoad() || {funV:2}; save.act = n; save.player = null; save.cells = []; delete save.cellsAct; save.levers = {};
+  const save = advLoad() || {funV:2, actV:2}; save.act = n; save.actV = 2; save.player = null; save.cells = []; delete save.cellsAct; save.levers = {};
   advWrite(save); startAdventure(save);   // handed over directly: works even if the browser won't store anything
+}
+
+// ================= ACT 2: THE APE PLANET + THE CRYSTAL MINE =================
+// The temple-ship lands nose-first in the only mud swamp on the apes' planet. Everyone expected aliens: it's all apes (and ONE alien, Greg).
+// The ancients were the MONKEYS: the temple is the ship their cousins flew away in. Dr Zest's Institute of Very Senior Thinkers tests
+// "the hairless creature" (rooms 201-211: NOR, NAND, XOR, then logic expressions); then Foreman Digby's Crystal Mine teaches minecarts
+// (212-215) and the Crystal Express set piece lays the track you ride out on (216-219). Plan, beats and status: docs/act2-plan.md.
+// Guardrails (HANDOFF.md): the jokes are about pomposity, forms and bath day, never about apes; no ownership, no "dirty apes".
+// The XOR used here is the Java "two halves" build: each half is (this lever AND NOT the other), and the two halves' torches feed the output.
+const XOR_FIXED = [K('lever',1,2),K('lever',9,6),D(2,2),K('stone',3,2),K('torch',4,2,{attach:3}),D(5,2),D(6,2),K('stone',7,2),K('torch',7,3,{attach:0}),
+  D(8,6),K('stone',7,6),K('torch',6,6,{attach:1}),D(5,6),D(4,6),K('stone',3,6),K('torch',3,5,{attach:2}),K('lamp',5,4)];
+const XOR_CROSS = [...col(9,5,2),D(8,2),...col(1,3,6),D(2,6)], XOR_OUT = [D(7,4),D(6,4),D(4,4),D(3,4)];
+const APE_ROOMS = [
+  // ---------------- NOR: nobody touches anything ----------------
+  { id:201, play:true, name:'Do Not Touch', check:'table', inputs:[[2,2],[2,6]], out:[[8,4]], fn:(a, b) => !(a || b),
+    fixed:[K('lever',2,2),K('lever',2,6),D(3,2),D(4,2),D(4,3),D(4,4),D(5,4),D(3,6),D(4,6),D(4,5),K('stone',6,4),K('torch',7,4,{attach:3}),K('lamp',8,4)],
+    goal:'PLAY TIME! The museum\'s DO NOT TOUCH light already works. Try every mix of the two levers and fill in the table. When is it on?',
+    hello:'Test 1. The DO NOT TOUCH light. The hairless creature will never work it out. Go on. Touch things.',
+    hint:'Try both OFF. Then just the top one. Then just the bottom one. Then both. Watch the grumpy torch every time.',
+    win:'The light is only on when NOBODY touches a lever! Either lever makes the torch grumpy. That\'s a NOR gate: NOT this one, NOR that one.',
+    mc:'In Minecraft, two wires joined into a block with a torch on it make a NOR gate.',
+    sol:[] },
+  { id:202, name:'The Quiet Library', give:['dust'], check:'table', inputs:[[2,2],[2,6]], out:[[8,4]], fn:(a, b) => !(a || b), gate:'nor',
+    fixed:[K('lever',2,2),K('lever',2,6),K('stone',6,4),K('torch',7,4,{attach:3}),K('lamp',8,4)],
+    loose:[D(3,2),D(4,2),D(4,3),D(4,4),D(5,4)],
+    why:[{say:'See the grumpy torch on that block? Its block has no power, so the torch is ON. Quiet please!', at:[7,4]},
+      {say:'Watch. Top lever ON. Power goes INTO the block... and the torch goes OFF. Grumpy!', at:[6,4], set:[[2,2,true]]},
+      {say:'The bottom lever can\'t reach the block yet. EITHER lever should switch it off. Your turn!', at:[2,6], set:[[2,2,false]]}],
+    goal:'The QUIET light should only be on when NOBODY pulls a lever. Either lever on: light off. One lever works. Wire up the other one.',
+    hello:'Test 2. The Quiet Library. SHHH. Any lever at all and the QUIET light goes off. The creature will be baffled.',
+    hint:'Join the bottom lever\'s wire onto the top one, so EITHER lever powers the stone block. The grumpy torch does the rest.',
+    win:'Either lever powers the block, and the grumpy torch flips it. NOR! The light is on only when NEITHER lever is on.',
+    mc:'A Minecraft NOR gate: two wires joined into one block, a torch on the other side.',
+    sol:[D(3,6),D(4,6),D(4,5)] },
+  { id:203, name:'Nobody Moves', give:['dust','stone','torch'], check:'table', inputs:[[2,2],[2,6]], out:[[8,4]], fn:(a, b) => !(a || b),
+    fixed:[K('lever',2,2),K('lever',2,6),K('lamp',8,4)],
+    goal:'Test 3: the NOBODY MOVES light. It should only be on when NEITHER lever is on. Just two levers and a lamp. Build it!',
+    hello:'Test 3. We took away ALL the wire. The hairless creature will be stuck for WEEKS.',
+    hint:'Join both levers\' wires. Point them INTO a stone block. Put a grumpy torch on the far side of the block, next to the lamp.',
+    win:'A NOR gate from nothing at all! Dr Zest is crossing something out on her clipboard.',
+    mc:'Minecraft NOR: wires into a block, a torch on the other side.',
+    sol:[D(3,2),D(4,2),D(4,3),D(4,4),D(5,4),D(3,6),D(4,6),D(4,5),K('stone',6,4),K('torch',7,4,{attach:3})] },
+  // ---------------- NAND: not both ----------------
+  { id:204, play:true, name:'The Banana Vault', check:'table', inputs:[[1,2],[1,6]], out:[[7,4]], fn:(a, b) => !(a && b),
+    fixed:[K('lever',1,2),K('lever',1,6),D(2,2),D(2,6),K('stone',3,2),K('stone',3,6),K('torch',4,2,{attach:3}),K('torch',4,6,{attach:3}),...col(5,2,6),D(6,4),K('lamp',7,4)],
+    goal:'PLAY TIME! The Banana Vault\'s LOCKED light. Two key levers. Try every mix and fill in the table. What opens the vault?',
+    hello:'Test 4. The Banana Vault. Two keys. Two grumpy torches. One very confused creature.',
+    hint:'Try all four mixes. Watch BOTH grumpy torches, not just the light.',
+    win:'The LOCKED light only goes off when BOTH keys are on! Each key makes its own torch grumpy. That\'s a NAND gate: NOT both.',
+    mc:'Two torches on two blocks, their wires joined: a Minecraft NAND gate.',
+    sol:[] },
+  { id:205, name:'Two Keys, One Grumble', give:['dust','torch'], check:'table', inputs:[[1,2],[1,6]], out:[[7,4]], fn:(a, b) => !(a && b), gate:'nand',
+    fixed:[K('lever',1,2),K('lever',1,6),K('stone',3,2),K('stone',3,6),K('torch',4,2,{attach:3}),K('lamp',7,4)],
+    loose:[D(2,2),D(2,6),D(5,2),D(5,3),D(5,4),D(5,5),D(6,4)],
+    why:[{say:'Like the Banana Vault, but the bottom torch is missing.', at:[4,6]},
+      {say:'Top key ON. Power goes into its block. Its torch goes grumpy... OFF.', at:[4,2], set:[[1,2,true]]},
+      {say:'...and the light goes off too. Oops! It should only go off when BOTH keys are on.', at:[7,4]},
+      {say:'If EITHER torch is on, the light stays on. The bottom key needs its own grumpy torch. Your turn!', at:[4,6], set:[[1,2,false]]}],
+    goal:'The LOCKED light stays on... until BOTH keys are on. Finish the machine!',
+    hello:'Test 5. The creature MIGHT have been lucky. This one has a missing torch. Ha!',
+    hint:'Put a grumpy torch on the bottom block, then finish its wire to join the other one.',
+    win:'Two grumpy torches, wires joined: a NAND gate! Fun fact: you could build a WHOLE computer out of nothing but NAND gates.',
+    mc:'In Minecraft, two torches on blocks joined into one wire make a NAND gate.',
+    sol:[K('torch',4,6,{attach:3}),D(5,6)] },
+  { id:206, name:'The General\'s Safe', give:['dust','stone','torch'], check:'table', inputs:[[1,2],[1,6]], out:[[7,4]], fn:(a, b) => !(a && b),
+    fixed:[K('lever',1,2),K('lever',1,6),K('lamp',7,4)],
+    goal:'General Grumbletum\'s safe. The LOCKED light stays on unless BOTH keys are on. Just keys and a lamp. Build it!',
+    hello:'Test 6. The General\'s safe. NOBODY can open it. Not even the General. He is very proud of that.',
+    hint:'Each key goes into its own stone block with a grumpy torch on it. Join the two torches\' wires and run them to the lamp.',
+    win:'NAND, from nothing! The General has asked you not to tell anyone how.',
+    mc:'Minecraft NAND: two torches on two blocks, with their wires joined.',
+    sol:[D(2,2),D(2,6),K('stone',3,2),K('stone',3,6),K('torch',4,2,{attach:3}),K('torch',4,6,{attach:3}),...col(5,2,6),D(6,4)] },
+  // ---------------- XOR: one or the other, not both ----------------
+  { id:207, play:true, name:'The Landing Light', check:'table', inputs:[[1,2],[9,6]], out:[[5,4]], fn:(a, b) => a !== b,
+    fixed:[...XOR_FIXED, ...XOR_CROSS, ...XOR_OUT],
+    goal:'PLAY TIME! The landing light has a switch at the top of the stairs and one at the bottom. Try every mix. What flips the light?',
+    hello:'Test 7. Our landing light. Two switches, one light. We\'ve had it for 400 years. Nobody knows how it works.',
+    hint:'Try both off. Then each one on its own. Then both on. Is the light on when they\'re the SAME, or when they\'re DIFFERENT?',
+    win:'Either switch flips the light! ON when the switches are DIFFERENT, OFF when they\'re the same. That\'s an XOR gate. Your stairs at home might have one!',
+    mc:'Stair lights in Minecraft houses use XOR, so either switch works.',
+    sol:[] },
+  { id:208, name:'Odd One Out', give:['dust','torch'], check:'table', inputs:[[1,2],[9,6]], out:[[5,4]], fn:(a, b) => a !== b, gate:'xor',
+    fixed:[...XOR_FIXED.filter(c => !(c.t === 'torch' && c.x === 3 && c.y === 5)), ...XOR_CROSS, D(7,4), D(6,4)],
+    why:[{say:'Two halves. The TOP half lights the lamp when the top lever is on and the bottom one is OFF.', at:[7,3]},
+      {say:'Watch. Top lever ON... light ON!', at:[5,4], set:[[1,2,true]]},
+      {say:'Now BOTH on. The bottom lever\'s wire runs up into that block, so its torch goes grumpy. OFF!', at:[7,2], set:[[9,6,true]]},
+      {say:'The bottom half is the same, back to front. It\'s missing its grumpy torch. Your turn!', at:[3,6], set:[[1,2,false],[9,6,false]]}],
+    goal:'The ODD ONE OUT light: on when exactly ONE lever is on. Both on, or both off: light off. The bottom half isn\'t finished.',
+    hello:'Test 8. The odd one out. It cannot possibly work out XOR. WE barely worked out XOR.',
+    hint:'The bottom half needs a grumpy torch on its stone block, and a wire from that torch INTO the lamp.',
+    win:'Each half says "this lever AND NOT the other one". Put the two halves together: XOR! On when they\'re DIFFERENT.',
+    mc:'This is a real Minecraft XOR: two "this AND NOT that" halves feeding one lamp.',
+    sol:[K('torch',3,5,{attach:2}),D(3,4),D(4,4)] },
+  { id:209, name:'The Two-Key Door', give:['dust'], check:'table', inputs:[[1,2],[9,6]], out:[[5,4]], fn:(a, b) => a !== b,
+    fixed:XOR_FIXED, naive:XOR_OUT,
+    goal:'The way out! The door light must be on when exactly ONE key is on. Both keys: it stays off. Every part is here. The wires are not.',
+    hello:'Test 9. The Two-Key Door. One key opens it. TWO keys keep it shut. The creature will NEVER escape. Probably.',
+    hint:'Each half needs the OTHER lever\'s wire running into its last stone block. Then run each half\'s torch into the lamp.',
+    tired:'Both keys light it? Then each half needs to know about the OTHER key. Run each lever\'s wire to the far half\'s stone block.',
+    win:'The door light works! Each half watches the OTHER key. You built XOR yourself. Dr Zest has fainted. (She\'s fine.)',
+    mc:'Minecraft XOR, built your own way. Two-way light switches work just like this.',
+    sol:[...XOR_CROSS, ...XOR_OUT] },
+  // ---------------- logic expressions: the bureaucracy ----------------
+  { id:210, name:'Form 27B', give:['dust','torch'], check:'table', inputs:[[1,1],[1,3],[1,6]], out:[[9,3]], fn:(a, b, c) => (a || b) && !c,
+    fixed:[K('lever',1,1),K('lever',1,3),K('lever',1,6),K('stone',4,2),K('stone',8,4),K('torch',8,3,{attach:2}),K('lamp',9,3)],
+    loose:[D(2,1),D(3,2),D(6,2),D(6,3),D(6,4),D(7,4)],
+    goal:'Form 27B says: you may pass with a STAMP or a BANANA... but NOT if General Grumbletum is looking. Make the PASS light do that.',
+    hello:'Test 10. Form 27B. Stamp OR banana, AND NOT General Grumbletum. Very complicated. We needed a lie down.',
+    hint:'Stamp OR banana: join their wires into the first block, with a grumpy torch after it. The General\'s wire goes into the LAST block, so he switches it off.',
+    win:'(Stamp OR banana) AND NOT the General! You turned a rule into a machine. Real computers do that all day.',
+    mc:'Big Minecraft machines are just little gates plugged together, like this one.',
+    naive:[D(2,2),D(2,3),K('torch',5,2,{attach:3})],
+    sol:[D(2,2),D(2,3),K('torch',5,2,{attach:3}),...row(6,2,6),D(6,5)] },
+  { id:211, name:'The Grand Panel', give:['dust','torch'], check:'table', inputs:[[1,2],[1,6],[8,6]], out:[[8,3]], fn:(a, b, c) => (a && b) || c,
+    fixed:[K('lever',1,2),K('lever',1,6),K('lever',8,6),K('stone',3,2),K('stone',3,6),K('torch',4,2,{attach:3}),K('torch',4,6,{attach:3}),K('stone',7,4),K('lamp',8,3)],
+    loose:[D(2,2),D(2,6),D(5,2),D(5,3),D(5,4),D(5,5),D(5,6),D(8,5)],
+    goal:'The Grand Panel of Very Senior Thinkers: you pass with a stamp AND a banana. OR if the King says so. Make the light do that.',
+    hello:'The FINAL test. The Grand Panel. Stamp AND banana, OR the King. Nobody has ever passed. We have never let anybody try.',
+    hint:'The left side is an AND gate: it needs its last grumpy torch. Then join the King\'s lever wire into the same lamp. Two ways in = OR.',
+    win:'(Stamp AND banana) OR King! The Grand Panel is speechless. They\'ve all put their thinking caps on. (They\'re buckets.)',
+    mc:'AND and OR in one Minecraft machine: you just built real computer logic.',
+    sol:[D(6,4),K('torch',7,3,{attach:2}),D(8,4)] },
+  // ---------------- the Crystal Mine: minecarts (Foreman Digby, a naked mole-rat) ----------------
+  // Java rules: a gold (powered) rail is GO with power and a BRAKE without; a detector rail makes power while a cart is on it;
+  // three rails round one make POINTS that switch with power; power runs along up to 8 more gold rails in a line.
+  { id:212, name:'All Aboard!', give:['lever','rblock','torch','dust'], check:'cart',
+    fixed:[K('prail',1,6),K('lever',1,7),K('rail',2,6),K('rail',3,6),K('rail',4,6),K('prail',5,6),K('prail',6,6),K('rail',7,6),K('rail',8,6),K('rail',9,6)],
+    carts:[[1,6]], launch:[1,7], station:[9,6], out:[[9,6]],
+    goal:'Get the crystal cart all the way to the end of the track. Gold rails: power ON = GO. Power OFF = STOP!',
+    hello:'Welcome to the Crystal Mine! I\'m Foreman Digby. The start lever sends the cart. It always stops halfway. Gold rails, see? Lever OFF and my diggers push it back.',
+    hint:'The cart stops on the gold rails in the middle. Gold rails with NO power are brakes. Give them power: a lever right next to them!',
+    stuck:'It stopped on the gold rails! Gold rails with no power are BRAKES. Flip the start lever OFF to get the cart back.',
+    win:'All aboard! Powered gold rails go WHOOSH. Unpowered ones go SCREECH. That\'s a powered rail.',
+    mc:'Minecraft powered rails: power ON boosts the cart, power OFF stops it dead. A lever or redstone torch next to them powers them.',
+    sol:[K('rblock',5,5)] },
+  { id:213, name:'Ding Ding!', give:['drail','rail','dust'], check:'ding',
+    fixed:[K('prail',1,2),K('lever',1,1),K('rail',2,2),K('rail',3,2),K('rail',5,2),K('rail',6,2),K('rail',7,2),K('rail',8,2),K('lamp',7,5)],
+    carts:[[1,2]], launch:[1,1], station:[9,2], out:[[7,5]],
+    goal:'The bell (the lamp) must be ON when the cart ARRIVES at the end of the track, and stay on while it waits. Two bits of track are missing.',
+    hello:'The bell rings when a cart gets to the end, so my diggers know. It used to. Somebody pinched two bits of track. Here: a detector rail.',
+    hint:'A detector rail makes power while a cart is ON it. Where does the cart sit and wait? Put the detector THERE, and wire it to the bell.',
+    early:'DING! ...Ding? The bell rang when the cart went PAST. Then it stopped. It should ring when the cart ARRIVES.',
+    win:'DING DING! A detector rail is a pressure plate for carts: power while a cart sits on it.',
+    mc:'Minecraft detector rails give out power while a minecart is on them. Great for stations!',
+    naive:[K('drail',4,2),K('rail',9,2),D(4,3),D(4,4),D(4,5),D(5,5),D(6,5)],
+    sol:[K('rail',4,2),K('drail',9,2),D(9,3),D(8,3),D(7,3),D(7,4)] },
+  { id:214, name:'Points Change', give:['lever','dust','rblock','torch'], check:'route',
+    fixed:[K('prail',5,7),K('lever',4,7),...[6,5,4,3].map(y => K('rail',5,y)),K('rail',5,2),...[1,2,3,4,6,7,8,9].map(x => K('rail',x,2))],
+    carts:[[5,7]], launch:[4,7], station:[9,2], pit:[1,2], out:[[5,2]],
+    goal:'Send the crystal cart to the CRYSTAL store, not into the SLIME. Where the track splits, the points pick the way.',
+    hello:'The points! Where the track splits. They always send the cart into the slime pit. Every. Single. Time.',
+    hint:'Points are a plain rail with track on three sides. Give that rail power and it switches to the other way!',
+    pitLine:'SPLAT! Straight into the slime. The points were set the wrong way. Power changes the points!',
+    win:'The points switched! A plain rail where the track splits: with power it goes one way, without power the other.',
+    mc:'In Minecraft, a T-junction of rails switches when you power it. A lever next to the junction does it.',
+    sol:[K('rblock',5,1)] },
+  { id:215, name:'Stop That Cart!', give:['rail','lever'], check:'stopgo',
+    fixed:[K('prail',1,2),K('lever',1,1),K('prail',2,2),K('prail',3,2),K('prail',5,2),K('prail',7,2),K('prail',8,2),K('rail',9,2),K('lever',8,1,{on:true})],
+    loose:[K('prail',4,2),K('prail',6,2)],
+    carts:[[1,2]], launch:[1,1], platform:[5,2], station:[9,2],
+    goal:'The cart must STOP at the platform (the middle) for the passengers. Then send it on to the end. Right now it zooms straight past!',
+    hello:'Power runs along gold rails, from one to the next: up to 8 of them! So the platform rail gets power too. And nobody can get on.',
+    hint:'The platform rail must have NO power, so it brakes. Swap the gold rails either side of it for plain ones. Then give it power and tap the cart to send it on.',
+    past:'WHOOSH! Straight past the platform. The power ran along the gold rails into the platform rail. Stop it getting there!',
+    stopLine:'It stopped! Passengers on. Now send it on: power the platform rail, then tap the cart.',
+    win:'Stop... and GO! Power runs along up to 8 gold rails, so you split the line to make a brake just where you wanted.',
+    mc:'Minecraft powered rails pass power along up to 8 more powered rails. Break the line with a plain rail.',
+    naive:[K('rail',4,2)],
+    sol:[K('rail',4,2),K('rail',6,2),K('lever',5,3)] },
+  // ---------------- the Crystal Express: four puzzles, each lays a piece of the track you ride out on ----------------
+  { id:216, name:'Express 1: Booster Line', give:['dust'], check:'cart', piece:1,
+    fixed:[K('prail',1,2),K('lever',1,3),...[2,3,4,5,6,7,8].map(x => K('prail',x,2)),K('rail',9,2),K('rail',9,3),K('rail',9,4),K('rail',9,5),K('rail',9,6),...[2,3,4,5,6,7,8].map(x => K('prail',x,6)),K('rail',1,6)],
+    carts:[[1,2]], launch:[1,3], station:[1,6], out:[[1,6]],
+    goal:'The Express needs a booster line. Get the cart all the way round to the end. You only have DUST this time. Where can power come from?',
+    hello:'The Crystal Express! It\'s our way out of the mine. Four jobs, and each one lays a piece of track. Job one: the booster line. The way back is all brakes.',
+    hint:'The only power here is the start lever. Run dust from the lever round to the gold rails on the way back, and make its END point INTO one of them.',
+    stuck:'It stopped on the way back! Those gold rails have no power. And you only have dust...',
+    win:'WHOOSH! One wire from the start lever powers the whole way back: power runs along up to 8 gold rails. Track piece 1 is laid!',
+    mc:'Power one gold rail in Minecraft and the next 8 in a line get power too.',
+    sol:[D(1,4),D(2,4),D(2,5)] },
+  { id:217, name:'Express 2: The Signal Box', give:['dust','torch'], check:'table', piece:2, inputs:[[1,1],[1,3],[1,6]], out:[[8,2]], fn:(a, b, c) => (a || b) && !c,
+    fixed:[K('lever',1,1),K('lever',1,3),K('lever',1,6),K('stone',4,2),K('stone',8,4),K('torch',8,3,{attach:2}),K('prail',8,1),K('lever',9,1),K('rail',8,2),K('rail',7,2),K('rail',9,2)],
+    carts:[[8,1]], launch:[9,1], station:[7,2], pit:[9,2],
+    goal:'The signal box sets the points: to the CRYSTALS with a green flag OR the royal seal, but NOT if the gorilla guard says stop. The torch by the points is the last part.',
+    hello:'Job two: the signal box. Flag OR seal, and NOT the gorilla. General Grumbletum wrote the rules. Upside down.',
+    hint:'Flag OR seal: join their wires into the first block, with a grumpy torch after it. The gorilla\'s wire goes into the LAST block, so he switches the points back.',
+    pitLine:'SPLAT! Slime. The points sent it the wrong way.',
+    win:'(Flag OR seal) AND NOT gorilla, driving real points! Track piece 2 is laid!',
+    mc:'Gates can drive rails in Minecraft: a torch next to the junction switches the points.',
+    naive:[D(2,2),D(2,3),K('torch',5,2,{attach:3})],
+    sol:[D(2,1),D(2,2),D(2,3),D(3,2),K('torch',5,2,{attach:3}),D(6,2),D(6,3),D(6,4),D(7,4),...row(6,2,6),D(6,5)] },
+  { id:218, name:'Express 3: The Loading Bay', give:['button','lever','dust'], check:'loadgo', piece:3,
+    fixed:[K('prail',1,2),K('lever',1,1),K('prail',2,2),K('prail',3,2),...[4,5,6,7,8].map(x => K('rail',x,2)),K('prail',9,2)],
+    carts:[[1,2]], launch:[1,1], bay:[9,2], station:[1,2],
+    goal:'The cart must STOP in the loading bay (the gold rail at the end), wait to be loaded, THEN go back. Gold rail against a wall: give it power and the cart shoots away from the wall.',
+    hello:'Job three: the loading bay. The cart has to WAIT while Greg loads the crystals. Then whoosh, back again.',
+    hint:'The bay rail needs NO power when the cart arrives, so it stops. Then power just for a moment. What gives power for a moment?',
+    bounce:'It bounced straight back! The bay rail had power when the cart arrived. No time to load!',
+    loadLine:'Loaded! Greg has tipped the crystals in. Now send it back!',
+    win:'Stop, load, GO! A gold rail against a wall launches the cart away from the wall. Track piece 3 is laid!',
+    mc:'Minecraft stations: a cart stops on an unpowered gold rail against a block. A button launches it away.',
+    sol:[K('button',9,3)] },
+  { id:219, name:'Express 4: Crystal Delivery', give:['repeater','dust'], check:'cartorder', piece:4,
+    loose:[D(2,3),D(2,5)],
+    fixed:[K('button',2,4),K('prail',2,2),...[3,4,5,6,7,8,9].map(x => K('rail',x,2)),K('prail',2,6),...[3,4,5,6,7,8,9].map(x => K('rail',x,6))],
+    carts:[[2,2],[2,6]], launch:[2,4], order:[[9,2],[9,6]],
+    goal:'Crystal delivery! The RED cart (top) must arrive FIRST, then the BLUE one (bottom). One button sends both. They always arrive together!',
+    hello:'Last job! Red crystals first, then blue. The Queen is VERY fussy. One button sends both carts.',
+    hint:'Make one cart set off a little LATER. A repeater in a wire makes the power wait a moment. Which cart should wait?',
+    tie:'They got there at the SAME time! Red has to be first.',
+    wrongOrder:'Blue got there first! The RED one has to be first.',
+    win:'Red, then blue! A repeater delay put them in order. Track piece 4 is laid: the Crystal Express is READY!',
+    mc:'Repeaters delay power in Minecraft: perfect for sending carts one after another.',
+    naive:[K('repeater',2,3,{dir:0,delay:4})],
+    sol:[D(2,3),K('repeater',2,5,{dir:2,delay:4})] }
+];
+APE_ROOMS.forEach((r, i) => { placeCanon(r, i + 1); const P2 = p => p && apeP(r, p); r.cartsAt = (r.carts || []).map(P2); r.bayAt = P2(r.bay); r.orderAt = r.order && r.order.map(P2); r.launchAt = P2(r.launch); r.stationAt = P2(r.station); r.pitAt = P2(r.pit); r.platformAt = P2(r.platform); });
+const APE_LAST = APE_ROOMS[APE_ROOMS.length - 1].id;   // solving this one opens the way to the end of the act
+const APE_ELEV = Object.fromEntries(APE_ROOMS.map((r, i) => [r.id, 1 + Math.floor(i / 4)]));
+const APE_SPAWN = [34, 172], APE_SWAMP = {x:34, y:184, rx:10, ry:4.5};
+// the cavern at the top of the map: the end of the act (the Crystal Express and the Forbidden Zone come later; for now the teleporter)
+const APE_END = {x0:2, x1:67, y0:20, y1:47};
+APE_ROOMS.forEach(r => { r.zone = r.id <= 211 ? 'inst' : 'mine'; r.journey = 'stairs'; r.host = r.id <= 211 ? 'Dr Zest' : 'Digby'; });
+// ape-city materials: sandstone, terracotta, the Institute's white-and-gold lab tiles, dark mine rock (wall kinds 14..17)
+CV.sand = cv16(g => { speckle(g, ['#e2c98e','#d8bd80','#e9d39c','#cfb276']); g.fillStyle = 'rgba(120,80,30,.18)'; g.fillRect(0, 7, 16, 1); g.fillRect(0, 15, 16, 1); g.fillRect(7, 0, 1, 7); g.fillRect(3, 8, 1, 7); });
+CV.terra = cv16(g => { speckle(g, ['#c4683e','#b95f37','#cc7347','#ad5530']); g.fillStyle = 'rgba(60,20,0,.2)'; g.fillRect(0, 15, 16, 1); });
+CV.lab = cv16(g => { g.fillStyle = '#f4f1ea'; g.fillRect(0, 0, 16, 16); g.fillStyle = '#d9d3c4'; g.fillRect(0, 7, 16, 1); g.fillRect(7, 0, 1, 16); g.fillStyle = '#e2b437'; g.fillRect(0, 15, 16, 1); g.fillRect(15, 0, 1, 16); });
+CV.mrock = cv16(g => { speckle(g, ['#3a3644','#433e4f','#34303d','#4b4558']); g.fillStyle = '#6a3a9a'; g.fillRect(4, 5, 1, 1); g.fillStyle = '#2ac8c0'; g.fillRect(11, 10, 1, 1); });
+CV.amoss = cv16(g => { speckle(g, ['#2a9a8a','#33a894','#258a7c','#2fa090']); g.fillStyle = '#e08a3a'; [[2,3],[9,1],[12,9],[5,12],[14,14]].forEach(([x, y]) => g.fillRect(x, y, 1, 1)); });
+M.sand = lam(CV.sand); M.terra = lam(CV.terra); M.lab = lam(CV.lab); M.mrock = lam(CV.mrock);
+const APE_WALL = {sand:14, terra:15, lab:16, rock:17};
+
+function buildApePlanet(save){
+  setWorld(ADV_W, ADV_H, 'adventure');
+  clearWorld();
+  S.floor = new Uint8Array(NX*NY); S.fkind = new Uint8Array(NX*NY); S.zone = new Uint8Array(NX*NY); S.roof = new Uint8Array(NX*NY);
+  S.ladder = new Uint8Array(NX*NY); S.slide = new Int8Array(NX*NY).fill(-1); S.deck = new Uint8Array(NX*NY); S.lava = new Uint8Array(NX*NY); S.swamp = null;
+  const I = (x, y) => y*NX + x, carved = new Uint8Array(NX*NY);
+  const area = (b, e, fk, zl) => { for (let x=b.x0;x<=b.x1;x++) for (let y=b.y0;y<=b.y1;y++){ if (!inb(x, y)) continue; const i = I(x, y); S.elev[i] = e; carved[i] = 1; S.fkind[i] = fk; S.zone[i] = zl || 0; } };
+  ROOMS.forEach(r => { r.elev = APE_ELEV[r.id]; const mine = r.zone === 'mine'; area(r.box, r.elev, mine ? 4 : 1, mine ? 1 : 0); wallRect(r.box, mine ? 4 : 5, mine ? APE_WALL.rock : APE_WALL.lab); });
+  const endElev = APE_ELEV[APE_LAST] + 1; area(APE_END, endElev, 4, 1); wallRect(APE_END, 6, APE_WALL.rock);
+  area({x0:APE_END.x0 + 1, x1:EXPRESS.rock - 1, y0:APE_END.y0 + 1, y1:APE_END.y1 - 1}, endElev, 5, 0);   // the Forbidden Zone: desert, open sky
+  for (let y = APE_END.y0; y <= APE_END.y1; y++) setWall(EXPRESS.rock, y, (A.rode && y >= 29 && y <= 31) ? 0 : 6, APE_WALL.rock);   // the rock between the cavern and the desert (the Express smashes a way through)
+  area({x0:0, x1:ADV_W-1, y0:HUB.y0, y1:ADV_H-1}, 0, 2);
+  const q5 = v => Math.round(v*2)/2;
+  const walk = (a, b, eA, eB, wide, kind) => { const horiz = a[1] === b[1], dir = horiz ? Math.sign(b[0] - a[0]) : Math.sign(b[1] - a[1]), n = horiz ? Math.abs(b[0] - a[0]) : Math.abs(b[1] - a[1]), w = wide || 1;
+    for (let k = 1; k < n; k++){ const e = q5(eA + (eB - eA)*k/n); for (let o = -w; o <= w; o++){ const x = horiz ? a[0] + dir*k : a[0] + o, y = horiz ? a[1] + o : a[1] + dir*k; if (!inb(x, y)) continue; const i = I(x, y); carved[i] = 1; S.elev[i] = e; S.fkind[i] = 1; S.walls[i] = 0; }
+      if (w < 3) [-w-1, w+1].forEach(o => { const x = horiz ? a[0] + dir*k : a[0] + o, y = horiz ? a[1] + o : a[1] + dir*k; if (inb(x, y) && !carved[I(x, y)]){ carved[I(x, y)] = 1; S.elev[I(x, y)] = e; setWall(x, y, 3, kind || APE_WALL.sand); } }); } };
+  ROOMS.forEach((r, i) => { const nx = ROOMS[i+1]; doorSpan(r.entry, r.box).forEach(([x, y]) => setWall(x, y, 0)); if (nx) walk(r.exit, nx.entry, r.elev, nx.elev, 1, nx.zone === 'mine' ? APE_WALL.rock : APE_WALL.sand); });
+  walk([ENTRANCE[0], HUB.y0], ENTRANCE, 0, APE_ELEV[201], 3);
+  { // out of the last room: two steps out of its door, then north to the end
+    const last = ROOMS[ROOMS.length - 1], north = last.exit[1] === last.box.y0;
+    if (north){ const d = [last.exit[0], APE_END.y1]; walk(last.exit, d, last.elev, endElev, 1, APE_WALL.rock); doorSpan(d, APE_END).forEach(([x, y]) => setWall(x, y, 0)); }
+    else { const p1 = [last.exit[0] + (last.exit[0] === last.box.x1 ? 3 : -3), last.exit[1]], d = [p1[0], APE_END.y1]; walk(last.exit, [p1[0] + Math.sign(p1[0] - last.exit[0]), p1[1]], last.elev, last.elev, 1, APE_WALL.rock); walk([p1[0], p1[1] + 2], d, last.elev, endElev, 1, APE_WALL.rock); doorSpan(d, APE_END).forEach(([x, y]) => setWall(x, y, 0)); } }
+  // between the rooms: the city's stepped buildings (Institute side) and solid rock (mine side)
+  for (let y = 1; y < HUB.y0; y++) for (let x = 1; x < ADV_W - 1; x++){ const i = I(x, y); if (carved[i]) continue; const r = whash(x, y, 71); setWall(x, y, 4 + Math.floor(whash(x, y, 72)*4), y < 80 ? APE_WALL.rock : r < .55 ? APE_WALL.sand : APE_WALL.terra); }
+  for (let x = 0; x < ADV_W; x++){ setWall(x, ADV_H-1, 3, APE_WALL.terra); setWall(x, 0, 6, APE_WALL.rock); }
+  for (let y = 0; y < ADV_H; y++){ setWall(0, y, 4, APE_WALL.terra); setWall(ADV_W-1, y, 4, APE_WALL.terra); }
+  // the city: a few stepped sandstone buildings round the plaza (never on the path up to the Institute)
+  [[6, 146, 6, 5], [56, 146, 7, 5], [8, 160, 5, 6], [56, 160, 6, 6], [14, 176, 5, 4], [52, 176, 6, 4]].forEach(([x, y, w, h], k) => { for (let dx = 0; dx < w; dx++) for (let dy = 0; dy < h; dy++) setWall(x + dx, y + dy, 3 + ((dx === 0 || dy === 0 || dx === w-1 || dy === h-1) ? 0 : 2), k % 2 ? APE_WALL.terra : APE_WALL.sand); });
+  setupRoomCells(save, r => r.zone === 'mine' ? APE_WALL.rock : APE_WALL.lab);
+  ZONE_TITLES.inst = ['The Institute of Very Senior Thinkers', 'Tests. Forms. Rubber stamps.']; ZONE_TITLES.mine = ['The Crystal Mine', 'Mind the carts!'];
+  spawnCarts();
+  buildWalls(); buildFloor();
+  buildApeDecor();
+  S.lastSnap = ''; S.gridDirty = true;
+  syncVisuals();
+}
+
+// ---- minecarts in the rooms: where they start, the mole-rats who push them back, pushing by tapping, the meshes, the checks ----
+function apeP(r, [x, y]){ return [r.box.x0 + 1 + (r.mirror ? 10 - x : x), r.box.y0 + 1 + y]; }   // a canonical room spot (0..10, 0..8) in the world
+function cartHome(k){ k.x = k.home[0]; k.y = k.home[1]; k.t = .5; k.v = 0; k.from = -1; k.exit = undefined; k.cells = 0; k.rest = 0; }
+function spawnCarts(){ S.carts = []; ROOMS.forEach(r => (r.cartsAt || []).forEach((h, i) => { const k = {home:h.slice(), room:r.id, col:i}; cartHome(k); S.carts.push(k); })); }
+// a cart's spot in the world: in from one side of its cell, out of another (a curve is two straight halves)
+function cartWorld(k){
+  const c = cellPos(k.x, k.y), ex = k.exit === undefined ? -1 : k.exit;
+  if (k.from >= 0 && k.t < .5){ const [dx, dz] = DIRS[k.from]; return {x:c.x + dx*(.5 - k.t), y:c.y, z:c.z + dz*(.5 - k.t), d:opp(k.from)}; }
+  if (ex >= 0){ const [dx, dz] = DIRS[ex]; return {x:c.x + dx*(k.t - .5), y:c.y, z:c.z + dz*(k.t - .5), d:ex}; }
+  return {x:c.x, y:c.y, z:c.z, d:1};
+}
+function cartPush(x, y, toward){   // toward: push it towards that cell (tests), else away from you
+  const k = (S.carts || []).find(q => q.x === x && q.y === y), c = at(x, y); if (!k || !c) return false;
+  if (!c.conn) railShape(c);
+  const w = cartWorld(k), tw = toward && cellPos(...toward), vx = tw ? tw.x - w.x : w.x - P.x, vz = tw ? tw.z - w.z : w.z - P.z; let best = c.conn[0], bd = -Infinity;
+  c.conn.forEach(d => { const s = DIRS[d][0]*vx + DIRS[d][1]*vz; if (s > bd){ bd = s; best = d; } });
+  if (best !== k.exit){ if (k.from >= 0) k.t = 1 - k.t; k.from = opp(best); k.exit = best; }
+  k.v = Math.max(k.v, CART_PUSH); k.rest = 0; sfx.click(); feed('cart', 'push'); return true;
+}
+// carts in a mine room: they roll, they splat, the diggers push them home when you switch the start lever off
+const CART_CHECKS = new Set(['cart', 'ding', 'route', 'stopgo', 'loadgo', 'cartorder']);
+function cartCheck(r, rt){
+  const ks = (S.carts || []).filter(k => k.room === r.id); if (!ks.length) return;
+  const eq = (k, p) => !!p && k.x === p[0] && k.y === p[1];
+  const lv = r.launchAt && at(...r.launchAt), on = !!(lv && (lv.on || lv.timer > 0));   // (a start button: when it pops back up, carts resting away from home go home)
+  if (rt.launchOn && !on) rt.returnAt = S.tick + 15;   // a moment after the start switch goes off (any delayed power has gone by then)
+  if (on) rt.returnAt = 0;
+  if (rt.returnAt && S.tick >= rt.returnAt){ rt.returnAt = 0; ks.forEach(k => { if (!k.v && !eq(k, k.home)){ cartHome(k); rt.stopped = rt.loaded = false; rt.saidStuck = rt.saidPast = rt.saidBounce = false; sfx.click(); showToast('The diggers push the cart back to the start.'); } }); }
+  rt.launchOn = on;
+  const solving = CART_CHECKS.has(r.check);
+  if (r.check === 'cartorder' && solving){   // which cart got to its station first (each cart k belongs to station k)
+    rt.arr = rt.arr || [];
+    ks.forEach((k, i) => { if (!rt.arr[i] && eq(k, r.orderAt[i])) rt.arr[i] = S.tick; if (eq(k, k.home)) rt.arr[i] = 0; });
+    if (rt.arr[0] && rt.arr[1] && ks.every(k => !k.v)){ const d = rt.arr[1] - rt.arr[0]; if (d >= 2){ solveRoom(r); return; } if (!rt.saidOrder){ rt.saidOrder = true; sfx.nope(); monkeySay(d <= -2 ? r.wrongOrder : r.tie, 9000); plogEvent('wrong'); } }
+    else rt.saidOrder = false;
+    return; }
+  if (r.check === 'loadgo' && solving) for (const k of ks){
+    if (eq(k, r.bayAt)){ if (!k.v && k.rest >= 10 && !rt.loaded){ rt.loaded = true; monkeySay(r.loadLine, 9000); } if (k.v && !rt.loaded && k.cells > 3 && !rt.saidBounce){ rt.saidBounce = true; sfx.nope(); monkeySay(r.bounce, 9000); plogEvent('wrong'); } }
+    else if (eq(k, k.home) && rt.loaded && k.cells > 3){ solveRoom(r); return; } }
+  for (const k of ks){
+    if (k.v) continue;
+    if (eq(k, r.pitAt)){ if (k.rest === 3){ sfx.nope(); const p = cartWorld(k); burst(new THREE.Vector3(p.x, p.y + .6, p.z), 0x7ad83a, 30); monkeySay(r.pitLine || 'SPLAT!', 9000); plogEvent('wrong'); if (A.apeBeats && !A.apeBeats.has('radio2')) A.apeDue.push({at:(A.clock || 0) + 2500, fn:() => { if (beat('radio2')) dlgStart([['Radio', '*crackle* Ah. Did I mention...? Minecarts don\'t have brakes. *blub*']]); }}); } if (k.rest >= 15){ cartHome(k); showToast('The diggers fish the cart out of the slime. Yuck.'); } continue; }
+    if (eq(k, r.platformAt) && k.rest >= 10 && !rt.stopped){ rt.stopped = true; monkeySay(r.stopLine || 'It stopped!', 9000); }
+    if (solving && eq(k, r.stationAt) && k.rest >= 3 && r.check !== 'loadgo'){
+      if (r.check === 'ding' && !r.out.every(([x, y]) => outLit(x, y))){ if (!rt.saidEarly){ rt.saidEarly = true; sfx.nope(); monkeySay(r.early || 'The bell isn\'t ringing!', 9000); plogEvent('wrong'); } continue; }
+      if (r.check === 'stopgo' && !rt.stopped){ if (!rt.saidPast){ rt.saidPast = true; sfx.nope(); monkeySay(r.past || 'It went straight past!', 9000); plogEvent('wrong'); } continue; }
+      solveRoom(r); return;
+    }
+    if (k.rest === 5 && !eq(k, k.home) && !eq(k, r.platformAt) && r.stuck && !rt.saidStuck){ rt.saidStuck = true; monkeySay(r.stuck, 9000); }
+  }
+}
+// minecart meshes: an iron tub on wheels, a crystal load, eased towards where the cart is each frame
+function makeCart(col, room){
+  const g = new THREE.Group(), iron = wm(0x7a7a84), dark = wm(0x2a2a30), add = (w, h, d, m, x, y, z) => { const q = new THREE.Mesh(cbox(w, h, d), m); q.position.set(x, y, z); q.raycast = () => {}; g.add(q); return q; };
+  add(.8, .1, .6, iron, 0, .22, 0); add(.8, .4, .06, iron, 0, .45, .28); add(.8, .4, .06, iron, 0, .45, -.28); add(.06, .4, .6, iron, .38, .45, 0); add(.06, .4, .6, iron, -.38, .45, 0);
+  [[-.25, .3], [.25, .3], [-.25, -.3], [.25, -.3]].forEach(([x, z]) => add(.18, .18, .06, dark, x, .12, z));
+  add(.82, .08, .62, wm(col ? 0x2a5ad8 : 0xd8261a), 0, .62, 0);   // red cart, blue cart
+  const crys = [0xc75cff, 0x2ac8e0, 0x5ae05a][(room || 0) % 3]; for (let i = 0; i < 4; i++) add(.18, .3, .18, new THREE.MeshLambertMaterial({color:crys, emissive:crys, emissiveIntensity:.5}), -.2 + (i % 2)*.35, .6 + (i >> 1)*.06, -.1 + (i >> 1)*.18).rotation.z = .3*(i - 1.5);
+  return g;
+}
+function cartsFrame(dt){
+  const ks = S.carts || []; A.cartMeshes = A.cartMeshes || [];
+  while (A.cartMeshes.length > ks.length) decorRoot.remove(A.cartMeshes.pop());
+  ks.forEach((k, i) => { let m = A.cartMeshes[i]; if (!m || !m.parent){ m = makeCart(k.col, k.room); decorRoot.add(m); A.cartMeshes[i] = m; const w = cartWorld(k); m.position.set(w.x, w.y, w.z); }
+    const w = cartWorld(k), a = Math.min(1, dt*.012); m.position.x += (w.x - m.position.x)*a; m.position.z += (w.z - m.position.z)*a; m.position.y = w.y; m.rotation.y = w.d % 2 ? Math.PI/2 : 0; });
+}
+// Foreman Digby: a naked mole-rat in a hard hat (real facts: their front teeth are OUTSIDE their lips, so they dig without eating dirt)
+function makeMoleRat(){
+  const g = new THREE.Group(), pink = wm(0xe8a8a0), dk = wm(0xc88880), tooth = wm(0xfff4d8), dark = wm(0x141014);
+  const add = (w, h, d, m, x, y, z, par) => { const q = new THREE.Mesh(cbox(w, h, d), m); q.position.set(x, y, z); q.raycast = () => {}; (par || g).add(q); return q; };
+  add(.5, .5, .9, pink, 0, .35, 0); add(.12, .2, .12, dk, -.18, .1, .3); add(.12, .2, .12, dk, .18, .1, .3); add(.12, .2, .12, dk, -.18, .1, -.3); add(.12, .2, .12, dk, .18, .1, -.3);
+  [.1, -.1, -.3].forEach(z => add(.52, .03, .03, dk, 0, .55, z));   // wrinkles
+  const head = new THREE.Group(); head.position.set(0, .45, .5); g.add(head);
+  add(.36, .32, .32, pink, 0, 0, 0, head); add(.06, .14, .04, tooth, -.04, -.14, .17, head); add(.06, .14, .04, tooth, .04, -.14, .17, head);   // teeth OUTSIDE the lips
+  [-1, 1].forEach(s => add(.04, .04, .02, dark, s*.1, .06, .165, head));   // tiny eyes
+  add(.42, .12, .38, wm(0xffd84a), 0, .2, 0, head); add(.1, .08, .04, wm(0xfff2a0), 0, .22, .2, head);   // hard hat + lamp
+  g.userData = {head, hop:0};
+  return g;
+}
+// apes: chunky cuboids with real silhouettes (chimp, gorilla, orangutan), and eyes. Real animals, never stand-ins for people.
+function makeApe(kind, o){
+  o = o || {};
+  const g = new THREE.Group(), fur = wm(kind === 'gorilla' ? 0x2c2a2e : kind === 'orangutan' ? 0xc0602a : 0x3a2a20), face = wm(kind === 'gorilla' ? 0x4a4650 : kind === 'orangutan' ? 0xd8a070 : 0xc89a78), dark = wm(0x141014), white = wm(0xf6f2ea);
+  const add = (w, h, d, m, x, y, z, par) => { const q = new THREE.Mesh(cbox(w, h, d), m); q.position.set(x, y, z); q.raycast = () => {}; (par || g).add(q); return q; };
+  const big = kind === 'gorilla' ? 1.25 : 1;
+  add(.7*big, .8*big, .5*big, fur, 0, .85*big, 0);                                         // body
+  add(.24, .5, .24, fur, -.2, .25, 0); add(.24, .5, .24, fur, .2, .25, 0);                    // legs
+  const armL = new THREE.Group(), armR = new THREE.Group(); armL.position.set(-.45*big, 1.15*big, 0); armR.position.set(.45*big, 1.15*big, 0); g.add(armL); g.add(armR);
+  add(.2, kind === 'orangutan' ? 1 : .8, .2, fur, 0, kind === 'orangutan' ? -.45 : -.35, 0, armL); add(.2, kind === 'orangutan' ? 1 : .8, .2, fur, 0, kind === 'orangutan' ? -.45 : -.35, 0, armR);
+  const head = new THREE.Group(); head.position.y = 1.5*big; g.add(head);
+  add(.52, .5, .48, fur, 0, 0, 0, head); add(.4, .3, .1, face, 0, -.06, .25, head);           // head, face
+  if (kind === 'chimp'){ add(.1, .16, .08, face, -.3, .02, 0, head); add(.1, .16, .08, face, .3, .02, 0, head); }   // big chimp ears
+  if (kind === 'orangutan'){ add(.62, .3, .08, face, 0, -.04, .2, head); }                    // cheek pads
+  if (kind === 'gorilla'){ add(.5, .12, .1, fur, 0, .14, .25, head); add(.4, .2, .3, fur, 0, .3, -.05, head); }   // brow and crest
+  [-1, 1].forEach(s => { add(.1, .08, .02, white, s*.1, .06, .31, head); add(.05, .06, .02, dark, s*.1, .06, .325, head); });   // eyes
+  add(.16, .04, .02, dark, 0, -.14, .31, head);                                                // mouth
+  if (o.glasses){ [-1, 1].forEach(s => add(.15, .12, .01, wm(0x88ccee), s*.1, .06, .335, head)); add(.36, .02, .01, dark, 0, .1, .335, head); }
+  if (o.coat) add(.74*big, .5*big, .54*big, wm(0xf4f4f0), 0, .75*big, 0);                    // a white lab coat
+  if (o.cap){ add(.56, .12, .52, wm(0x3a5a2a), 0, .3, 0, head); add(.3, .06, .2, wm(0x3a5a2a), 0, .26, .3, head); add(.1, .1, .02, wm(0xffd84a), 0, .32, .27, head); }   // the General's cap and badge
+  if (o.clipboard){ const cb = add(.32, .42, .04, wm(0x8a6a3a), 0, -.75, .14, armR); add(.26, .3, .01, white, 0, .02, .03, cb); }
+  if (o.helmet){ add(.58, .16, .54, wm(0xffd84a), 0, .3, 0, head); add(.12, .1, .04, wm(0xfff2a0), 0, .32, .28, head); }
+  g.userData = {head, arms:[armL, armR], ape:kind, hop:0, sniff:Math.random()*8000};
+  return g;
+}
+// Greg: the Institute's caretaker for 300 years, and the only actual alien on the planet. Green, three eyes, a mop.
+function makeGreg(){
+  const g = new THREE.Group(), skin = wm(0x6ad04a), dk = wm(0x3f8a2a), white = wm(0xffffff), dark = wm(0x111111), over = wm(0x3a6ad0);
+  const add = (w, h, d, m, x, y, z, par) => { const q = new THREE.Mesh(cbox(w, h, d), m); q.position.set(x, y, z); q.raycast = () => {}; (par || g).add(q); return q; };
+  add(.2, .5, .2, skin, -.13, .25, 0); add(.2, .5, .2, skin, .13, .25, 0);
+  add(.5, .6, .36, over, 0, .8, 0); add(.12, .3, .02, over, -.14, 1.15, .17); add(.12, .3, .02, over, .14, 1.15, .17);   // dungarees
+  const armL = new THREE.Group(), armR = new THREE.Group(); armL.position.set(-.32, 1.05, 0); armR.position.set(.32, 1.05, 0); g.add(armL); g.add(armR);
+  add(.14, .6, .14, skin, 0, -.28, 0, armL); add(.14, .6, .14, skin, 0, -.28, 0, armR);
+  const mop = add(.06, 1.4, .06, wm(0x8a6a3a), 0, -.3, .16, armR); add(.3, .2, .3, wm(0xe8e2c8), 0, -.75, 0, mop);
+  const head = new THREE.Group(); head.position.y = 1.42; g.add(head);
+  add(.56, .5, .46, skin, 0, 0, 0, head); add(.06, .3, .06, dk, -.16, .38, 0, head); add(.06, .3, .06, dk, .16, .38, 0, head);   // antennae
+  add(.1, .1, .1, wm(0xffe14a), -.16, .55, 0, head); add(.1, .1, .1, wm(0xffe14a), .16, .55, 0, head);
+  [-.16, 0, .16].forEach((x, k) => { add(.12, .12, .02, white, x, .08 + (k === 1 ? .06 : 0), .24, head); add(.06, .06, .02, dark, x, .08 + (k === 1 ? .06 : 0), .255, head); });   // THREE eyes
+  add(.22, .05, .02, dark, 0, -.12, .24, head);
+  g.userData = {head, arms:[armL, armR], hop:0, greg:true};
+  return g;
+}
+function buildApeDecor(){
+  freeKids(decorRoot);
+  ['crash', 'jungle', 'crown', 'glove', 'cog', 'beacon', 'reggie', 'heart', 'facade', 'thief', 'captain'].forEach(k => A[k] = null);
+  A.chestMeshes = []; A.crystalsMesh = []; A.noteMeshes = []; A.extras = []; A.bolts = []; A.nearLabels = []; A.flies = []; A.eyes = []; A.bubbles = []; A.pickups = []; A.crew = [];
+  A.monkey = makeSkeleton(); decorRoot.add(A.monkey); A.monkey.userData.bubble = null; A.monkey.position.copy(cellPos(APE_SPAWN[0] + 2, APE_SPAWN[1] - 1));
+  const g = new THREE.Group(); decorRoot.add(g); A.apeDecor = g;
+  const add = (w, h, d, m, x, y, z, par) => { const q = new THREE.Mesh(cbox(w, h, d), m); q.position.set(x, y, z); q.raycast = () => {}; (par || g).add(q); return q; };
+  // the temple-ship, nose-first in the mud
+  { const ship = new THREE.Group(), c = cellPos(APE_SWAMP.x, APE_SWAMP.y + 1); ship.position.set(c.x, -1.5, c.z); ship.rotation.x = .35; ship.rotation.z = -.12; g.add(ship); for (let t = 0; t < 5; t++) add(14 - t*2.6, 2, 6 - t*.6, M.mossy, 0, 1 + t*2, 0, ship); add(2, 2, 2, new THREE.MeshBasicMaterial({color:0x7a5ad8}), 0, 11, 0, ship); A.apeShip = ship;
+    const mud = new THREE.Mesh(new THREE.CircleGeometry(1, 24), wm(0x5a4026)); mud.rotation.x = -Math.PI/2; mud.scale.set(APE_SWAMP.rx, APE_SWAMP.ry, 1); const mc = cellPos(APE_SWAMP.x, APE_SWAMP.y); mud.position.set(mc.x, .03, mc.z); mud.raycast = () => {}; g.add(mud); }
+  // the city gate: the Thunder Monkey carved over it, the same as on the temple (they were the ancients!)
+  { const c = cellPos(ENTRANCE[0], HUB.y0 + 1), arch = new THREE.Group(); arch.position.set(c.x, 0, c.z); g.add(arch);
+    add(1.2, 7, 1.2, M.sand, -4, 3.5, 0, arch); add(1.2, 7, 1.2, M.sand, 4, 3.5, 0, arch); add(9.4, 1.4, 1.4, M.terra, 0, 7.6, 0, arch);
+    const face = new THREE.Group(); face.position.set(0, 9.4, 0); arch.add(face); add(2.6, 2.2, 1, M.gold, 0, 0, 0, face); add(.7, .7, .4, M.gold, -1.6, .5, 0, face); add(.7, .7, .4, M.gold, 1.6, .5, 0, face); add(.4, .3, .1, wm(0x1a1a1a), -.5, .3, .52, face); add(.4, .3, .1, wm(0x1a1a1a), .5, .3, .52, face); add(1.2, .3, .1, wm(0x1a1a1a), 0, -.5, .52, face);
+    const s1 = textSprite('THE INSTITUTE OF VERY SENIOR THINKERS', {w:420, fs:26, bg:'#f4f1ea', ink:'#7a5a10', scale:3}); s1.position.set(c.x, 6.2, c.z + .8); g.add(s1);
+    const s2 = textSprite('BATH DAY: TUESDAY', {w:260, fs:28, bg:'#3a6ad0', ink:'#ffffff', scale:2}); const c2 = cellPos(ENTRANCE[0] + 6, HUB.y0 + 3); s2.position.set(c2.x, 2.2, c2.z); g.add(s2);
+    const post = add(.15, 1.6, .15, wm(0x8a6a3a), c2.x, .8, c2.z); }
+  // two moons and a big ringed planet in the violet sky
+  { const sky = new THREE.Group(); g.add(sky); const ring = new THREE.Mesh(new THREE.RingGeometry(30, 44, 40), new THREE.MeshBasicMaterial({color:0xe8b8ff, side:THREE.DoubleSide, transparent:true, opacity:.55, fog:false}));
+    const planet = new THREE.Mesh(new THREE.SphereGeometry(22, 20, 14), new THREE.MeshBasicMaterial({color:0xb070e0, fog:false})); planet.position.set(-120, 120, -260); ring.position.copy(planet.position); ring.rotation.set(1.2, .3, 0); sky.add(planet); sky.add(ring);
+    [[90, 140, -240, 9, 0xf2f0e8], [150, 90, -200, 5, 0xffd8a8]].forEach(([x, y, z, r, col]) => { const m = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 10), new THREE.MeshBasicMaterial({color:col, fog:false})); m.position.set(x, y, z); sky.add(m); });
+    sky.traverse(o => o.raycast = () => {}); A.apeSky = sky; }
+  // the apes: Dr Zest (orangutan scientist), General Grumbletum (gorilla), and citizens in the plaza
+  A.hosts = {};
+  A.zest = makeApe('orangutan', {glasses:true, coat:true, clipboard:true}); A.zest.position.copy(cellPos(APE_SPAWN[0] - 3, APE_SPAWN[1] - 8)); decorRoot.add(A.zest); A.hosts['Dr Zest'] = A.zest;
+  A.general = makeApe('gorilla', {cap:true}); A.general.position.copy(cellPos(ENTRANCE[0] + 4, HUB.y0 + 4)); decorRoot.add(A.general); A.hosts['General Grumbletum'] = A.general;
+  A.digby = makeMoleRat(); A.digby.position.copy(cellPos(APE_SPAWN[0] + 6, APE_SPAWN[1] - 8)); decorRoot.add(A.digby); A.hosts['Digby'] = A.digby; A.cartMeshes = [];
+  A.greg = makeGreg(); A.greg.position.copy(cellPos(APE_SPAWN[0] + 3, APE_SPAWN[1] - 9)); decorRoot.add(A.greg); A.hosts['Greg'] = A.greg;
+  A.crew = [[18, 150, 'chimp'], [50, 152, 'chimp'], [24, 166, 'gorilla'], [46, 166, 'orangutan'], [30, 156, 'chimp']].map(([x, y, kind]) => { const p = makeApe(kind); p.position.copy(cellPos(x, y)); p.rotation.y = whash(x, y, 5)*6; decorRoot.add(p); return p; });
+  expressDecor(g); museumDecor(g); apeSigns(g);
+  { const book = new THREE.Mesh(cbox(.4, .5, .1), wm(0x8a2a1a)); book.position.set(0, -.8, .2); book.rotation.z = Math.PI; book.raycast = () => {}; A.general.userData.arms[1].add(book); }   // the Big Book of Traps, upside down
+  [A.express, A.barrier, A.eiffel, A.teleporter].forEach(o => { if (o) o.userData.live = true; });
+  mergeStatic(g);   // the city, the ship, the cavern, the statue, the signs: a handful of draw calls (iPad)
+  ROOMS.forEach(r => { if (A.solved.has(r.id) && !A.crystals.has(r.id)) spawnCrystal(r); });
+  updateGauge();
+}
+// arriving: a short landing scene, then Dr Zest (with tongs) meets the filthy specimen
+const APE_LAND = () => [
+  [null, 'SPLOOSH! The temple-ship lands nose-first... in the only mud swamp on the whole planet.'],
+  ['Radio', '*crackle* Greetings, travellers. *crackle*'],
+  [GUIDE, 'Aliens! I made tinfoil antennae. Ahem. "TAKE ME TO YOUR LEADER!" ...Too much?']
+];
+const APE_INTRO = () => [
+  ['Dr Zest', 'You... DIRTY... human.'],
+  ['Dr Zest', '...No, genuinely. You\'re FILTHY. You\'re dripping mud on my nice clean planet.'],
+  [GUIDE, 'It\'s APES! Everyone expected aliens. It\'s all APES!'],
+  ['Dr Zest', 'I am Dr Zest, of the Institute of Very Senior Thinkers. Here is your VISITOR sticker. Hold still.'],
+  ['Dr Zest', '*prod* *prod* (She is poking you with a pencil.)'],
+  ['You', 'Get your STINKY paws off me!'],
+  ['Dr Zest', '*sniffs her paw* ...Tuesday WAS a while ago. *writes* "Specimen is RUDE. Also correct."'],
+  ['Greg', 'Take me to your— oh! Sorry. Habit. Hello! I\'m Greg. I\'m an ALIEN. A real one! I do the mopping.'],
+  ['Dr Zest', 'The hairless creature will now do our TESTS. It will fail them all. Up the steps to the Institute!'],
+  [GUIDE, 'Tests? I LOVE tests. Mostly the bit where they end.']
+];
+const APE_PW = [{act:APE_ACT, after:206, words:'TONGS'}, {act:APE_ACT, after:211, words:'BUCKET'}, {act:APE_ACT, after:215, words:'SPLAT'}, {act:APE_ACT, after:219, words:'CHOOCHOO'}];
+function apeFrame(dt){
+  if (A.act !== APE_ACT || !A.on) return;
+  const now = A.clock || 0;
+  // the landing scene: under ten seconds, skippable
+  if (A.apeCine){ const k = A.apeCine; k.t += dt; const t = k.t/1000, c = cellPos(APE_SWAMP.x, APE_SWAMP.y), ang = .6 + t*.12;
+    cineCamera(new THREE.Vector3(c.x + Math.sin(ang)*18, 7 + t*.4, c.z + Math.cos(ang)*18 - 6), new THREE.Vector3(c.x, 2.5, c.z));
+    const i = Math.min(APE_LAND().length - 1, Math.floor(t / 2.6)); if (i !== k.i){ k.i = i; subtitle(APE_LAND()[i][0], APE_LAND()[i][1]); if (i === 0){ sfx.splash ? sfx.splash() : noise(.6, .1, 400, 'lowpass', 0); } }
+    if (t > APE_LAND().length*2.6 + .4) apeCineEnd(); return; }
+  if (!A.apeMet && !A.apeLanded){ A.apeLanded = true; A.apeCine = {t:0, i:-1}; cineStart(); return; }
+  if (expressCutFrame(dt) || expressRideFrame(dt)) return;
+  apeTeleFrame(dt); apeBeatsFrame();
+  // every ape looks at you now and then; one sniffs its armpit (bath day was Tuesday)
+  const look = m => { if (m) m.rotation.y = Math.atan2(P.x - m.position.x, P.z - m.position.z); };
+  look(A.zest); look(A.greg); look(A.digby); cartsFrame(dt);
+  // the mine's parts: Digby hands them over at the door
+  if (A.rt && A.rt.room && A.rt.room.zone === 'mine') (A.rt.room.give || []).forEach(k => { if (RAIL_T.has(k) && !A.found.has(k)){ A.found.add(k); refreshHotbar(); } });
+  if (!reduceMotion) (A.crew || []).forEach((p, k) => { const u = p.userData; if (!u.arms) return; const s = ((now + u.sniff) % 9000) / 9000; u.arms[0].rotation.z = s < .12 ? -2.2*Math.sin(s/.12*Math.PI) : 0; u.head.rotation.y = s < .12 ? -.5*Math.sin(s/.12*Math.PI) : Math.sin(now*.0005 + k)*.3; });
+  [A.zest, A.greg, A.general, A.digby].forEach(m => { if (!m) return; const u = m.userData; if (u.hop > 0){ u.hop = Math.max(0, u.hop - dt*.004); m.position.y = (m.userData.y0 ?? (m.userData.y0 = m.position.y)) + Math.sin(u.hop*Math.PI)*.25; } });
+  // meeting Dr Zest
+  if (!A.apeMet && A.zest && !A.apeIntroT && !DLG.on){ const d = Math.hypot(A.zest.position.x - P.x, A.zest.position.z - P.z);
+    if (d < 8){ A.apeIntroT = 1; P.yaw = Math.atan2(-(A.zest.position.x - P.x), -(A.zest.position.z - P.z)); P.pitch = -.05; dlgStart(APE_INTRO(), () => { A.apeMet = true; advSaveSoon(); renderCard(); apeHostsTo(); }); } }
+  { const [ex, ey] = cellAtWorld(P.x, P.z); if (ex >= APE_END.x0 && ex <= APE_END.x1 && ey >= APE_END.y0 && ey <= APE_END.y1 && A.room && A.room.id){ A.room = 'hub'; enterArea(null, 'hub'); } }   // the cavern and the desert are their own place
+  // Dr Zest (and Greg) wait for you outside the next test
+  const r = A.rt && A.rt.room; if (A.apeMet && r !== A.apeHostRoom && !DLG.on){ A.apeHostRoom = r; if (r) apeHostsTo(r); }
+  if (piecesLaid() === 4 && !A.rode && !A.ride && !DLG.on){ const [px, py] = cellAtWorld(P.x, P.z); if (px >= APE_END.x0 && px <= APE_END.x1 && py >= APE_END.y0 && py <= APE_END.y1) startRide(); }
+  else if (A.rode && !A.apeDone && !A.teleT && !DLG.on && !A.ride) apeCliffhanger();
+}
+function apeCineEnd(){ if (!A.apeCine) return; A.apeCine = null; cineEnd(); subtitle(null, ''); }
+// the host stands just outside the room's door (never on a puzzle cell), Greg beside her
+function apeHostsTo(r){
+  r = r || ROOMS.find(q => !A.solved.has(q.id)); if (!r || !A.zest) return;
+  const d = r.entry, [ix, iy] = entryOf(r), ox = 2*d[0] - ix, oy = 2*d[1] - iy, sx = Math.sign(d[0] - ix), sy = Math.sign(d[1] - iy);
+  const host = r.host === 'Dr Zest' ? A.zest : (A.digby || A.zest); host.position.copy(cellPos(ox + (sy ? 2 : 0), oy + (sx ? 2 : 0))); host.userData.y0 = host.position.y;
+  if (A.greg){ A.greg.position.copy(cellPos(ox - (sy ? 2 : 0), oy - (sx ? 2 : 0))); A.greg.userData.y0 = A.greg.position.y; }
+}
+// ---- the story between the tests: the museum (Barold finds out he's a skeleton), Sir Reginald's radio, the General, Greg, the hosts' "next one will get you" ----
+const ZEST_AFTER = ['...It used the levers. Write that down. No. Don\'t write that down.', 'Beginner\'s luck. The NEXT test is impossible.', 'I have crossed out IMPOSSIBLE and written VERY IMPOSSIBLE.', 'Note: specimen pressed buttons. Do NOT let it near the big red one.', 'Specimen has passed. AGAIN. Fetch the bigger clipboard.', 'Note: specimen smells faintly of whoopee cushion.'];
+const DIGBY_AFTER = ['Not bad, for someone with their teeth on the INSIDE.', 'The Queen will hear about this!', 'My diggers are clapping. With their feet.'];
+// a host's short line in the dialogue box (soft: building still works while it shows)
+function hostTell(who, text){ const lines = [[who, text]]; lines.soft = true; dlgStart(lines); }
+function apeSolved(r){ A.apeSolvedAt = A.clock || 0; if (!r.host || r.id === APE_LAST) return; A.apeDue.push({at:(A.clock || 0) + 6500, fn:() => (A.rt && A.rt.room && A.rt.room !== r && !A.solved.has(A.rt.room.id)) || hostTell(r.host, bag(r.host === 'Digby' ? 'digbyAfter' : 'zestAfter', r.host === 'Digby' ? DIGBY_AFTER : ZEST_AFTER))}); }
+const beat = id => { if (A.apeBeats.has(id)) return false; A.apeBeats.add(id); advSaveSoon(); return true; };
+const MUSEUM = () => { const r = ROOMS.find(q => q.id === 206), d = r.entry, [ix, iy] = entryOf(r), ox = 2*d[0] - ix, oy = 2*d[1] - iy, sx = Math.sign(d[0] - ix), sy = Math.sign(d[1] - iy); return {cell:[ox + (sy ? 1 : 0), oy + (sx ? 1 : 0)], side:[sx, sy]}; };
+function museumDecor(g){
+  const add = (w, h, d, m, x, y, z, par) => { const q = new THREE.Mesh(cbox(w, h, d), m); q.position.set(x, y, z); q.raycast = () => {}; (par || g).add(q); return q; };
+  const mu = MUSEUM(), c = cellPos(...mu.cell), ex = new THREE.Group(); ex.position.set(c.x + mu.side[1]*.6, c.y, c.z + mu.side[0]*.6); g.add(ex);
+  add(1.2, .5, 1.2, wm(0xe8e2d0), 0, .25, 0, ex);   // the plinth
+  const sk = makeSkeleton(); sk.position.y = .5; sk.rotation.y = Math.atan2(-mu.side[1], -mu.side[0]) || 0; ex.add(sk);
+  const s1 = textSprite('VERY OLD', {w:160, fs:26, bg:'#f4f1ea', ink:'#5a3a10', scale:.9}); s1.position.set(0, 2.6, 0); ex.add(s1);
+  const s2 = textSprite('THE HALL OF VERY OLD THINGS', {w:320, fs:22, bg:'#7a5a10', ink:'#fff8d0', scale:1.2}); s2.position.set(0, 3.3, 0); ex.add(s2);
+  const s3 = textSprite('HAIRLESS CREATURE. Habitat: puddles. Diet: unknown (possibly crisps).', {w:260, fs:18, bg:'#f4f1ea', ink:'#333', scale:.8}); s3.position.set(mu.side[1]*1.6, 1.6, mu.side[0]*1.6); ex.add(s3);
+  A.museum = ex;
+}
+function apeBeatsFrame(){
+  // what's due (on the game clock, so tests see it too): one thing at a time, never over someone talking or a cutscene
+  if (!DLG.on && !CINE.on && A.apeDue.length){ const i = A.apeDue.findIndex(d => (A.clock || 0) >= d.at); if (i >= 0){ const d = A.apeDue.splice(i, 1)[0]; d.fn(); return; } }
+  if (DLG.on || CINE.on || !A.apeMet || tut) return;
+  const [px, py] = cellAtWorld(P.x, P.z), here = A.rt && A.rt.room;
+  if (here && !A.solved.has(here.id)) return;   // never in the middle of a test: story happens between them
+  // the museum, on the way to test 6: Barold finds out he's a skeleton (slow dawning, panic, then weirdly proud)
+  if (A.solved.has(205) && A.museum && !A.apeBeats.has('museum')){ const m = MUSEUM().cell; if (Math.hypot(px - m[0], py - m[1]) < 3.5 && beat('museum')){ P.yaw = Math.atan2(-(A.museum.position.x - P.x), -(A.museum.position.z - P.z)); P.pitch = -.1;
+    dlgStart([[GUIDE, 'Ooh, a museum! "The Hall of Very Old Things."'], ['Greg', 'This one\'s my favourite. "HAIRLESS CREATURE. Habitat: puddles. Diet: unknown (possibly crisps)." That\'s YOU!'],
+      [GUIDE, 'Ha! Look at this poor old skeleton. "VERY OLD." ...Why has it got MY sash?'], [GUIDE, '...and my torch. ...and my CRACKED HEAD.'], [GUIDE, '...'],
+      [GUIDE, 'I\'m a SKELETON?! But I\'m YOUNG! And HANDSOME! ...Ish.'], [GUIDE, 'Hang on. That explains the draught. And the rattling.'], [GUIDE, 'I\'m in a MUSEUM. I\'m FAMOUS! Nobody touch me. I\'m an exhibit now.']]); return; } }
+  // Sir Reginald stays on the ship ("the air disagrees with me"), and radios his warnings just too late
+  const calm = (A.clock || 0) - (A.apeSolvedAt || 0) > 9000;   // a while after the last test was passed
+  if (A.solved.has(203) && calm && beat('radio1')){ dlgStart([['Radio', '*crackle* Sir Reginald here, on the ship. I\'m staying put. The air out there disagrees with me.'], ['Radio', 'Ah. Did I mention...? The levers here are upside down. *blub*'], [GUIDE, '...Why does his radio go "blub"?']]); return; }
+  // General Grumbletum guards the plaza with his Big Book of Traps (upside down)
+  if (A.general && Math.hypot(A.general.position.x - P.x, A.general.position.z - P.z) < 5 && beat('general')){ dlgStart([['General Grumbletum', 'HALT! Nobody passes without... *reads his Big Book of Traps* ...hmm.'], ['General Grumbletum', 'This page is all upside down. Carry on. But I am WATCHING you.']]); return; }
+  // into the mine: Greg is a bit much
+  if (A.solved.has(211) && calm && beat('mine')){ hostTell('Greg', 'A MINE! I\'ve never been in a mine! I\'ve never been ANYWHERE! Can I hold your hand? No? OK.'); return; }
+}
+// ---- each room's goal on a flat sign on the wall you face as you walk in (one canvas for all 19, merged into one mesh) ----
+const APE_SIGN = {201:'PLAY! Try every mix of the two levers. When is the light ON?', 202:'Light ON only when NOBODY pulls a lever. Wire up the bottom one.', 203:'Light ON only when NEITHER lever is on. Build it all!',
+  204:'PLAY! Try every mix of the two keys. What turns the LOCKED light off?', 205:'LOCKED light stays on until BOTH keys are on. Finish it!', 206:'The General\'s safe: LOCKED unless BOTH keys are on. Build it all!',
+  207:'PLAY! Two switches, one light. What flips it?', 208:'Light ON when exactly ONE lever is on. Finish the bottom half!', 209:'The door light: ON with exactly ONE key. Join up the wires!',
+  210:'PASS: a stamp OR a banana... but NOT if the General is looking.', 211:'PASS: stamp AND banana. OR the King says so.',
+  212:'Get the cart to the END. Gold rails: power ON = GO, OFF = STOP.', 213:'The bell rings when the cart ARRIVES. Two bits of track are missing.', 214:'Send the cart to the CRYSTALS, not the SLIME.',
+  215:'STOP at the platform. Then GO on to the end.', 216:'Get the cart all the way round. Only dust!', 217:'Points to the CRYSTALS: flag OR seal, AND NOT the gorilla.',
+  218:'Stop in the loading bay. Wait. THEN go back.', 219:'RED cart first, THEN the blue one. One button.'};
+function apeSigns(g){
+  const CW = 256, CH = 200, cv = document.createElement('canvas'); cv.width = 1024; cv.height = 1024; const x2 = cv.getContext('2d'), tex = new THREE.CanvasTexture(cv);
+  const draw = () => { x2.clearRect(0, 0, 1024, 1024); ROOMS.forEach((r, i) => { const sx = (i % 4)*CW, sy = Math.floor(i / 4)*CH, mine = r.zone === 'mine'; x2.save(); x2.translate(sx, sy);
+    pixFrame(x2, CW, CH, mine ? '#e2d8ee' : '#f4f1ea', mine ? '#3a3050' : '#7a5a10', mine ? '#6a5a8a' : '#e2b437');
+    x2.fillStyle = mine ? '#5a2a8a' : '#9a2a14'; x2.font = '700 20px "Atkinson Hyperlegible", "Trebuchet MS", sans-serif'; x2.textAlign = 'left'; x2.textBaseline = 'top'; x2.fillText(roomNum(r).toUpperCase(), 16, 14);
+    x2.fillStyle = '#1a1208'; const f = fitWords(x2, APE_SIGN[r.id] || r.name, CW - 30, CH - 54, 34, 16); drawLines(x2, f, CW/2, 42, CH - 50); r.signFit = f.ok; x2.restore(); }); tex.needsUpdate = true; };
+  draw(); try { document.fonts && document.fonts.ready.then(() => { if (A.act === APE_ACT) draw(); }); } catch (e) {}
+  const mat = new THREE.MeshBasicMaterial({map:tex}), SW = 2.4, SH = SW*CH/CW;
+  ROOMS.forEach((r, i) => {
+    const face = OPP[sideOf(r, r.entry)], b = r.box, vert = face === 'W' || face === 'E', lo = vert ? b.y0 : b.x0;
+    let along = lo + 6; if (r.exit && sideOf(r, r.exit) === face) along = lo + 2.5;   // the way out is in this wall: the sign goes beside it
+    const wx = face === 'W' ? b.x0 : face === 'E' ? b.x1 : along, wy = face === 'N' ? b.y0 : face === 'S' ? b.y1 : along, c = cellPos(Math.floor(wx), Math.floor(wy));
+    const geo = new THREE.PlaneGeometry(SW, SH), uv = geo.attributes.uv, u0 = (i % 4)*CW/1024, v1 = 1 - Math.floor(i / 4)*CH/1024, u1 = u0 + CW/1024, v0 = v1 - CH/1024;
+    for (let k = 0; k < uv.count; k++) uv.setXY(k, uv.getX(k) ? u1 : u0, uv.getY(k) ? v1 : v0);
+    const m = new THREE.Mesh(geo, mat), fr = wx % 1, fz = wy % 1; m.raycast = () => {};
+    m.position.set(c.x + fr, floorAt(...r.entry) + 2.5, c.z + fz);
+    if (face === 'N'){ m.position.z += .53; m.rotation.y = 0; } else if (face === 'S'){ m.position.z -= .53; m.rotation.y = Math.PI; } else if (face === 'W'){ m.position.x += .53; m.rotation.y = Math.PI/2; } else { m.position.x -= .53; m.rotation.y = -Math.PI/2; }
+    g.add(m); });
+}
+// ---- the Crystal Express: the four jobs (216-219) each lay a piece of its track in the big cavern; then you RIDE it out of the mine,
+// through the rock into the Forbidden Zone, past the statue, to the apes' teleporter (the cliffhanger) ----
+// the line, in world cells: the platform by the cavern door, up the booster line, the points, the loading chute, through the rock wall, then the apes' old desert line
+const EXPRESS = {pieces:[[[51, 44], [51, 32]], [[51, 32], [51, 30], [45, 30]], [[45, 30], [40, 30]], [[40, 30], [34, 30]]], old:[[34, 30], [24, 30], [20, 34], [12, 34], [8, 38]],
+  rock:35, statue:[17, 27], tele:[8, 40], start:[51, 45]};
+const expressPath = () => { const pts = []; EXPRESS.pieces.concat([EXPRESS.old]).forEach(seg => seg.forEach(p => { const l = pts[pts.length - 1]; if (!l || l[0] !== p[0] || l[1] !== p[1]) pts.push(p); })); return pts; };
+const piecesLaid = () => APE_ROOMS.filter(r => r.piece && A.solved.has(r.id)).length;
+function expressDecor(g){
+  const add = (w, h, d, m, x, y, z, par) => { const q = new THREE.Mesh(cbox(w, h, d), m); q.position.set(x, y, z); q.raycast = () => {}; (par || g).add(q); return q; };
+  const e = floorAt(...EXPRESS.start), iron = wm(0xa8a8b2), gold = wm(0xe8c23a), wood = wm(0x7a5530);
+  // one track segment as a mesh: sleepers and two rails along a straight run of cells
+  const seg = ([x0, y0], [x1, y1], m, par) => { const a = cellPos(x0, y0), b = cellPos(x1, y1), len = Math.hypot(b.x - a.x, b.z - a.z), ang = Math.atan2(b.x - a.x, b.z - a.z), s = new THREE.Group(); s.position.set((a.x + b.x)/2, e + .03, (a.z + b.z)/2); s.rotation.y = ang; (par || g).add(s);
+    for (let k = -len/2; k <= len/2; k += .5) add(.9, .05, .16, wood, 0, 0, k, s); [-.3, .3].forEach(o => add(.08, .08, len + .1, m, o, .06, 0, s)); return s; };
+  A.expressPieces = EXPRESS.pieces.map((p, i) => { const grp = new THREE.Group(); g.add(grp); for (let k = 0; k < p.length - 1; k++) seg(p[k], p[k+1], i === 0 ? gold : iron, grp); mergeStatic(grp); grp.userData.live = true; grp.visible = A.solved.has(215 + i + 1); return grp; });
+  for (let k = 0; k < EXPRESS.old.length - 1; k++) seg(EXPRESS.old[k], EXPRESS.old[k+1], wm(0x8a6a4a));
+  // the Express itself, waiting at the platform: an engine and two crystal wagons
+  { const ex = new THREE.Group(), c = cellPos(...EXPRESS.start); ex.position.set(c.x, e, c.z); g.add(ex); A.express = ex;
+    add(.9, .7, 1.4, wm(0x2a6a3a), 0, .55, 0, ex); add(.5, .5, .5, wm(0x1a1a1a), 0, 1.1, .4, ex); add(.7, .5, .6, wm(0xffd84a), 0, 1.1, -.3, ex); add(.2, .2, .04, wm(0xfff2a0), 0, .7, .72, ex);
+    [1.6, 3.2].forEach((z, i) => { const w = makeCart(i, 216); w.position.set(0, 0, -z); ex.add(w); }); }
+  // the rock wall between the cavern and the desert, and its wooden barrier (the Express goes straight through it)
+  { const c = cellPos(EXPRESS.rock, 30); A.barrier = new THREE.Group(); A.barrier.position.set(c.x, e, c.z); g.add(A.barrier); for (let k = -1; k <= 1; k++) add(.3, 2.6, .9, wood, 0, 1.3, k, A.barrier); add(.32, .3, 3, wm(0xd8261a), 0, 2, 0, A.barrier); }
+  // glowing crystal clusters round the cavern (additive sprites: cheap)
+  [[40, 24, 0xc75cff], [60, 26, 0x2ac8e0], [45, 42, 0x5ae05a], [64, 40, 0xc75cff], [56, 22, 0x5ae05a], [38, 38, 0x2ac8e0]].forEach(([x, y, col]) => { const c = cellPos(x, y); for (let k = 0; k < 3; k++) add(.3, .8 + k*.3, .3, new THREE.MeshLambertMaterial({color:col, emissive:col, emissiveIntensity:.6}), c.x + (k - 1)*.35, e + .4 + k*.15, c.z + (k % 2)*.3).rotation.z = (k - 1)*.35;
+    const sp = glow(new THREE.SpriteMaterial({map:M.glowGreen.map, color:col, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending}), 2.4, 0); sp.position.set(c.x, e + 1, c.z); g.add(sp); });
+  // the Forbidden Zone: a giant green statue, half buried, holding up a torch (a REPLICA. The apes just love knocking things over)
+  { const st = new THREE.Group(), c = cellPos(...EXPRESS.statue), green = wm(0x5fa894); st.position.set(c.x, e - 2.5, c.z); st.rotation.z = .25; st.rotation.y = .6; g.add(st); A.statue = st;
+    add(2.4, 4, 1.6, green, 0, 2, 0, st); add(1.4, 1.4, 1.2, green, 0, 4.7, 0, st); [-.6, -.2, .2, .6].forEach((x, k) => add(.24, .6, .24, green, x, 5.6 + (k % 2)*.1, 0, st));
+    [-1, 1].forEach(s => { add(.24, .14, .04, wm(0x2a5a4a), s*.32, 4.85, .62, st); });   // eyes
+    add(.5, 3.2, .5, green, 1.3, 5, 0, st).rotation.z = -.15; add(.7, .5, .7, wm(0xffc84a), 1.55, 6.8, 0, st); add(.4, .4, .4, new THREE.MeshBasicMaterial({color:0xff8a2a}), 1.55, 7.2, 0, st);
+    add(1.3, 1.6, .3, green, -1, 3, .6, st);   // the tablet
+    const ef = new THREE.Group(), ec = cellPos(EXPRESS.statue[0] - 7, EXPRESS.statue[1] - 2); ef.position.set(ec.x, e, ec.z); g.add(ef); A.eiffel = ef; const card = wm(0xb08a5a);   // a cardboard Eiffel Tower, next on the list
+    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([x, z]) => add(.2, 3, .2, card, x*.7, 1.5, z*.7, ef).rotation.set(z*.2, 0, -x*.2)); add(.9, .2, .9, card, 0, 3, 0, ef); add(.15, 2.4, .15, card, 0, 4.2, 0, ef); }
+  // the apes' teleporter: a ring on a platform, humming
+  { const tp = new THREE.Group(), c = cellPos(...EXPRESS.tele); tp.position.set(c.x, e, c.z); g.add(tp); A.teleporter = tp;
+    add(2.2, .3, 2.2, wm(0x9a9aa8), 0, .15, 0, tp); const ring = new THREE.Mesh(new THREE.TorusGeometry(1, .14, 8, 24), new THREE.MeshLambertMaterial({color:0x8a5ad8, emissive:0x8a5ad8, emissiveIntensity:.6})); ring.position.y = 1.3; ring.raycast = () => {}; tp.add(ring); tp.userData.ring = ring;
+    const sign = textSprite('TELEPORTER. Tested on: bananas.', {w:280, fs:22, bg:'#f4f1ea', ink:'#5a2a8a', scale:.7}); sign.position.set(0, 2.7, 0); tp.add(sign); }
+}
+// a job in the Express yard is done: a quick cut to the cavern, where its piece of track slams down
+function expressCut(r){
+  const i = r.piece - 1, grp = A.expressPieces && A.expressPieces[i]; if (!grp) return;
+  grp.visible = true; grp.position.y = 6; A.expressCut = {t:0, i, grp}; cineStart();
+}
+function expressCutFrame(dt){
+  const k = A.expressCut; if (!k) return false;
+  k.t += dt; const t = k.t/1000, p = EXPRESS.pieces[k.i], a = cellPos(...p[0]), b = cellPos(...p[p.length - 1]), mid = new THREE.Vector3((a.x + b.x)/2, a.y, (a.z + b.z)/2);
+  cineCamera(new THREE.Vector3(mid.x + 9, mid.y + 7, mid.z + 9), mid);
+  k.grp.position.y = Math.max(0, 6 - t*8); if (t > .75 && !k.thud){ k.thud = true; shake = .3; sfx.piston(); burst(new THREE.Vector3(mid.x, mid.y + .5, mid.z), 0xc8a060, 24); }
+  subtitle(null, `Track piece ${k.i + 1} of 4: laid!` + (piecesLaid() === 4 ? ' The Crystal Express is READY!' : ''));
+  if (t > 3){ A.expressCut = null; cineEnd(); }
+  return true;
+}
+// the ride: the camera rides the Express along the whole line (your boosters, your points, your loading bay, your delivery), through the wall, into the desert
+const RIDE_SAY = [[0, 'Digby', 'All aboard the Crystal Express! Hold on to your hard hats!'], [2.2, null, 'YOUR boosters! WHOOSH!'], [4.6, null, 'YOUR points! This way, not the slime!'], [6.4, null, 'YOUR loading bay! Crystals: loaded!'], [8.2, 'Barold', 'WALL! WAAAALL!'],
+  [9.6, null, 'CRASH! Straight through, into the Forbidden Zone!'], [12, 'Barold', 'They built a REPLICA of the Statue of Liberty... just to knock it DOWN! Noooo! You MANIACS!'], [15.5, 'Barold', 'You dirty, DIRTY... ANTHROPOIDS!'],
+  [18.5, 'Dr Zest', 'Technically, YOU\'RE an anthropoid too. And we had a bath on Tuesday.'], [21.5, 'Barold', '...It\'s SUNDAY.'], [24, 'Barold', '...Oh. They\'re doing it again. With a cardboard Eiffel Tower.']];
+const RIDE_LEN = 27;
+function startRide(){ if (A.ride) return; A.ride = {t:0, i:-1}; cineStart(); sfx.party(); if (typeof musicCue === 'function') musicCue('fanfare'); }
+function expressRideFrame(dt){
+  const R = A.ride; if (!R) return false;
+  R.t += dt; const t = R.t/1000, path = expressPath(), e = floorAt(...EXPRESS.start) + 1.3;
+  // along the line at a steady speed, slowing right down for the statue
+  const segs = []; let tot = 0; for (let k = 0; k < path.length - 1; k++){ const L2 = Math.hypot(path[k+1][0] - path[k][0], path[k+1][1] - path[k][1]); segs.push(L2); tot += L2; }
+  const u = Math.min(1, t < 10 ? t/10*.62 : .62 + Math.min(1, (t - 10)/(RIDE_LEN - 12))*.38); let d = u*tot, k = 0; while (k < segs.length - 1 && d > segs[k]){ d -= segs[k]; k++; }
+  const f = Math.min(1, d / segs[k]), cx = path[k][0] + (path[k+1][0] - path[k][0])*f, cy = path[k][1] + (path[k+1][1] - path[k][1])*f, nxt = path[Math.min(path.length - 1, k + 1)];
+  const pos = cellPos(cx, cy); pos.y = e; const look = t > 11 && t < 26 ? cellPos(...EXPRESS.statue) : cellPos(nxt[0], nxt[1]); look.y = t > 11 && t < 26 ? e + 2.5 : e;
+  cineCamera(pos, look); P.x = pos.x; P.z = pos.z; P.y = pos.y - 1.3; P.vy = 0;   // you ride along (the light and the sky follow you out of the mine)
+  if (A.express){ A.express.position.set(pos.x, e - 1.3, pos.z); A.express.rotation.y = Math.atan2(nxt[0] - cx, nxt[1] - cy); A.express.visible = false; }
+  if (t > 9.4 && !R.crashed){ R.crashed = true; shake = .5; sfx.brk(); sfx.brk(); if (A.barrier){ const b = A.barrier.position; burst(new THREE.Vector3(b.x, b.y + 1.5, b.z), 0x7a5530, 40); A.barrier.visible = false; } }
+  if (t > 24.5 && A.statue && !R.knock){ R.knock = true; }
+  if (R.knock && A.eiffel && !reduceMotion) A.eiffel.rotation.z = Math.min(1.5, A.eiffel.rotation.z + dt*.002);
+  let i = -1; RIDE_SAY.forEach(([at], j) => { if (t >= at) i = j; }); if (i !== R.i){ R.i = i; if (i >= 0){ const [, who, line] = RIDE_SAY[i]; subtitle(who === 'Barold' ? GUIDE : who, line); feed('say', (who || '') + ': ' + line); } }
+  if (t > RIDE_LEN) endRide();
+  return true;
+}
+function endRide(){
+  if (!A.ride) return; A.ride = null; cineEnd(); subtitle(null, '');
+  if (A.barrier) A.barrier.visible = false; if (A.express) A.express.visible = true;
+  const c = cellPos(EXPRESS.tele[0] + 3, EXPRESS.tele[1]); P.x = c.x; P.z = c.z; P.y = c.y; P.yaw = Math.PI/2; P.pitch = -.05;
+  [[A.zest, 0, -3], [A.greg, 1, 3], [A.digby, 4, 2]].forEach(([m, dx, dy]) => { if (m){ m.position.copy(cellPos(EXPRESS.tele[0] + 3 + dx, EXPRESS.tele[1] + dy)); m.userData.y0 = m.position.y; } });
+  if (A.monkey){ A.monkey.position.copy(cellPos(EXPRESS.tele[0] + 1, EXPRESS.tele[1] + 1)); A.monkey.userData.path = null; }
+  A.rode = true; advSaveSoon(); apeCliffhanger();
+}
+// the cliffhanger: the ship is out of sparks; the apes' teleporter; Barold goes first...
+function apeCliffhanger(){
+  const lines = [['Dr Zest', 'It passed EVERY test. That is impossible. Write that down. No. Don\'t write that down.'],
+    ['Radio', '*crackle* Sir Reginald here, on the ship. Bad news: we are completely out of sparks. Not a single one.'],
+    ['Dr Zest', 'Then use our teleporter! It\'s PERFECTLY safe. Mostly.'],
+    ['Radio', 'Ah. Did I mention...? It has only been tested on bananas. *blub*'],
+    [GUIDE, 'Bananas are basically people. Stand back! As your guide, I go FIRST!', () => { if (A.monkey){ const c = cellPos(...EXPRESS.tele); A.monkey.position.set(c.x, c.y + .3, c.z); } }],
+    [null, '*FIZZ* ... *BEEP* ... *POOF!*', () => { const c = cellPos(...EXPRESS.tele); burst(new THREE.Vector3(c.x, c.y + 1.2, c.z), 0xd9d4c2, 40); sfx.brk(); if (A.monkey) A.monkey.visible = false; }],
+    ['Greg', '...Was he supposed to come out the OTHER side?'],
+    ['Dr Zest', 'Fascinating. Your turn, hairless creature. Step right in.']];
+  dlgStart(lines.map(l => [l[0] || 'Teleporter', l[1], l[2]]), () => { A.teleT = 1; });
+}
+function apeTeleFrame(dt){
+  if (A.teleporter && A.teleporter.userData.ring && !reduceMotion) A.teleporter.userData.ring.rotation.y += dt*.003;
+  if (!A.teleT || A.apeDone) return;
+  // you step in: white flash, then TO BE CONTINUED
+  const c = cellPos(...EXPRESS.tele), d = Math.hypot(c.x - P.x, c.z - P.z);
+  A.teleT += dt; if (d < 1.4 || A.teleT > 12000){ A.apeDone = true; advSaveSoon(); const f = document.createElement('div'); f.style.cssText = 'position:fixed;inset:0;background:#fff;z-index:60;transition:opacity 1.2s;pointer-events:none'; document.body.appendChild(f); sfx.chime();
+    apeEndCard(); setTimeout(() => { f.style.opacity = '0'; }, 700); setTimeout(() => f.remove(), 2200); }
+}
+function apeStats(){ const n = APE_ROOMS.length; return [[APE_ROOMS.filter(r => A.solved.has(r.id)).length + '/' + n, 'tests and jobs'], [APE_ROOMS.filter(r => A.crystals.has(r.id)).length + '/' + n, 'crystals'], [A.gates.size, A.gates.size === 1 ? 'Gate Card' : 'Gate Cards']]; }
+function apeEndCard(){
+  if (locked) try { document.exitPointerLock(); } catch (_) {}
+  stopMoving(); if (A.monkey) A.monkey.visible = true;
+  const pw = APE_PW[APE_PW.length - 1]; pwKeep(pw.words);
+  $('#endCard .card').innerHTML = endCardHTML({title:'TO BE CONTINUED...', tease:'You beat every one of the apes\' "impossible" tests, built the Crystal Express and rode it out of the mine!<br>Then you stepped into the teleporter... <b>Where did Barold go? Where are YOU going? More adventures are coming.</b>', stats:apeStats(), note:`Secret password for this spot: <b>${pw.words}</b>`,
+    buttons:[['endPlay', 'Free Play', true], ['endBuild', 'Free Build'], ['endMenu', 'Main menu']], foot:'<b>Free Play:</b> keep exploring the Ape Planet. Everything you built stays.<br><b>Free Build:</b> the sandbox. Build anything you like.'});
+  $('#endPlay').onclick = () => { sfx.click(); $('#endCard').hidden = true; };
+  $('#endBuild').onclick = () => { sfx.click(); $('#endCard').hidden = true; startLesson(FREE_ID); };
+  $('#endMenu').onclick = () => { sfx.click(); $('#endCard').hidden = true; showMenu(); };
+  $('#endCard').hidden = false; feed('card', 'TO BE CONTINUED... (the teleporter)'); confetti();
 }
 
 const HALL = {x0:2, x1:42, y0:2, y1:14};
@@ -4504,13 +5265,16 @@ function migrateFun(s){
   const bad = (k, ok, v) => { if (k in s && !ok(s[k])){ s[k] = v; s.mended = 1; } };   // a damaged field starts empty (advLoad keeps the raw save)
   ['solved', 'crystals', 'unlocked', 'found', 'gates', 'disc', 'notes', 'bonus', 'secrets', 'chests', 'whySeen'].forEach(k => bad(k, Array.isArray, []));
   bad('cells', v => Array.isArray(v) && v.every(Array.isArray), []); bad('levers', v => v && typeof v === 'object', {}); bad('player', v => !v || typeof v === 'object', null);
-  if (s.funV === 2) return s;
-  const MAP = {101:102, 102:104, 103:107, 104:109, 105:111, 106:113, 107:112, 108:115, 109:117, 110:120}, mv = id => MAP[id] || id;
-  if ((s.solved || []).some(id => id > 100)){ s.solved = s.solved.map(mv); s.crystals = (s.crystals || []).map(mv); if (s.cellsAct === 2){ s.cells = []; s.levers = {}; } }
-  s.funV = 2; return s;
+  if (s.funV !== 2){
+    const MAP = {101:102, 102:104, 103:107, 104:109, 105:111, 106:113, 107:112, 108:115, 109:117, 110:120}, mv = id => MAP[id] || id;
+    if ((s.solved || []).some(id => id > 100)){ s.solved = s.solved.map(mv); s.crystals = (s.crystals || []).map(mv); if (s.cellsAct === 2){ s.cells = []; s.levers = {}; } }
+    s.funV = 2; }
+  // the acts were renumbered (the Ape Planet is Act 2 now): a save from before that was at the funfair is in Act 3
+  if (s.actV !== 2){ if (s.act === 2) s.act = FUN_ACT; if (s.cellsAct === 2) s.cellsAct = FUN_ACT; s.actV = 2; }
+  return s;
 }
 function advSerialize(){
-  return { v:1, funV:2, whySeen:[...(A.whySeen || [])], layout:LAYOUT, act:A.act || 1, cellsAct:A.act || 1, funMet:!!A.funMet, funDone:!!A.funDone, met:!!A.metBarold, kit:!!A.gotKit, trapOff:!!A.doorTrapOff, trapMet:!!A.trapMet, found:[...(A.found || [])], gates:[...(A.gates || [])], shrine:!!A.shrineOpen, secrets:[...(A.secrets || [])], chests:[...(A.chests || [])], notes:[...(A.notes || [])], disc:[...A.disc], launched:!!A.launched, mapBack:!!A.mapBack, bonus:[...A.bonus], solved:[...A.solved], crystals:[...A.crystals], unlocked:[...A.unlocked],
+  return { v:1, funV:2, actV:2, whySeen:[...(A.whySeen || [])], layout:LAYOUT, act:A.act || 1, cellsAct:A.act || 1, funMet:!!A.funMet, funDone:!!A.funDone, apeMet:!!A.apeMet, apeDone:!!A.apeDone, rode:!!A.rode, apeBeats:[...(A.apeBeats || [])], met:!!A.metBarold, kit:!!A.gotKit, trapOff:!!A.doorTrapOff, trapMet:!!A.trapMet, found:[...(A.found || [])], gates:[...(A.gates || [])], shrine:!!A.shrineOpen, secrets:[...(A.secrets || [])], chests:[...(A.chests || [])], notes:[...(A.notes || [])], disc:[...A.disc], launched:!!A.launched, mapBack:!!A.mapBack, bonus:[...A.bonus], solved:[...A.solved], crystals:[...A.crystals], unlocked:[...A.unlocked],
     lore:[...(A.lore || [])], quiz:[...(A.quizDone || [])],
     cells: S.grid.filter(c => c && !c.locked).map(c => [c.t, c.x, c.y, c.dir, c.delay, c.attach, onBit(c)]),
     levers: Object.fromEntries(S.grid.filter(c => c && c.locked && c.t === 'lever').map(c => [c.x + ',' + c.y, c.on ? 1 : 0])),
@@ -4669,7 +5433,7 @@ const floorRoot = new THREE.Group(); world.add(floorRoot);
 CV.tile = cv16(g => { speckle(g, ['#a39c86','#aaa38c','#9b947e']); g.fillStyle = '#7d7764'; g.fillRect(0,0,16,1); g.fillRect(0,0,1,16); g.fillStyle = '#b9b29a'; g.fillRect(1,1,14,1); });
 CV.crypt = cv16(g => { speckle(g, ['#4a4640','#524d46','#433f3a']); g.fillStyle = '#2f2c28'; g.fillRect(0,7,16,1); g.fillRect(7,0,1,7); g.fillRect(12,8,1,8); });
 CV.ice = cv16(g => { speckle(g, ['#a8d8f0','#b8e2f6','#98cce8']); g.fillStyle = '#e8f8ff'; [[2,3],[3,2],[9,9],[10,8],[12,4]].forEach(([x,y]) => g.fillRect(x, y, 2, 1)); });
-const TERRAIN_TOPS = () => [lam(CV.grass), lam(CV.tile), lam(CV.plank), lam(CV.ice), lam(CV.crypt)];
+const TERRAIN_TOPS = () => [lam(CV.grass), lam(CV.tile), lam(CV.plank), lam(CV.ice), lam(CV.crypt), lam(CV.sand), lam(CV.amoss)];   // 5, 6: the Ape Planet's desert and alien moss
 const terrainRoot = new THREE.Group(); world.add(terrainRoot);
 // raised floors: stacks of blocks under every floor that's above the jungle, with the right top for each zone
 function buildTerrain(){
@@ -4963,7 +5727,7 @@ function leadSpot(r){
 function stillTalking(m){ const b = m.userData.bubble, T = b && b.userData.type; return !!b && (!T || T.shown < T.n || T.t < 2000); }
 const LEAD_STORY_WAIT = 30000;   // how long he waits by the next door, with you still behind, before he comes back for a story that's due
 function guideLead(dt, m, u, d, mx, my, px, py){
-  if (A.act !== 1 || !A.doorTrapOff || A.launching || A.launched || !m.visible) return false;
+  if (A.act === APE_ACT ? (!A.apeMet || A.ride || A.rode) : (A.act !== 1 || !A.doorTrapOff || A.launching || A.launched) || !m.visible) return false;   // (the Ape Planet too: he runs on to the next test)
   const cur = A.rt && A.rt.room, T = cur && !A.solved.has(cur.id) ? cur : ROOMS.find(q => !A.solved.has(q.id));
   if (!T) return false;   // every room done: he goes back to walking with you
   { const co = coopWho(cur); if (co){ coopBarold(dt, m, u, co, mx, my); return true; } }   // a co-op room: he's busy on his plate
@@ -6003,11 +6767,12 @@ const PASSWORDS = [
   {after:20, words:'WHOOPEE', old:'WHOOPEE QUICKSAND PICNIC'},
   {after:25, words:'SOGGY', old:'BRIDGE OF SOGGY SOCKS'},
   {after:'launch', words:'BLASTOFF', old:'SPACE TEMPLE PARP'},
+  ...APE_PW,
   ...FUN_PW
 ];
 const passNorm = t => String(t || '').toUpperCase().replace(/[^A-Z]/g, '');
-function passEarned(){ return PASSWORDS.filter(pw => pw.after === 'launch' ? A.launched : pw.act === 2 ? FUN_ROOMS.filter(q => q.id <= pw.after).every(q => A.solved.has(q.id)) : A.solved && [...Array(pw.after)].every((_, i) => A.solved.has(i + 1))); }
-function passList(){ const got = (() => { try { return passEarned().filter(pw => pw.act !== 2); } catch (e) { return []; } })(); return got.length ? `<p style="font-size:14px"><b>Passwords earned:</b> ${got.map(pw => pw.words).join(' &middot; ')}</p>` : ''; }
+function passEarned(){ return PASSWORDS.filter(pw => pw.after === 'launch' ? A.launched : pw.act > 1 ? actRooms(pw.act).filter(q => q.id <= pw.after).every(q => A.solved.has(q.id)) : A.solved && [...Array(pw.after)].every((_, i) => A.solved.has(i + 1))); }
+function passList(){ const got = (() => { try { return passEarned().filter(pw => pw.act !== FUN_ACT); } catch (e) { return []; } })(); return got.length ? `<p style="font-size:14px"><b>Passwords earned:</b> ${got.map(pw => pw.words).join(' &middot; ')}</p>` : ''; }
 function pwFind(w){ return PASSWORDS.find(q => q.words === w) || PASSWORDS.find(q => q.old === w); }
 function pwKept(){ try { const k = JSON.parse(localStorage.getItem('redstone-academy.pw') || '[]'); return [...new Set(k.map(w => { const pw = pwFind(w); return pw ? pw.words : null; }).filter(Boolean))]; } catch (e) { return []; } }   // old long passwords show as their new one-word name
 function pwKeep(w){ const k = pwKept(); if (!k.includes(w)){ k.push(w); k.sort((x, y) => PASSWORDS.findIndex(q => q.words === x) - PASSWORDS.findIndex(q => q.words === y)); try { localStorage.setItem('redstone-academy.pw', JSON.stringify(k)); } catch (e) {} } }
@@ -6030,11 +6795,11 @@ function passMatch(text){
 function usePassword(text, how){ const pw = passMatch(text); if (!pw) return false; return passApply(pw, how); }
 function passApply(pw, how){
   if (how === 'new' && !slotNew()) return null;
-  const n = pw.after === 'launch' || pw.act === 2 ? TEMPLE_ROOMS.length : pw.after, cur = (how === 'new' ? null : advLoad()) || {};
-  const solved = new Set([...(cur.solved || []), ...TEMPLE_ROOMS.filter(r => r.id <= n).map(r => r.id), ...(pw.act === 2 ? FUN_ROOMS.filter(r => r.id <= pw.after).map(r => r.id) : [])]);
+  const n = pw.after === 'launch' || pw.act > 1 ? TEMPLE_ROOMS.length : pw.after, cur = (how === 'new' ? null : advLoad()) || {};
+  const solved = new Set([...(cur.solved || []), ...TEMPLE_ROOMS.filter(r => r.id <= n).map(r => r.id), ...(pw.act > 1 ? [APE_ACT, FUN_ACT].filter(k => k < pw.act).flatMap(k => actRooms(k).map(r => r.id)).concat(actRooms(pw.act).filter(r => r.id <= pw.after).map(r => r.id)) : [])]);   // a later act's password: every act before it is done too
   const unlocked = new Set([...(cur.unlocked || ['rblock']), 'rblock']); TEMPLE_ROOMS.filter(r => r.id <= n).forEach(r => (r.unlock || []).forEach(u => unlocked.add(u)));
-  const save = Object.assign({v:1, funV:2, disc:[], notes:[], bonus:[], cells:[], levers:{}}, cur, {solved:[...solved], crystals:[...new Set([...(cur.crystals || []), ...solved])], unlocked:[...unlocked], launched:!!cur.launched || pw.after === 'launch' || pw.act === 2});
-  if (pw.after === 'launch' || pw.act === 2){ save.act = pw.act === 2 ? 2 : 1; save.met = save.kit = save.trapOff = true; save.found = [...new Set([...(save.found || []), 'dust', ...BASIC])]; save.cells = []; save.cellsAct = 0; save.levers = {}; if (pw.act === 2) save.funMet = true; }
+  const save = Object.assign({v:1, funV:2, actV:2, disc:[], notes:[], bonus:[], cells:[], levers:{}}, cur, {solved:[...solved], crystals:[...new Set([...(cur.crystals || []), ...solved])], unlocked:[...unlocked], launched:!!cur.launched || pw.after === 'launch' || pw.act > 1});
+  if (pw.after === 'launch' || pw.act > 1){ save.act = pw.act > 1 ? pw.act : 1; save.met = save.kit = save.trapOff = true; save.found = [...new Set([...(save.found || []), 'dust', ...BASIC])]; save.cells = []; save.cellsAct = 0; save.levers = {}; if (pw.act === FUN_ACT) save.funMet = true; if (pw.act === APE_ACT) save.apeMet = true; }
   else { if ((cur.act || 1) !== 1 || !cur.cells){ save.cells = []; save.cellsAct = 0; save.levers = {}; } save.act = 1; }   // Act 1 passwords go back to the temple
   delete save.player;   // cellsAct 0: no blocks of yours saved, so every room gets its own loose parts
   advWrite(save); slotTutSet();
@@ -6608,7 +7373,8 @@ function musicFrame(){
   let key = 'jungle';
   if (A.openCine) key = null;   // the opening scene has its own sting; let it breathe
   else if (PARTY.playing) key = null;   // room 12's disco has its own groove (while you're in there)
-  else if (A.act === 2) key = A.solved.has(FUN_LAST) && !A.funDone ? 'escape' : A.room && A.room.zone === 'fun' ? 'ride' : 'fun';
+  else if (A.act === FUN_ACT) key = A.solved.has(FUN_LAST) && !A.funDone ? 'escape' : A.room && A.room.zone === 'fun' ? 'ride' : 'fun';
+  else if (A.act === APE_ACT) key = A.apeCine ? 'cine' : A.room && A.room.zone === 'mine' ? 'crypt' : A.room && A.room.zone ? 'tree' : 'court';
   else if (A.launching) key = 'cine';
   else if (A.launched) key = 'sky';
   else if (A.room === 'hall') key = 'skull';
@@ -7733,7 +8499,7 @@ const unfound = r => (r.give || []).filter(t => !A.found.has(t));
 const GLOW_GOAL = 'Something new is glowing in here! Walk over it to pick it up.';
 const roomGoal = r => A.solved.has(r.id) ? doneGoal(r) : unfound(r).length ? GLOW_GOAL : r.goal;
 // once it's done, the goal panel says so and points the way on (the toilet room's way on is up the vines)
-const doneGoal = r => A.act === 2 ? (r.id === FUN_LAST ? 'Done! Run for the fuel depot! Follow the beam!' : 'Done! Follow the beam of light to the next ride.') : r.toilet ? 'Done! Climb the VINES where the toilet was to get to the next room.' : r === ROOMS[ROOMS.length - 1] ? 'Done! Follow the beam of light to the Crystal Skull Chamber.' : 'Done! Follow the beam of light to the next room.';
+const doneGoal = r => A.act === APE_ACT ? (r.id === APE_LAST ? 'Done! Follow the beam of light out of the Institute.' : 'Done! Follow the beam of light to the next test.') : A.act === FUN_ACT ? (r.id === FUN_LAST ? 'Done! Run for the fuel depot! Follow the beam!' : 'Done! Follow the beam of light to the next ride.') : r.toilet ? 'Done! Climb the VINES where the toilet was to get to the next room.' : r === ROOMS[ROOMS.length - 1] ? 'Done! Follow the beam of light to the Crystal Skull Chamber.' : 'Done! Follow the beam of light to the next room.';
 // the goal panel only says "glowing" while something really is: the moment it's picked up, the room's real goal shows
 function refreshRoomGoal(){ const r = A.rt && A.rt.room, el = $('#goalText'); if (r && el && el.textContent === GLOW_GOAL && roomGoal(r) !== GLOW_GOAL) el.textContent = roomGoal(r); }
 function pickupSpot(r){ const [ex, ey] = entryOf(r), dx = Math.sign(r.box.x0 + 6 - ex), dy = Math.sign(r.box.y0 + 5 - ey); const c = [ex + (Math.abs(dx) > Math.abs(dy) || ey === r.box.y0 + 1 || ey === r.box.y1 - 1 ? 0 : dx), ey];
@@ -7754,7 +8520,8 @@ function pickupsFrame(dt){
 // where should you go next? (a tall beam of light marks it; an arrow at the screen edge points to it)
 function objectiveCell(){
   if (!A.on || A.launching || (A.launched && A.act === 1) || tut && tut.list === 'A') return null;
-  if (A.act === 2){ if (!A.funMet) return A.captain ? cellAtWorld(A.captain.position.x, A.captain.position.z) : FUN_SPAWN; const r2 = A.rt && A.rt.room; if (r2 && !A.solved.has(r2.id)) return null; const nx2 = ROOMS.find(q => !A.solved.has(q.id)); if (!nx2) return A.funDone ? null : [Math.round((FUN_DEPOT.x0 + FUN_DEPOT.x1)/2), Math.round((FUN_DEPOT.y0 + FUN_DEPOT.y1)/2)]; if (r2 && r2.id === nx2.id) return null; return nx2 === ROOMS[0] ? ENTRANCE : entryOf(nx2); }
+  if (A.act === FUN_ACT){ if (!A.funMet) return A.captain ? cellAtWorld(A.captain.position.x, A.captain.position.z) : FUN_SPAWN; const r2 = A.rt && A.rt.room; if (r2 && !A.solved.has(r2.id)) return null; const nx2 = ROOMS.find(q => !A.solved.has(q.id)); if (!nx2) return A.funDone ? null : [Math.round((FUN_DEPOT.x0 + FUN_DEPOT.x1)/2), Math.round((FUN_DEPOT.y0 + FUN_DEPOT.y1)/2)]; if (r2 && r2.id === nx2.id) return null; return nx2 === ROOMS[0] ? ENTRANCE : entryOf(nx2); }
+  if (A.act === APE_ACT){ if (!A.apeMet) return A.zest ? cellAtWorld(A.zest.position.x, A.zest.position.z) : APE_SPAWN; const r2 = A.rt && A.rt.room; if (r2 && !A.solved.has(r2.id)) return null; const nx2 = ROOMS.find(q => !A.solved.has(q.id)); if (!nx2) return A.apeDone ? null : A.rode ? EXPRESS.tele : EXPRESS.start; if (r2 && r2.id === nx2.id) return null; return nx2 === ROOMS[0] ? ENTRANCE : entryOf(nx2); }
   if (!A.metBarold){
     // the beam only marks what the story has pointed at: first the map thief, then the voice calling from the stairs
     if (A.thief && A.thiefLeading()) return cellAtWorld(A.thief.m.position.x, A.thief.m.position.z);
@@ -7772,7 +8539,7 @@ function objectiveCell(){
 }
 // the way to the next room goes up vines (after the golden toilet): mark the VINES, not the room up top, until you've climbed them
 function climbTo(next){
-  if (A.act === 2) return null;
+  if (A.act !== 1) return null;
   const i = ROOMS.indexOf(next), prev = ROOMS[i - 1]; if (!prev || JOURNEY[prev.id] !== 'ladder') return null;
   if (P.y > ROOM_ELEV[next.id] - 1) return null;
   const [x, y] = next.entry, b = next.box, c = x === b.x0 ? [x - 1, y] : x === b.x1 ? [x + 1, y] : y === b.y0 ? [x, y - 1] : [x, y + 1];
@@ -7875,7 +8642,7 @@ function dlgEnd(){ DLG.on = false; DLG.done = null; DLG.hello = 0; DLG.why = DLG
 function dlgCancel(all){ const u = DLG.on && DLG.undo; dlgEnd(); u && u(); whyFocus(null); if (all){ DLG.wait = []; A.whyAt = null; } else dlgNext(); }
 function dlgNext(){ const w = !DLG.on && DLG.wait.shift(); if (w) dlgStart(...w); }
 function dlgShow(){ const [who, text, hook] = DLG.q[DLG.i]; if (hook) hook(); DLG.shown = 1; DLG.t = 0; DLG.words = String(text).split(' '); $('#dlgWho').textContent = who; $('#dlgTxt').textContent = DLG.words[0]; $('#dlgMore').hidden = true; $('#dlg').hidden = false; feed('say', who + ': ' + text);
-  if (who === GUIDE && A.monkey) A.monkey.userData.hop = 1; else if (A.captain && /Captain|Parrot/.test(who)) A.captain.userData.hop = 1; if (/Parrot/.test(who)) sfx.ook(900); else sfx.click(); }
+  if (who === GUIDE && A.monkey) A.monkey.userData.hop = 1; else if (A.captain && /Captain|Parrot/.test(who)) A.captain.userData.hop = 1; else if (A.hosts && A.hosts[who]) A.hosts[who].userData.hop = 1; if (/Parrot/.test(who)) sfx.ook(900); else sfx.click(); }
 function dlgAdvance(){ if (!DLG.on) return false; if (DLG.shown < DLG.words.length){ DLG.shown = DLG.words.length; $('#dlgTxt').textContent = DLG.words.join(' '); $('#dlgMore').hidden = false; DLG.t = 0; return true; }
   DLG.i++; if (DLG.i >= DLG.q.length){ const d = DLG.done; dlgEnd(); d && d(); dlgNext(); return true; } dlgShow(); return true; }
 function dlgFrame(dt){ if (!DLG.on) return; DLG.t += dt;
@@ -7985,7 +8752,7 @@ window.addEventListener('keydown', () => { if (A.idPop) hideIdCard(); }, true);
 addEventListener('resize', placeIdPop);
 // by his waiting spot at the foot of the side stairs: the big sign of him, the sign that got him the job and the Guild rules. Mid-temple: the Guide of the Month board.
 function baroldDecor(){
-  if (A.act === 2 || (A.portrait && A.portrait.parent)) return;
+  if (A.act !== 1 || (A.portrait && A.portrait.parent)) return;
   const [hx, hy] = BAROLD_HOME, g = new THREE.Group(), p = cellPos(hx - 3, hy - 1), fy = floorAt(hx - 3, hy - 1);
   [-.8, .8].forEach(x => { const l = new THREE.Mesh(cbox(.14, 2.6, .14), M.wood); l.position.set(x, 1.3, -.14); g.add(l); });
   const art = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 2.6), new THREE.MeshLambertMaterial({map:pixTex(youngSign())})); art.position.set(0, 2.5, 0); g.add(art);
@@ -8002,7 +8769,7 @@ function baroldDecor(){
 // Never in a puzzle, a demo, the dialogue box or the tutorial, and never on top of anyone else talking. Each one plays once, in order (saved in A.lore).
 // Act 1: he's minding the temple until the old guide is "Back on Tuesday!" (she isn't back, so it can't be Tuesday yet). It's been 800 years, and he has no idea he's a skeleton. The player can see the truth; he can't.
 const LORE_GAP = 75000, LORE_QUIET = 40000, LORE_AFTER = 3500;   // ms between stories; a quiet spell long enough for one; a pause after a room is solved
-const loreTemple = () => [...A.solved].filter(id => id < 100).length, loreRides = () => [...A.solved].filter(id => id > 100).length;
+const loreTemple = () => [...A.solved].filter(id => id < 100).length, loreRides = () => [...A.solved].filter(id => id > 100).length, loreApe = () => [...A.solved].filter(id => id > 200 && id < 300).length;
 const LORE = {1:[
   {id:'name', say:['Mum wanted to call me Barry. Dad wanted Harold. They argued all week.', 'So they wrote both names on a scroll. The goat ate the middle bit. Hello! I\'m Barold.']},
   {id:'sign', say:['How did I get this job? I came into the jungle looking for the toilets.', 'I found a sign: "GUIDE WANTED. ASK INSIDE." Nobody was inside. So I asked myself. I said yes!']},
@@ -8024,6 +8791,15 @@ const LORE = {1:[
   {id:'duke', when:() => (A.disc && A.disc.has('secret1')) || loreTemple() >= 19, say:['The Temple Rules were carved by a duke. A VERY famous monkey.', 'Never heard of him. Don\'t know his name. Why are you looking at me?']},
   {id:'top2', hall:1, when:() => A.room === 'hall' && !A.launched, say:['Look! It says "THE WAY HOME"! Up there!', '...It\'s a wall. Very disappointing wall.']},
 ], 2:[
+  {id:'antennae', say:['I kept my tinfoil antennae. In case a REAL alien turns up.', 'Greg says they\'re "very old-fashioned". I think that means good.']},
+  {id:'greg1', when:() => loreApe() >= 2, say:['Greg has THREE eyes. Show-off.', 'I\'ve got two. They work FINE.']},
+  {id:'mop', when:() => loreApe() >= 4, say:['I can do mopping too. Look. I\'m mopping.', '...Nobody gave me a mop. I\'m mopping with my sash.']},
+  {id:'funnybone', when:() => A.apeBeats.has('museum') && loreApe() >= 6, say:['So I\'m a skeleton. That explains the draught. And the rattling.', 'That\'s my funny bone. All of them are, actually.']},
+  {id:'badge', when:() => loreApe() >= 8, say:['I made you a badge. It says BEST FRIEND.', 'It\'s a bit wonky. I made it with my elbow.']},
+  {id:'bath', when:() => loreApe() >= 10, say:['The apes have a bath every Tuesday.', 'I haven\'t had a bath for 800 years. I\'m not starting now.']},
+  {id:'teeth', when:() => A.apeBeats.has('museum') && loreApe() >= 12, say:['Digby says mole-rat teeth are OUTSIDE their lips. So they can dig without eating mud.', 'I\'m going to try that. ...Oh. Mine already are.']},
+  {id:'guide3', when:() => loreApe() >= 15, say:['Do they have guides on this planet? I could be a guide here.', 'GUIDE, LEVEL 3, SPACE. It sounds very important.']}
+], 3:[
   {id:'goldfish', say:['My first ever funfair! I\'ve already won a goldfish.', 'Well. It jumped into my pocket. That counts as winning.']},
   {id:'hat', when:() => loreRides() >= 3, say:['The Captain\'s hat says "NOT A PIRATE". That\'s good to know.', 'My new Level THREE hat will say "LEVEL THREE". In very big letters.']},
   {id:'duke2', when:() => loreRides() >= 7, say:['Someone asked if I\'m related to a duke. Ha! Me? I\'ve never heard of any dukes.', 'Why is my sash in my pocket? No reason. Space is... chilly.']},
@@ -8034,7 +8810,7 @@ const LORE = {1:[
 function loreCalm(hall){   // hall: this story may be told on arriving in the Crystal Skull hall
   const m = A.monkey, u = m && m.userData, rt = A.rt || {};
   if (!A.on || !m || !m.parent || !m.visible || tut || A.openCine || A.launching || CINE.on || DLG.on || A.whyAt || rt.demo || !$('#why').hidden) return false;
-  if (!A.metBarold || !A.gotKit || (A.act === 2 ? !A.funMet : !A.doorTrapOff)) return false;
+  if (!A.metBarold || !A.gotKit || (A.act === FUN_ACT ? !A.funMet : A.act === APE_ACT ? !A.apeMet : !A.doorTrapOff)) return false;
   if (u.bubble || u.fly || u.faint > 0 || u.inBits || u.flee) return false;
   if ([...(A.extras || []), ...TROOP.list, A.captain].some(o => o && o.userData && o.userData.bubble)) return false;
   if ((rt.heart && !A.launched && !hall) || (rt.room && !A.solved.has(rt.room.id))) return false;
@@ -8045,7 +8821,7 @@ function loreSay(){ const c = A.loreCur; monkeySay(c.d.say[c.i], 0); c.b = A.mon
 // a story is ready to be told (by the same rules loreFrame uses), if only Barold were next to you (guideLead: he comes back for it)
 function loreDue(loose){   // loose: due by the clock, however quiet it is right now
   if (!A.lore || !A.on) return false; if (A.loreCur) return true;
-  const list = LORE[A.act === 2 ? 2 : 1] || [], ok = q => !A.lore.has(q.id) && (!q.when || q.when()), d = list.find(q => q.soon && ok(q)) || list.find(ok);
+  const list = LORE[A.act || 1] || [], ok = q => !A.lore.has(q.id) && (!q.when || q.when()), d = list.find(q => q.soon && ok(q)) || list.find(ok);
   if (!d || d.hall || (!d.soon && (A.clock || 0) - A.loreAt < LORE_GAP)) return false;
   const quiet = loreQuiet(); return loose || (quiet >= LORE_AFTER && (d.soon || A.loreFresh || quiet >= LORE_QUIET));
 }
@@ -8066,7 +8842,7 @@ function loreFrame(dt){
     if (loreCalm(c.d.hall)) loreSay(); else if ((c.wait = (c.wait || 0) + dt) > 15000) A.loreCur = null;   // the moment passed: another time
     return;
   }
-  const list = LORE[A.act === 2 ? 2 : 1] || [], ok = q => !A.lore.has(q.id) && (!q.when || q.when()), d = list.find(q => q.soon && ok(q)) || list.find(ok);   // a big moment (a promotion) goes first
+  const list = LORE[A.act || 1] || [], ok = q => !A.lore.has(q.id) && (!q.when || q.when()), d = list.find(q => q.soon && ok(q)) || list.find(ok);   // a big moment (a promotion) goes first
   if (!d || (!d.soon && now - A.loreAt < LORE_GAP) || !loreCalm(d.hall)) return;
   const quiet = loreQuiet();
   if (quiet < LORE_AFTER || (!d.soon && !A.loreFresh && quiet < LORE_QUIET)) return;
@@ -8094,7 +8870,7 @@ function advFrame(dt, now){
     if (dist < 1.1 && Math.abs(P.y - (m.userData.baseY - 1.1)) < 1.6){
       decorRoot.remove(m); A.crystalsMesh.splice(i, 1); A.crystals.add(m.userData.room); sfx.xp(); setTimeout(() => sfx.xp(), 90);
       sfx.chime(); updateGauge(); advSaveSoon();
-      showToast(A.act === 2 ? `Spark crystal! ${actCrystals()} of ${ROOMS.length} to refuel the ship.` : `Crystal! ${actCrystals()} of ${ROOMS.length} for the Crystal Skull.`);
+      showToast(A.act === APE_ACT ? `Gold star crystal! ${actCrystals()} of ${ROOMS.length}. Dr Zest says it was LUCK.` : A.act === FUN_ACT ? `Spark crystal! ${actCrystals()} of ${ROOMS.length} to refuel the ship.` : `Crystal! ${actCrystals()} of ${ROOMS.length} for the Crystal Skull.`);
       burst(m.position, 0xc75cff);
     }
   }
@@ -8128,7 +8904,8 @@ function advFrame(dt, now){
     else { A.pitT = 0; A.pitShout = false; }
   }
   musicFrame(); troopFrame(dt); labelsFrame(); objectiveFrame(dt); hubCardFrame(dt); pickupsFrame(dt); plogFrame(dt);
-  if (A.act === 2) funFrame(dt);
+  if (A.act === FUN_ACT) funFrame(dt);
+  else if (A.act === APE_ACT){ if (typeof apeFrame === 'function') apeFrame(dt); }
   else { plazaSecretsFrame(); notesFrame(dt); smokeFrame(dt); jungleFrame(dt); doorTrapFrame(dt); thiefFrame(dt); introFrame(dt); reggieFrame(dt); lavaFrame(dt); secretsFrame(); }
   if (A.crown && !reduceMotion) A.crown.userData.gem.rotation.y += dt*.001;
   launcherPlayer(dt); lookUpFrame(dt);
@@ -8159,16 +8936,19 @@ function heardBarold(){ return !tut && !!(A.revealed || (A.thief && !A.thiefLead
 function hubCard(){
   const nm = $('#lessonTitle'), num = $('#lessonNum'), goal = $('#goalText'); if (!nm || !num || !goal) return;
   const set = (el, t) => { if (el.textContent !== t) el.textContent = t; };
-  set(num, A.act === 2 ? 'The funfair' : 'The jungle');
-  set(nm, A.act === 2 ? (A.funDone ? 'Escaped!' : 'The space dock') : A.metBarold ? 'The temple steps' : 'Crash site');
-  set(goal, A.act === 2 ? (!A.funMet ? 'Someone is waving from the dock. Go and say hello.' : A.solved.has(FUN_LAST) ? (A.funDone ? 'You escaped! More adventures on the way.' : 'Run for the fuel depot! Follow the beam!') : 'Fix the rides to earn spark crystals for the ship. Follow the beam of light to the next ride.') : A.trapMet && !A.doorTrapOff && !A.solved.size ? (gearOn() && trapOn() ? 'The wire splits! The door needs power. The glove must NOT get any. Hmm...' : gearOn() ? 'Watch the hole fill in...' : 'The side door needs power. Fill the GAP in the red wire with dust.') : A.solved.size ? 'Build anything here with the parts you\'ve won. Follow the beam of light to your next room.' : A.metBarold ? (!A.gotKit ? 'Barold has something for you.' : tut && tutList()[tut.i].id !== 'follow' ? 'Try out the redstone dust with Barold.' : 'Follow Barold to the SIDE DOOR. Look for the tall beam of light.') : A.thiefGrabbing() ? 'HEY! Something is grabbing your map!' : A.thief && A.thiefLeading() ? 'Follow that monkey! It\'s got your map!' : heardBarold() ? 'Somebody is calling! Follow the voice.' : 'Follow the dirt trail through the jungle.');
+  if (A.act === APE_ACT && A.rode){ set(num, 'The Ape Planet'); set(nm, 'The Forbidden Zone'); set(goal, A.apeDone ? 'You went through the teleporter! More adventures on the way.' : 'Step into the teleporter (the purple ring).'); return; }
+  if (A.act === APE_ACT && piecesLaid() === 4){ set(num, 'The Ape Planet'); set(nm, 'The Crystal Express'); set(goal, 'All four track pieces are laid! Walk up to the Express in the big cavern. All aboard!'); return; }
+  if (A.act === APE_ACT){ set(num, 'The Ape Planet'); set(nm, A.apeDone ? 'All tests passed!' : 'The ape city'); set(goal, !A.apeMet ? 'Someone in a white coat is coming. Go and say hello.' : A.solved.has(APE_LAST) ? 'Every test passed! Follow the beam.' : 'Pass Dr Zest\'s tests. Follow the beam of light to the next one.'); return; }
+  set(num, A.act === FUN_ACT ? 'The funfair' : 'The jungle');
+  set(nm, A.act === FUN_ACT ? (A.funDone ? 'Escaped!' : 'The space dock') : A.metBarold ? 'The temple steps' : 'Crash site');
+  set(goal, A.act === FUN_ACT ? (!A.funMet ? 'Someone is waving from the dock. Go and say hello.' : A.solved.has(FUN_LAST) ? (A.funDone ? 'You escaped! More adventures on the way.' : 'Run for the fuel depot! Follow the beam!') : 'Fix the rides to earn spark crystals for the ship. Follow the beam of light to the next ride.') : A.trapMet && !A.doorTrapOff && !A.solved.size ? (gearOn() && trapOn() ? 'The wire splits! The door needs power. The glove must NOT get any. Hmm...' : gearOn() ? 'Watch the hole fill in...' : 'The side door needs power. Fill the GAP in the red wire with dust.') : A.solved.size ? 'Build anything here with the parts you\'ve won. Follow the beam of light to your next room.' : A.metBarold ? (!A.gotKit ? 'Barold has something for you.' : tut && tutList()[tut.i].id !== 'follow' ? 'Try out the redstone dust with Barold.' : 'Follow Barold to the SIDE DOOR. Look for the tall beam of light.') : A.thiefGrabbing() ? 'HEY! Something is grabbing your map!' : A.thief && A.thiefLeading() ? 'Follow that monkey! It\'s got your map!' : heardBarold() ? 'Somebody is calling! Follow the voice.' : 'Follow the dirt trail through the jungle.');
 }
 function hubCardFrame(dt){
   A.hubT = (A.hubT || 0) + dt; if (A.hubT < 300) return; A.hubT = 0;
   if (A.on){ refreshRoomGoal(); hintStripTick(); hintNudgeTick(300); }
   if (A.on && A.rt && !A.rt.room && !A.rt.heart && A.room !== 'hall') hubCard();
 }
-const roomNum = r => r.ship ? `Skull machine ${r.ship} of ${SHIP_ROOMS.length}` : r.zone === 'fun' ? `Ride ${ROOMS.indexOf(r) + 1} of ${ROOMS.length}` : `Room ${r.id} of ${ROOMS.length}`;   // the funfair counts rides 1-20, not 101-120
+const roomNum = r => r.ship ? `Skull machine ${r.ship} of ${SHIP_ROOMS.length}` : r.zone === 'fun' ? `Ride ${ROOMS.indexOf(r) + 1} of ${ROOMS.length}` : r.host ? `${r.zone === 'mine' ? 'Mine room' : 'Test'} ${ROOMS.indexOf(r) + 1} of ${ROOMS.length}` : `Room ${r.id} of ${ROOMS.length}`;   // the funfair counts rides 1-20, not 101-120
 function enterArea(r, where){
   advSaveSoon();   // autosave on the way between rooms
   if (DLG.on && (DLG.why || (DLG.hello && !(r && r.id === DLG.hello)))) dlgCancel();   // walked out of a demo (or a ride's hello): stop it, give the view back
@@ -8181,7 +8961,7 @@ function enterArea(r, where){
     nm.textContent = r.name; goal.textContent = roomGoal(r);
     const demo = r.why && !A.solved.has(r.id) && !(A.whySeen && A.whySeen.has(r.id));
     // the funfair's hellos are the Captain's (in the dialogue box, once); the temple's are Barold's (a bubble, every time)
-    const cap = r.zone === 'fun' && !r.whisper, capHello = cap && !demo && !A.solved.has(r.id) && !(A.helloSeen && A.helloSeen.has(r.id));
+    const cap = (r.zone === 'fun' || !!r.host) && !r.whisper, capHello = cap && !demo && !A.solved.has(r.id) && !(A.helloSeen && A.helloSeen.has(r.id));
     if (!A.solved.has(r.id) && !demo && !cap){ A.toldHello = A.toldHello || new Set(); if (A.toldHello.has(r.id) || A.act !== 1) monkeySay(r.hello, 9000); else { A.toldHello.add(r.id); baroldTell(r.hello, r.id); } }   // the first time: in the dialogue box (you can't miss it looking at your feet); after that, a bubble
     A.whyAt = demo || capHello ? {r, t:(A.clock || 0) + 900, hello:!demo} : null;
     A.rt = {room:r, tested:new Set(), rows:new Array(r.inputs ? 1 << r.inputs.length : 0).fill(false), pulses:0, prevOut:false, prevKey:null, tired:false};
@@ -8250,7 +9030,7 @@ function runWhy(r){
   const setL = ([x, y, v]) => { const c = at(x, y); if (c && c.t === 'lever' && !!c.on !== !!v) interact(c); };
   const keep = (r.inputs || []).map(([x, y]) => { const c = at(x, y); return [x, y, !!(c && c.on)]; });
   (A.helloSeen = A.helloSeen || new Set()).add(r.id);
-  const lines = [['Captain', r.hello], ...r.why.map(w => [w.who || GUIDE, w.say, () => { (w.set || []).forEach(setL); whyFocus(w.at || null); }])];
+  const lines = [[r.host || 'Captain', r.hello], ...r.why.map(w => [w.who || GUIDE, w.say, () => { (w.set || []).forEach(setL); whyFocus(w.at || null); }])];
   dlgStart(lines, () => {
     (A.whySeen = A.whySeen || new Set()).add(r.id); advSaveSoon();   // seen only once it FINISHES: walk out halfway and it plays again next time
     keep.forEach(setL); whyFocus(null);
@@ -8262,7 +9042,7 @@ function runWhy(r){
 function captainHello(r){
   if (!A.on || DLG.on || !A.rt || A.rt.room !== r || A.solved.has(r.id)) return;
   (A.helloSeen = A.helloSeen || new Set()).add(r.id);
-  dlgStart([['Captain', r.hello]]); DLG.hello = r.id;
+  dlgStart([[r.host || 'Captain', r.hello]]); DLG.hello = r.id;
 }
 // turn the player's head towards a part and make it glow, so the demo is never missed
 function whyFocus(cell){
@@ -8334,11 +9114,13 @@ function checkAdventure(){
     if (rt.rows) rt.rows = rt.rows.map(() => false); rt.tested = new Set(); rt.obs = {}; rt.pulses = 0; rt.calmSeen = rt.blinkSeen = false; rt.phase = 0; rt.armed = rt.armed2 = false; rt.t0 = undefined; rt.sig = undefined;
     if (!rt.ownSaid){ rt.ownSaid = true; plogEvent('cheat'); sfx.nope(); monkeySay(ownPowerLine(r, own), 10000); renderCard(); }
     return; } }
+  if (r.cartsAt && r.cartsAt.length) cartCheck(r, rt);   // the Crystal Mine's minecarts (the room may still be a table room: the Signal Box)
+  if (CART_CHECKS.has(r.check)) return;
   if (rt.sigIn === undefined) rt.sigIn = buildSig(r);   // (a room that STARTS with a wire running past, like room 4, waits until you change something)
   const past = STABLE && !rt.pastSaid && ['lit', 'pulse', 'boom', 'coop'].includes(r.check) && buildSig(r) !== rt.sigIn ? alongsideOut(r) : null;
   if (past){ rt.pastSaid = true; sfx.nope(); monkeySay(`So close! The wire runs PAST the ${OUT_WORD[past.t] || 'thing'}. Power only comes out of the END of a wire, like an arrow. Make the end point straight INTO it.`, 10000); }
   // (else) a wire that ran out of power (rooms 20+ teach "how far" properly, so they don't get this line)
-  else if (STABLE && !rt.farSaid && ['lit', 'pulse', 'boom', 'coop'].includes(r.check) && A.act !== 2 && r.id < 20 && !r.out.every(([x, y]) => outLit(x, y)) && ranOutIn(r)){ rt.farSaid = true; sfx.nope(); monkeySay('The power ran OUT! It gets a bit weaker on every dust, and after 15 dust there\'s none left. Find a shorter way!', 10000); }
+  else if (STABLE && !rt.farSaid && ['lit', 'pulse', 'boom', 'coop'].includes(r.check) && A.act === 1 && r.id < 20 && !r.out.every(([x, y]) => outLit(x, y)) && ranOutIn(r)){ rt.farSaid = true; sfx.nope(); monkeySay('The power ran OUT! It gets a bit weaker on every dust, and after 15 dust there\'s none left. Find a shorter way!', 10000); }
   if (r.check === 'lit'){
     // lit SOME outputs with a lever or red block jammed right next to them: works in real Minecraft, but say why it doesn't count here
     const foreign = n => n && !(r.give || []).includes(n.t) && !r.fixed.some(f => f.x === n.x && f.y === n.y);
@@ -8538,6 +9320,8 @@ function solveRoom(r){
   { const pw = PASSWORDS.find(p2 => p2.after === r.id); if (pw && ROOMS.filter(q => q.id < r.id).every(q => A.solved.has(q.id))) showPassword(pw); }
   A.solved.add(r.id); sbUnlockNote(r);
   if (r.gate || GATE_FROM[r.id]) earnGate(r.gate || GATE_FROM[r.id]);
+  if (r.piece && A.act === APE_ACT) A.apeDue.push({at:(A.clock || 0) + 2500, fn:() => expressCut(r)});
+  if (r.host && A.act === APE_ACT) apeSolved(r);   // the Crystal Express: a job done lays its piece of track
   (r.unlock || []).forEach(u => A.unlocked.add(u));
   if (PREVIEW_LAST && r.id === PREVIEW_LAST) setTimeout(() => { if (A.on) previewEnd(); }, 7000);
   else if (r.exit){ (r.exitCells || [r.exit]).forEach(([x, y]) => { const d = at(x, y); if (d) d.latched = true; }); S.gridDirty = true; setTimeout(() => sfx.door(), 900); }
@@ -8795,11 +9579,14 @@ const SKY = new THREE.Color('#8fc3ff'), SPACE_SKY = new THREE.Color('#05060f');
 const GROUND_TOP = {};
 function setActSky(act){
   if (!GROUND_TOP.temple) GROUND_TOP.temple = ground.material[2];
-  if (act === 2){
+  if (act === FUN_ACT){
     if (!GROUND_TOP.moon) GROUND_TOP.moon = new THREE.MeshLambertMaterial({map:tex(CV.moon, [GW, GW], true)});
     ground.material[2] = GROUND_TOP.moon; buildSpaceBits(); space.stars.material.opacity = 1; space.floor.visible = false;
     ground.position.y = -.5; under.position.y = -2; under2.position.y = -4; clouds.forEach(c => c.visible = false);
     LIGHT.sky.set('#2a1648'); if (hemi){ hemi.intensity = .62; sun.intensity = .4; }
+  } else if (act === APE_ACT){   // the Ape Planet: a violet sky, teal-and-orange alien moss underfoot
+    if (!GROUND_TOP.ape){ CV.amoss = CV.amoss || cv16(g => { speckle(g, ['#2a9a8a','#33a894','#258a7c','#2fa090']); g.fillStyle = '#e08a3a'; [[2,3],[9,1],[12,9],[5,12],[14,14]].forEach(([x, y]) => g.fillRect(x, y, 1, 1)); }); GROUND_TOP.ape = new THREE.MeshLambertMaterial({map:tex(CV.amoss, [GW, GW], true)}); }
+    ground.material[2] = GROUND_TOP.ape; LIGHT.sky.set('#9a6ad8'); clouds.forEach(c => c.visible = false); if (space.stars) space.stars.material.opacity = 0;
   } else { ground.material[2] = GROUND_TOP.temple; LIGHT.sky.set('#8fc3ff'); clouds.forEach(c => c.visible = true); if (space.stars) space.stars.material.opacity = 0; }
 }
 function setSpaceLevel(k){
@@ -8957,7 +9744,7 @@ function openFrame(dt){
   cineCamera(pos, look); A.openLook = [pos, look];
   if (t >= OPEN_END) endOpening();
 }
-function skipCine(){ if (A.openCine){ endOpening(); return; } if (!A.launching) return; A.launchT = LIFT_END; A.cineStep = 99; setSpaceLevel(1); endLiftoffCine(); liftoffFrame(0); }
+function skipCine(){ if (A.openCine){ endOpening(); return; } if (A.apeCine){ apeCineEnd(); return; } if (A.ride){ endRide(); return; } if (A.expressCut){ A.expressCut.grp.position.y = 0; A.expressCut = null; cineEnd(); return; } if (!A.launching) return; A.launchT = LIFT_END; A.cineStep = 99; setSpaceLevel(1); endLiftoffCine(); liftoffFrame(0); }
 function liftoffFrame(dt){
   A.launchT += dt/1000;
   const t = A.launchT, core = A.heart && A.heart.userData.core;
@@ -9055,12 +9842,13 @@ function endCard(){
   stopMoving();
   const pw = PASSWORDS.find(q => q.after === 'launch'); pwKeep(pw.words);
   if (!progress.act1){ progress.act1 = true; saveProgress(); }   // Free Build (the Puzzle Lab sandbox) is open now
-  $('#endCard .card').innerHTML = endCardHTML({title:'TO BE CONTINUED...', tease:'The temple was a SPACESHIP all along! Now it\'s flying home, to the planet of whoever built it.<br><b>Next time: their HOME PLANET! More adventures are coming.</b>', stats:actOneStats(), note:`Secret password for this spot: <b>${pw.words}</b>`,
-    buttons:[['endPlay', 'Free Play', true], ['endBuild', 'Free Build'], ['endMenu', 'Main menu']], foot:'<b>Free Play:</b> keep exploring the ship. Everything you built stays.<br><b>Free Build:</b> the sandbox. Build anything you like.'});
+  $('#endCard .card').innerHTML = endCardHTML({title:'ACT 1: DONE!', tease:'The temple was a SPACESHIP all along! Now it\'s flying home, to the planet of whoever built it.<br><b>Next: their HOME PLANET! Fly on to find out who built it.</b>', stats:actOneStats(), note:`Secret password for this spot: <b>${pw.words}</b>`,
+    buttons:[['endNext', 'Fly on!', true], ['endPlay', 'Free Play'], ['endBuild', 'Free Build'], ['endMenu', 'Main menu']], foot:'<b>Fly on:</b> Act 2, the home planet.<br><b>Free Play:</b> keep exploring the ship. Everything you built stays.<br><b>Free Build:</b> the sandbox. Build anything you like.'});
+  $('#endNext').onclick = () => { sfx.click(); $('#endCard').hidden = true; goAct(APE_ACT); };   // on to the Ape Planet (Act 2)
   $('#endPlay').onclick = () => { sfx.click(); $('#endCard').hidden = true; };
   $('#endBuild').onclick = () => { sfx.click(); $('#endCard').hidden = true; startLesson(FREE_ID); };
   $('#endMenu').onclick = () => { sfx.click(); $('#endCard').hidden = true; showMenu(); };
-  $('#endCard').hidden = false; feed('card', 'TO BE CONTINUED... Next stop: the ancients\' HOME PLANET!'); sfx.chime(); confetti();
+  $('#endCard').hidden = false; feed('card', 'ACT 1: DONE! Next stop: the ancients\' HOME PLANET!'); sfx.chime(); confetti();
 }
 $('#mapCard').addEventListener('click', e => { e.stopPropagation(); $('#mapCard').hidden = true; });
 function burst(pos, color, n){
@@ -9099,7 +9887,7 @@ function startTutorial(list){
   document.body.classList.add('tutOn');
   tut = {i:0, yaw:P.yaw, t:0, tour:0, list:list || 'A'};
   $('#tut').hidden = false; showTutStep();
-  if (tut.list === 'A') setTimeout(() => zoneTitle('jungle'), 500);
+  if (tut.list === 'A') setTimeout(() => { if (A.act === 1) zoneTitle('jungle'); }, 500);
 }
 function tutSpot(){
   // a free floor square just in front of you, for the first bit of dust
@@ -9242,7 +10030,7 @@ function advStart(given){
   const save = given || advLoad();
   if (save && save.layout !== LAYOUT){ save.player = null; save.cells = []; save.cellsAct = 0; save.levers = {}; }   // the map changed since this save: keep progress, drop positions
   A.on = true; A.room = null; A.launching = false; advRootsShow(true); sbClear();
-  A.act = (save && save.act) || 1; ROOMS = A.act === 2 ? FUN_ROOMS : TEMPLE_ROOMS; A.funMet = !!(save && save.funMet); A.whySeen = new Set((save && save.whySeen) || []); A.helloSeen = new Set(); A.funDone = !!(save && save.funDone); A.funIntroT = 0; A.funIntroI = -1;
+  A.act = (save && save.act) || 1; ROOMS = actRooms(A.act); A.funMet = !!(save && save.funMet); A.whySeen = new Set((save && save.whySeen) || []); A.helloSeen = new Set(); A.funDone = !!(save && save.funDone); A.funIntroT = 0; A.funIntroI = -1; A.apeMet = !!(save && save.apeMet); A.apeDone = !!(save && save.apeDone); A.apeBeats = new Set((save && save.apeBeats) || []); A.apeLanded = A.apeMet; A.apeCine = null; A.rode = !!(save && save.rode); A.ride = null; if (CINE.on) cineEnd(); A.expressCut = null; A.teleT = 0; A.apeDue = []; A.apeIntroT = 0; A.apeHostRoom = undefined;
   A.shrineOpen = !!(save && save.shrine); A.metBarold = !!(save && (save.met || (save.solved && save.solved.length))); A.gotKit = !!(save && (save.kit || save.met || (save.solved && save.solved.length))); A.gates = new Set(save && save.gates ? save.gates : []); A.found = new Set(save && save.found ? save.found : ['dust']); if (save && !save.found){ const top = Math.max(0, ...(save.solved || [])); ROOMS.filter(q => q.id <= top + 1).forEach(q => (q.give || []).forEach(t => A.found.add(t))); } A.doorTrapOff = !!(save && (save.trapOff || (save.solved && save.solved.length))); A.trapMet = !!(save && save.trapMet); A.leadToDoor = A.gotKit; document.body.classList.toggle('emptyHands', !A.gotKit); A.introAt = 0; A.introStarted = false; A.thief = null; A.revealed = A.metBarold; A.callK = undefined; A.callT = undefined; A.trapHint = 0; A.gapHint = false; A.bothSaid = false;
   A.disc = new Set(save && save.disc ? save.disc : []); A.notes = new Set(save && save.notes ? save.notes : []); A.secrets = new Set(save && save.secrets ? save.secrets : []); A.chests = new Set(save && save.chests ? save.chests : []);
   A.solved = new Set(save ? save.solved : []); A.bonus = new Set(save && save.bonus ? save.bonus : []); A.crystals = new Set(save ? save.crystals : []);
@@ -9250,10 +10038,10 @@ function advStart(given){
   shipLoad(save);
   A.lore = new Set((save && save.lore) || []); A.quizDone = new Set((save && save.quiz) || []); A.loreCur = null; A.loreAt = (A.clock || 0) - LORE_GAP + 20000; A.loreSolved = A.solved.size; A.loreFresh = false;   // Barold's stories told so far, and the Gate Card questions answered
   L = {def:{id:'adv', kind:'adventure', inputs:[], ghosts:[], name:'Temple'}, ghosts:[], inputs:[], outs:[], rows:[], tested:new Set(), bad:new Set(), hintLevel:0, done:false};
-  if (A.act === 2) buildFunfair(save); else buildTemple(save);
+  if (A.act === FUN_ACT) buildFunfair(save); else if (A.act === APE_ACT) buildApePlanet(save); else buildTemple(save);
   setActSky(A.act);
   viewFP = true;
-  const SPAWN0 = A.act === 2 ? FUN_SPAWN : SPAWN;
+  const SPAWN0 = A.act === FUN_ACT ? FUN_SPAWN : A.act === APE_ACT ? APE_SPAWN : SPAWN;
   const sp = save && save.player;
   if (sp && isFinite(sp.x) && isFinite(sp.z)){ P.x = sp.x; P.z = sp.z; P.yaw = sp.yaw || 0; }
   else { const c = cellPos(...SPAWN0); P.x = c.x; P.z = c.z; P.yaw = 0.04; }
@@ -9271,7 +10059,7 @@ function advStart(given){
   try { passEarned().forEach(pw => pwKeep(pw.words)); } catch (e) {}   // backfill the password list from older saves
   const seen = slotTut();
   if (A.act === 1 && !seen && !(save && save.solved && save.solved.length)){ if (save && save.met){ if (!A.gotKit) startTutorial('B'); } else if (save && (save.player || save.trapMet)) startTutorial('A'); else startOpening(); }
-  if (A.act === 2 && !A.funMet) setTimeout(() => { if (A.on && A.act === 2) zoneTitle('fun'); }, 600);
+  if (A.act === FUN_ACT && !A.funMet) setTimeout(() => { if (A.on && A.act === FUN_ACT) zoneTitle('fun'); }, 600);
   setTimeout(() => { if (A.on && !tut && !A.openCine) [...A.gates].filter(k => GATE_QUIZ[k] && !A.quizDone.has(k)).forEach(k => showCard('NEW GATE CARD: ' + GATE_CARDS[k].name + '!', gateCardHTML(k, true) + quizHTML(k))); }, 2000);   // a Gate Card is never lost: one you didn't finish comes back
 }
 function stopAdventure(){ dlgCancel(true); document.body.classList.remove("emptyHands"); if (A.openCine){ A.openCine = false; cineEnd(); }
@@ -9281,7 +10069,8 @@ function advHint(){
   plogEvent('hint');
   let r = A.rt && A.rt.room;
   if (!r && A.rt && A.rt.heart) r = HEART;
-  if (!r && A.act === 2){ showCard('Hint', !A.funMet ? 'Go and talk to the man in the big hat on the dock. (He says it\'s a SUN hat.)' : 'Follow the tall beam of light to the next ride. Every ride is a logic machine to fix.'); return; }
+  if (!r && A.act === APE_ACT){ showCard('Hint', !A.apeMet ? 'Go and say hello to the orange ape in the white coat. That\'s Dr Zest.' : 'Follow the tall beam of light to the next test. Every test is a logic machine.'); return; }
+  if (!r && A.act === FUN_ACT){ showCard('Hint', !A.funMet ? 'Go and talk to the man in the big hat on the dock. (He says it\'s a SUN hat.)' : 'Follow the tall beam of light to the next ride. Every ride is a logic machine to fix.'); return; }
   if (!r && A.trapMet && !A.doorTrapOff && !A.solved.size){
     const both = gearOn() && trapOn(); A.trapHint = (A.trapHint || 0) + 1;
     const glowAt = ([wx, wy]) => { while (ghostRoot.children.length) ghostRoot.remove(ghostRoot.children[0]); const m = new THREE.Mesh(cbox(1.05, .5, 1.05), new THREE.MeshBasicMaterial({color:0xffe14a, transparent:true, opacity:.45})); m.position.copy(cellPos(wx, wy)); m.position.y += .25; ghostRoot.add(m); };
@@ -9289,9 +10078,9 @@ function advHint(){
     if (!A.splitHint){ A.splitHint = true; showCard('Hint', 'The wire splits in two. One branch goes to the door\'s GEAR. The other goes to the BOXING GLOVE. Power goes down BOTH. Can you cut just ONE branch?<br><small>Press again and I\'ll show you where.</small>'); return; }
     glowAt(TRAP.trapWire[1]); showCard('Hint 2', (padMode ? 'Point at it and press ' + PN(PB.brk) + ' on' : lastTouch ? 'HOLD your finger on' : 'Point at it and HOLD the click on') + ' the glowing piece to break it. That\'s the glove\'s branch. Leave the door\'s branch alone!'); return;
   }
-  if (!r && A.act !== 2 && A.room !== 'hall' && !A.solved.size){
+  if (!r && A.act === 1 && A.room !== 'hall' && !A.solved.size){
     showCard('Hint', !A.metBarold ? (A.thief && A.thiefLeading() ? 'Something has your map! Follow it down the dirt trail.' : heardBarold() ? 'Somebody is calling. Follow the voice to the big stairs.' : 'Have a look around. There\'s a dirt trail leading into the jungle.') : !A.gotKit || (tut && tutList()[tut.i].id !== 'follow') ? 'Barold is showing you something. Do what the yellow box says.' : 'Barold is waiting by the SIDE DOOR. Walk up to the tall beam of light.'); return; }
-  if (!r && A.room !== 'hall' && A.solved.size && A.act !== 2){ const c = objectiveCell(); if (c){ forceTrail(c); const vines = S.ladder[c[1]*NX + c[0]]; showCard('Hint', vines ? 'Climb the VINES! Walk right into them and keep going.' : 'Follow the glowing trail to the next room. It ends at the tall beam of light.'); return; } }
+  if (!r && A.room !== 'hall' && A.solved.size && A.act === 1){ const c = objectiveCell(); if (c){ forceTrail(c); const vines = S.ladder[c[1]*NX + c[0]]; showCard('Hint', vines ? 'Climb the VINES! Walk right into them and keep going.' : 'Follow the glowing trail to the next room. It ends at the tall beam of light.'); return; } }
   if (!r){ showCard('Hint', A.room === 'hall' ? HEART.hint : 'The temple is north. Walk in through the golden pillars.'); return; }
   if (r !== HEART && A.solved.has(r.id)) return hintDone(r);
   if (r.nudge && A.rt && !A.rt.nudged){ A.rt.nudged = true; showCard('Hint', r.nudge + '<br><small>Still stuck? Press again for a bigger clue.</small>'); return; }   // the first press is a nudge, not the answer
@@ -9361,10 +10150,10 @@ function hintNudgeTick(dt){
 }
 // a room that's done: no hint ladder, just the way on
 function hintDone(r){
-  const c = objectiveCell(), word = A.act === 2 ? 'ride' : 'room';
+  const c = objectiveCell(), word = A.act === FUN_ACT ? 'ride' : 'room';
   if (!c){ showCard('All done here!', `You've finished this ${word}! Well done.`); return; }
   forceTrail(c);
-  const vines = A.act !== 2 && S.ladder[c[1]*NX + c[0]];
+  const vines = A.act === 1 && S.ladder[c[1]*NX + c[0]];
   showCard('All done here!', `You've finished this ${word}! ` + (vines ? `Now climb the VINES${r.toilet ? ' where the toilet was' : ''}. Walk right into them and keep going!` : `Follow the glowing trail to the next ${word}. It ends at the tall beam of light.`));
 }
 // a hint that says "take THIS away": the piece to pick up glows red
@@ -11131,6 +11920,16 @@ gateCardHTML = function(k, quiz){ return gateCardPlain(k, quiz) + (MEGA_FOR_CARD
 /* ================= test hook ================= */
 window.goAct = goAct;
 window.__game = {
+  ape:{met(){ return !!A.apeMet; }, done(){ return !!A.apeDone; }, cine(){ return !!A.apeCine; }, zestCell(){ return A.zest ? cellAtWorld(A.zest.position.x, A.zest.position.z) : null; }, end(){ return APE_END; }, beats(){ return [...(A.apeBeats || [])]; },
+    demo(){ return DLG.on && DLG.why ? DLG.why.id : 0; },
+    signs(){ return ROOMS.map(r => [r.id, !!r.signFit]); }, costBy(){ const out = {}; world.children.forEach((c, i) => { const v = c.visible; c.visible = false; world.updateMatrixWorld(); renderer.render(scene, camera); out[i + ':' + (c.name || c.type) + ':' + c.children.length] = renderer.info.render.calls; c.visible = v; }); return out; }, render(){ world.updateMatrixWorld(); renderer.render(scene, camera); const i = renderer.info; return {calls:i.render.calls, tris:i.render.triangles}; },
+    express(){ return {start:EXPRESS.start, tele:EXPRESS.tele, laid:piecesLaid(), ride:!!A.ride, rode:!!A.rode, teleT:A.teleT || 0, rt:A.ride ? A.ride.t : -1, cut:!!A.expressCut, cine:CINE.on}; }, skipRide(){ endRide(); },
+    carts(){ return (S.carts || []).map(k => ({x:k.x, y:k.y, t:k.t, v:k.v, room:k.room, rest:k.rest, home:k.home})); }, push(x, y){ return cartPush(x, y); },
+    // a mine room's test drive: start lever OFF (the cart goes home), then ON; at a platform stop, power the platform and tap the cart
+    exercise(id){ const r = ROOMS.find(q => q.id === id), lv = r && r.launchAt && at(...r.launchAt); if (!lv) return false; if (lv.on){ interact(lv); for (let i = 0; i < 20; i++) step(); } if (lv.t === 'button' && (S.carts || []).some(k => k.room === id && (k.x !== k.home[0] || k.y !== k.home[1]))){ interact(lv); for (let i = 0; i < 30; i++) step(); } interact(lv);
+      let pushed = false; for (let i = 0; i < 260 && !A.solved.has(id); i++){ step();
+        const k = (S.carts || []).find(q => q.room === id), spot = r.platformAt || r.bayAt; if (spot && k && !pushed && !k.v && k.rest > 14 && k.x === spot[0] && k.y === spot[1]){ pushed = true; [0, 1, 2, 3].forEach(d => { const n = nb(at(...spot), d); if (n && !n.locked && ((n.t === 'lever' && !n.on) || n.t === 'button')) interact(n); }); for (let j = 0; j < 3; j++) step(); if (r.platformAt) cartPush(k.x, k.y, r.stationAt); } }
+      return A.solved.has(id); }},
   menuScene(){ return !!(MENU3D.g && MENU3D.g.visible); },
   passwords(){ return PASSWORDS.map(p => p.words); }, tryPassword(t){ const pw = passMatch(t); return pw ? pw.words : null; },
   backup:{mirrorNow, makeSaveCode, loadSaveCode, IDB, restoreKeys, snapKeys},
