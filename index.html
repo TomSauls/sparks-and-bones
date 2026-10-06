@@ -641,7 +641,10 @@ const ITEMS = [
   {id:'observer', name:'Observer', tip:'Its face watches the block in front of it. When that block CHANGES, a quick pulse comes out of its BACK (the red dot)'},
   {id:'slime', name:'Slime Block', tip:'STICKY! When a piston moves it, it drags the blocks touching it along'},
   {id:'soulsand', name:'Soul Sand', tip:'Under water, it makes bubbles that push you UP'},
-  {id:'magma', name:'Magma Block', tip:'Under water, it makes bubbles that pull you DOWN'}
+  {id:'magma', name:'Magma Block', tip:'Under water, it makes bubbles that pull you DOWN'},
+  // toys won late in the game (wip/leftovers): the Maya's ball court, and the ghost train's Gerald
+  {id:'rubberball', name:'Rubber Ball', tip:'Give it power: a giant rubber ball goes BOMP, BOMP the way you faced. Anything it lands near goes BOING!'},
+  {id:'coffin', name:'Gerald\'s Coffin', tip:'Give it power: the lid creaks open and Gerald the shy ghost floats out. BOO! (He means it nicely)'}
 ];
 
 /* ================= lessons ================= */
@@ -1431,6 +1434,8 @@ ICONS.whoopeemine = icon(g => { g.fillStyle = '#7a5a3a'; g.fillRect(0,12,16,4); 
 ICONS.bouncy = icon(g => { g.fillStyle = '#ff5a8a'; g.fillRect(1,9,14,6); g.fillStyle = '#ffd84a'; g.fillRect(1,4,3,6); g.fillRect(12,4,3,6); g.fillStyle = '#4fa3ff'; g.fillRect(6,6,4,4); g.fillStyle = '#6ad04a'; g.fillRect(1,3,3,1); g.fillRect(12,3,3,1); g.fillRect(6,5,4,1); });
 ICONS.slimefountain = icon(g => { g.fillStyle = '#8a8a8a'; g.fillRect(1,11,14,5); g.fillStyle = '#7ccf5a'; g.fillRect(3,11,10,2); g.fillRect(7,2,2,9); g.fillRect(4,1,2,2); g.fillRect(10,2,2,2); g.fillRect(2,5,1,2); g.fillRect(13,6,1,2); });
 ICONS.teleporter = icon(g => { g.fillStyle = '#3a2a5a'; g.fillRect(1,11,14,4); g.fillStyle = '#b05cff'; g.fillRect(2,10,12,2); g.fillStyle = '#e8c8ff'; g.fillRect(4,2,1,7); g.fillRect(8,1,1,8); g.fillRect(11,3,1,6); });
+ICONS.rubberball = icon(g => { g.fillStyle = '#2a2420'; g.fillRect(4,2,8,12); g.fillRect(2,4,12,8); g.fillRect(3,3,10,10); g.fillStyle = '#5a4a3a'; g.fillRect(5,4,3,2); g.fillRect(4,6,2,2); g.fillStyle = '#9a8a70'; g.fillRect(5,4,1,1); });
+ICONS.coffin = icon(g => { g.fillStyle = '#4a2a14'; g.fillRect(5,1,6,14); g.fillRect(3,4,10,6); g.fillStyle = '#7a4a24'; g.fillRect(6,2,4,12); g.fillRect(4,5,8,4); g.fillStyle = '#f2f2ff'; g.fillRect(9,0,5,5); g.fillStyle = '#2a2a3a'; g.fillRect(10,1,1,2); g.fillRect(12,1,1,2); });
 
 /* ================= three.js scene ================= */
 const canvas = $('#view');
@@ -1615,7 +1620,7 @@ function buildMesh(c, ghost){
     case 'stone': add(G.cube, M.stone); break;
     case 'rblock': if (c.sheep) sbMesh(c, g, add); else add(G.cube, M.rblock); break;   // a redstone sheep carries an invisible redstone block about
     case 'steel': case 'rglass': case 'monkeys': case 'beacon': case 'bananabomb': case 'madcow': case 'skunk': case 'groovitron':
-    case 'goat': case 'granny': case 'sheepstrike': case 'holybanana': case 'ninjarope': case 'chickencannon': case 'whoopeemine': case 'bouncy': case 'slimefountain': case 'teleporter': sbMesh(c, g, add); break;
+    case 'goat': case 'granny': case 'sheepstrike': case 'holybanana': case 'ninjarope': case 'chickencannon': case 'whoopeemine': case 'bouncy': case 'slimefountain': case 'teleporter': case 'rubberball': case 'coffin': sbMesh(c, g, add); break;
     case 'tnt': add((c.fuse > 0 && c.fuse % 4 < 2) ? G.cube : G.tnt, (c.fuse > 0 && c.fuse % 4 < 2) ? M.tntWhite : M.tnt); break;
     case 'glass': add(G.cube, M.glass); break;
     case 'rail': case 'prail': case 'drail': {   // one merged mesh per material, cached per look (a mine room has dozens of rails: keep the draw calls down)
@@ -1933,7 +1938,7 @@ function vkey(c){
     case 'gate': return 'G'+c.lit+(c.dir % 2);
     case 'dispenser': case 'launcher': case 'disco': case 'airhorn': case 'gunge': return c.t + c.lit;
     case 'bananacannon': return c.t + c.lit + c.dir;
-    case 'goat': case 'granny': case 'sheepstrike': case 'holybanana': case 'ninjarope': case 'chickencannon': case 'whoopeemine': case 'bouncy': case 'slimefountain': case 'teleporter': return c.t + c.lit + c.dir + (c.away ? 'a' : '');
+    case 'goat': case 'granny': case 'sheepstrike': case 'holybanana': case 'ninjarope': case 'chickencannon': case 'whoopeemine': case 'bouncy': case 'slimefountain': case 'teleporter': case 'rubberball': case 'coffin': return c.t + c.lit + c.dir + (c.away ? 'a' : '');
     case 'vein': return 'V' + !!c.open;
     case 'rail': case 'prail': case 'drail': if (!c.conn) railShape(c); return 'R' + c.t + c.conn.join('') + (c.lit ? 1 : 0) + (c.on || c.timer > 0 ? 1 : 0) + (c.arms ? c.arms.join('') : '');
   }
@@ -2790,7 +2795,7 @@ function ghostAt(x,y){ return L ? L.ghosts.find(g => g.x===x && g.y===y && ghost
 function plan(item, x, y, clicked){
   if (!inb(x,y) || item === 'pick' || wallAt(x,y) || isPit(x,y)) return null;   // like Java: nothing goes down on thin air (dust can't cross a gap)
   const p = {t:item, x, y, dir:0, delay:1, attach:-1};
-  if (item === 'water' || item === 'bananacannon' || item === 'repeater' || item === 'madcow' || item === 'skunk' || ['goat', 'granny', 'sheepstrike', 'holybanana', 'ninjarope', 'chickencannon'].includes(item)) p.dir = camDir();
+  if (item === 'water' || item === 'bananacannon' || item === 'repeater' || item === 'madcow' || item === 'skunk' || ['goat', 'granny', 'sheepstrike', 'holybanana', 'ninjarope', 'chickencannon', 'rubberball'].includes(item)) p.dir = camDir();
   if (UNI_FACE.has(item)) p.dir = item === 'observer' ? camDir() : opp(camDir());   // Java: a piston's face looks back at you; an observer's face too (its pulse goes out the far side)
   if ((item === 'torch' || item === 'lever' || item === 'button') && clicked && clicked.t === 'stone') for (let d=0; d<4; d++) if (x+DIRS[d][0]===clicked.x && y+DIRS[d][1]===clicked.y) p.attach = d;
   return p;
@@ -4328,6 +4333,7 @@ const FUN_ROOMS = [
     hello:'Our lighthouse. Ships keep bumping into the pier. Well. OUR ship does. It\'s a long story.',
     hint:'A grumpy torch on a block, right next to the lamp. Its power runs round a loop of dust and back INTO its own block, through a slow repeater.',
     win:'A clock from nothing! A torch, a block, a loop and a slow repeater. The lighthouse flashes, and the ships can see the pier.',
+    bonus:{text:'BONUS: make the lighthouse flash SLOWER, so each flash lasts twice as long. Win the LIGHTHOUSE KEEPER badge!', kind:'slowclock', n:6, badge:'LIGHTHOUSE KEEPER', why:'Your clock waits longer in its loop, so every flash lasts longer!', card:'More waiting in the loop makes a slower clock. Real lighthouses each flash at their own speed, so ships can tell which lighthouse it is!'},   // the plain answer flashes for 3 steps: another Repeater (3 or 4) in the loop makes 6 or more
     mc:'Build one in Minecraft by your lighthouse: torch on a block, a dust loop, a repeater set slow.',
     naive:[K('stone',4,4),K('torch',5,4,{attach:3}),D(6,4),D(6,5),D(6,6),D(5,6),D(4,6),D(4,5)],
     sol:[K('stone',4,4),K('torch',5,4,{attach:3}),D(6,4),D(6,5),D(6,6),D(5,6),D(4,6),K('repeater',4,5,{dir:0,delay:2})] },
@@ -4381,6 +4387,7 @@ const FUN_ROOMS = [
     hint:'Make the top wire\'s power arrive LATER. Repeaters make power wait, and you can tap them to wait longer. The second ding must wait until the first one has finished!',
     long:'DIIIIING! One long ding. The second wire\'s power arrived while the first was still ringing, so they joined up. Make it wait LONGER: more repeaters, or tap them slower.',
     win:'Ding... DING! The top wire waits longer than the button stays down, so the bell rings twice. You counted with redstone!',
+    gate:'count', bonus:{text:'BONUS: ring the bell THREE times with ONE press. Win the HIP HIP HOORAY badge!', kind:'dings', n:3, badge:'HIP HIP HOORAY', why:'ONE press, THREE dings: you counted to three!', card:'Hip hip... HOORAY! Three wires, three different waits, three dings. The Captain is very impressed. Arr. I mean, HOORAY.'},   // a third wire along the middle row, into the bell's side; the top wire waits even longer
     mc:'A button stays on for 1 second in Minecraft. To count with one, each wire has to wait longer than that.',
     naive:[K('repeater',4,2,{dir:1})],
     sol:[K('repeater',3,2,{dir:1,delay:4}),K('repeater',4,2,{dir:1,delay:4}),K('repeater',5,2,{dir:1,delay:4})] },
@@ -4426,6 +4433,7 @@ const FUN_ROOMS = [
     hello:'The big scare! Bats, then the coffin, then BOO. All at once is just a mess. Gerald says it\'s embarrassing.',
     hint:'Repeaters make power wait. Which wire must wait a little? Which must wait the LONGEST? Careful: the BOO lamp is the CLOSEST one!',
     win:'Bats... coffin... BOO! Different waits on different wires put things in ORDER. The scare sequence works.',
+    bonus:{text:'BONUS: make it a SLOW, spooky scare: each one waits longer after the one before. Win Gerald\'s Coffin!', kind:'gaps', n:4, reward:'coffin', why:'Bats... wait for it... coffin... wait for it... BOO! A really slow, spooky scare!'},   // each gap 4+ steps (the plain answer's gaps are 3): Gerald, met at 314
     mc:'Repeaters with different delays set things off one after another in Minecraft: perfect for traps and shows.',
     naive:[K('repeater',4,4,{dir:1,delay:3})],
     sol:[K('repeater',4,4,{dir:1,delay:3}),K('repeater',3,7,{dir:1,delay:3}),K('repeater',4,7,{dir:1,delay:3})] },
@@ -10143,7 +10151,9 @@ function checkBonus(r, rt){
   let ok = false;
   if (b.kind === 'pulses'){ const lit = outLit(...r.out[0]); if (lit && !rt.prevOut){ rt.pulses++; renderCard(); } rt.prevOut = lit; ok = rt.pulses >= b.n; }
   else if (b.kind === 'dust'){ ok = S.stable && r.out.every(([x,y]) => outLit(x,y)) && countDust(r) <= b.n; }
-  else if (b.kind === 'dings'){ countFrame(r, rt, n => { rt.bonusDings = n; }); ok = rt.bonusDings === b.n; }   // Act 3: one press, this many dings
+  else if (b.kind === 'dings'){ countFrame(r, rt, n => { rt.bonusDings = n; }); ok = rt.bonusDings === b.n; }
+  else if (b.kind === 'slowclock') ok = slowClockOk(r, rt, b);   // Act 3: a slower clock (wip/leftovers)
+  else if (b.kind === 'gaps') ok = slowScareOk(r, rt, b);   // Act 3: things in order, each well after the one before   // Act 3: one press, this many dings
   else if (b.kind === 'toyLit' || b.kind === 'toyOnInput'){
     const bx = r.box, toyOn = (() => { for (let x=bx.x0+1;x<bx.x1;x++) for (let y=bx.y0+1;y<bx.y1;y++){ const c = at(x,y); if (c && c.t === b.toy && c.lit) return true; } return false; })();
     const cond = b.kind === 'toyLit' ? r.out.every(([x,y]) => outLit(x,y)) : r.inputs.every(([x,y]) => { const c = at(x,y); return c && (c.on || c.timer > 0); });
@@ -11354,7 +11364,7 @@ function sbTick(){
 // every frame
 function sbFrame(dt){
   const s = Math.min(.05, dt/1000)*(SBX.slowT > 0 ? .3 : 1); SBX.t += s;   // (slowT: a Mega moment's slow-motion beat)
-  bangFrame(dt); tumbleFrame(dt);
+  bangFrame(dt); tumbleFrame(dt); toys3Frame(s);   // (Gerald floats about in the temple too)
   if (isFree()){
     mobFrame(s); grooveFrame(s); miniFrame(s); rideFrame(); donkeyFrame(s); mushFrame(s);
     SBX.bananas.forEach(b => { if (b.landed){ if (b.eat !== undefined){ b.eat -= s; if (b.eat <= 0) b.g.visible = false; } return; } b.t = Math.min(1, b.t + s*1.6); b.g.position.lerpVectors(b.from, b.to, b.t); b.g.position.y += Math.sin(b.t*Math.PI)*2; b.g.rotation.y += s*12; if (b.t >= 1) b.landed = true; });
@@ -11508,8 +11518,8 @@ function openInventory(){
 function megaHTML(ids){
   const sv = sbSave(), done = progress.sbEggs || {};
   const rows = []; ids.forEach(id => (TOY_EGGS[id] || []).forEach(e => { const k = megaKnown(e.gate, sv), ok2 = done[id + ':' + e.gate], cardK = EGG_CARD[e.gate] || e.gate;
-    const grey = !k ? (GATE_CARDS[cardK] ? `<svg viewBox="0 0 200 100" width="44" height="22" style="opacity:.3;filter:grayscale(1);flex:none">${gateSVG(cardK)}</svg>` : `<img src="${ICONS.repeater}" alt="" style="width:22px;height:22px;opacity:.3;filter:grayscale(1);image-rendering:pixelated;flex:none">`) : '';
-    rows.push(`<div class="megaRow" style="display:flex;gap:8px;align-items:center;margin:4px 0;font-size:15px"><img src="${ICONS[id]}" alt="" style="width:28px;height:28px;image-rendering:pixelated">${ok2 ? '<b style="color:#b38f00">&#9733;</b> ' : ''}<span>${k ? e.text + (ok2 ? ` <b>That was ${EGG_NAME[e.gate] || e.gate}!</b>` : '') : 'Mega mode: ???'}</span>${k ? gymBtnHTML(e.gate, id) : ''}${grey}</div>`); }));
+    const grey = !k ? (GATE_CARDS[cardK] || cardK === 'code' ? `<svg viewBox="0 0 200 100" width="44" height="22" style="opacity:.3;filter:grayscale(1);flex:none">${gateSVG(cardK)}</svg>` : `<img src="${ICONS.repeater}" alt="" style="width:22px;height:22px;opacity:.3;filter:grayscale(1);image-rendering:pixelated;flex:none">`) : '';
+    rows.push(`<div class="megaRow" style="display:flex;gap:8px;align-items:center;margin:4px 0;font-size:15px"><img src="${ICONS[id]}" alt="" style="width:28px;height:28px;image-rendering:pixelated">${ok2 ? '<b style="color:#b38f00">&#9733;</b> ' : ''}<span>${k ? e.text + (ok2 ? ` <b>That was ${EGG_NAME[e.gate] || e.gate}!</b>` : '') : 'Mega mode: ???'}</span>${k ? gymBtnHTML(e.gate, id) : ''}${ok2 ? replayBtnHTML(id, e) : ''}${grey}</div>`); }));
   progress.megaSeen = progress.megaSeen || {}; ids.forEach(id => { if (TOY_EGGS[id]) progress.megaSeen[id] = 1; }); saveProgress(); sbSparkle();   // he has opened the page: the hotbar sparkle can stop
   return rows.length ? '<p style="margin:12px 0 2px"><b>MEGA MODES</b> (build the right circuit and the toy goes HUGE):</p>' + rows.join('') : '';
 }
@@ -11518,7 +11528,8 @@ const EGG_CARD = {count:'clock', delay:null, reach:null};
 function megaKnown(g, sv){
   sv = sv === undefined ? sbSave() : sv; const gates = new Set(sv && sv.gates || []), st = sbSolved();
   if (g === 'delay' || g === 'reach') return st.launched || st.solved.has(BIG_BANG_ROOM);   // repeaters (room 22)
-  if (g === 'count') return gates.has('clock');   // counting pulses comes with clocks
+  if (g === 'count') return gates.has('count') || st.solved.has(312);
+  if (g === 'combo') return st.solved.has(211);   // combining gates: Act 2's bureaucracy rooms (Form 27B, the Grand Panel)   // counting: its own Gate Card (Act 3's Bell Ringer)
   return gates.has(g) || (st.launched && ['and', 'not', 'or'].includes(g));   // Act 1 teaches AND, NOT and OR; NOR, NAND, XOR, clocks and memory come later
 }
 // ---- unlocks: free build starts with the basics and wins more through the temple; each one is told when it's won ----
@@ -11529,12 +11540,13 @@ const SANDBOX_UNLOCKS = [
   {id:'ch2', room:19, items:['sheep', 'skunk', 'gunge', 'water', 'airhorn', 'bouncy', 'slimefountain'], how:'Finish the torch rooms (the crypt)', say:'the Redstone Sheep, the Skunk, the Bouncy Castle and the Slime Fountain'},
   {id:'ch3', room:25, items:['beacon', 'madcow', 'firework', 'gong', 'goldfish', 'granny', 'sheepstrike', 'ninjarope'], how:'Finish the power rooms (the sky rooms)', say:'the Homing Beacon (something VERY big comes down...), the Mad Cows, the MEGA ROBOT, Granny, the Sheep Strike and the Ninja Rope'},
   {id:'top', launched:true, items:['spacetoilet', 'goat', 'holybanana'], how:'Get to the very top of the temple', say:'the SPACE TOILET (you can ride it!), the GOAT and the Holy Hand Banana'},
-  {id:'ape', apeDone:true, items:['teleporter'], how:'Step into the apes\' teleporter (the end of Act 2)', say:'the Teleporter Pads (you met them on the Ape Planet!)'}   // won where it's met: the Act 2 cliffhanger
+  {id:'ape', apeDone:true, items:['teleporter'], how:'Step into the apes\' teleporter (the end of Act 2)', say:'the Teleporter Pads (you met them on the Ape Planet!)'},   // won where it's met: the Act 2 cliffhanger
+  {id:'maya', mayaDone:true, items:['rubberball'], how:'Win the ball game with the Maya and watch the sunset', say:'the RUBBER BALL (from the Maya\'s ball court!)'}   // met in the pok-ta-pok match, won at the Maya's end
 ];
 const BIG_BANG_ROOM = 22;   // the slowpoke: repeaters as a delay. That's the skill the REALLY big bang needs
 function sbSave(){ try { return advLoad() || null; } catch (e) { return null; } }
-function sbSolved(){ const sv = sbSave(); return {solved:new Set(sv && sv.solved || []), launched:!!(sv && sv.launched) || !!progress.act1, apeDone:!!(sv && sv.apeDone)}; }
-function unlockHave(u, st){ st = st || sbSolved(); if (u.apeDone) return !!st.apeDone; return st.launched || (u.launched ? false : st.solved.has(u.room)); }
+function sbSolved(){ const sv = sbSave(); return {solved:new Set(sv && sv.solved || []), launched:!!(sv && sv.launched) || !!progress.act1, apeDone:!!(sv && sv.apeDone), mayaDone:!!(sv && sv.maya && sv.maya.done)}; }
+function unlockHave(u, st){ st = st || sbSolved(); if (u.apeDone) return !!st.apeDone; if (u.mayaDone) return !!st.mayaDone; return st.launched || (u.launched ? false : st.solved.has(u.room)); }
 function sandboxKit(){ const st = sbSolved(), k = new Set(SANDBOX_BASE); SANDBOX_UNLOCKS.forEach(u => { if (unlockHave(u, st)) u.items.forEach(i => k.add(i)); }); const sv = sbSave(); if (sv && Array.isArray(sv.unlocked)) sv.unlocked.forEach(i => { if (TOY_SET.has(i)) k.add(i); }); return k; }   // toys won as room bonuses (the MEGA ROBOT) come too
 function sbOpen(){ const st = sbSolved(); return st.launched || st.solved.has(8); }   // free build opens once the first Boom Blocks are won
 // how many temple rooms are still to do before this one (in the order you meet them)
@@ -11745,7 +11757,7 @@ function donkeyFrame(s){
     if (D.g.position.y <= 0){
       D.broke = true; D.g.position.y = 0; if (D.beam){ fxRoot.remove(D.beam); D.beam = null; }
       const c = D.c; if (at(c.x, c.y) === c) setCell(c.x, c.y, null);
-      blast([{x:c.x, y:c.y, z:0}], Math.min(24, 7*D.power), {n:40*D.power, mult:2*D.power, destroy:true});   // the MEGA donkey's shockwave reaches everything
+      blast([{x:c.x, y:c.y, z:0}], Math.min(24, 7*D.power), {n:40*D.power, mult:2*D.power, destroy:!c.replay});   // the MEGA donkey's shockwave reaches everything
       sfx.thump(64); if (!reduceMotion) shake = 2.2; sbAchieve('donkey');
       D.g.updateMatrixWorld(true);
       D.chunks = D.parts.map(b => { const w = b.getWorldPosition(new THREE.Vector3()); D.g.remove(b); fxRoot.add(b); b.position.copy(w); const a = Math.random()*6.28, sp = 2 + Math.random()*6; return {b, v:new THREE.Vector3(Math.cos(a)*sp, 4 + Math.random()*8, Math.sin(a)*sp), r:new THREE.Vector3(Math.random()*3, Math.random()*3, Math.random()*3)}; });
@@ -11760,7 +11772,7 @@ function donkeyFrame(s){
 function sbToy(c){
   if (!isFree() && (['monkeys', 'beacon', 'bananabomb', 'madcow', 'skunk', 'groovitron'].includes(c.t) || TOYS2.includes(c.t))) return true;   // sandbox toys only work in the sandbox
   const egg = eggCheck(c); c.power = egg ? egg.power : 0;   // wired to its Mega mode? It goes MEGA
-  if (sbToy2(c) || toyMega(c)) return true;
+  if (toyMega3(c) || sbToy2(c) || toyMega(c)) return true;
   if (c.t === 'monkeys'){ releaseMonkeys(c, toyPower(c)); return true; }
   if (c.t === 'beacon'){ beaconGo(c, toyPower(c)); return true; }
   if (c.t === 'spacetoilet' && isFree()){ const p = cellPos(c.x, c.y); if (!P.ride && Math.hypot(P.x - p.x, P.z - p.z) < .7 && P.y < 1.6) P.ride = {c, launched:false}; }
@@ -11969,6 +11981,7 @@ function eggGate(c, litFn, asLamp, firing){   // firing: the toy is going off ri
       gate = all ? 'and' : any ? 'or' : none ? 'nor' : notAll ? 'nand' : odd ? 'xor' : null; }
     // a delay: from everything off to the switches that fire it, how long until the toy gets power?
     if (gate === 'wire' || gate === 'and' || gate === 'or'){ const r = tab.findIndex(Boolean); if (r >= 0){ sw.forEach(s => eggSet(s, false)); run(30); used.forEach((i, j) => eggSet(sw[i], !!((r >> (m - 1 - j)) & 1))); const seq = run(20), at = seq.indexOf(true); if (at >= 4 && gate === 'wire') gate = 'delay'; } }
+    if (!gate && m >= 3) return {gate:'combo', n:m, tab:tab.slice(), used:used.map(i => sw[i])};   // a COMBINED circuit (Mega mode 2 lines: COMBO says which)
     return gate ? {gate, n:m, used:used.map(i => sw[i])} : null;
   });
 }
@@ -11981,7 +11994,7 @@ function eggCheck(c, opt){
   const k = (opt && opt.key) || c.y*NX + c.x, now = SBX.t; if (SBX.eggT[k] && now - SBX.eggT[k].t < 1.5){ SBX.lastGate = SBX.eggT[k].g; return SBX.eggT[k].egg; }   // a clock fires it often: check once a beat
   let g = null; try { g = eggGate(c, opt && opt.lit, opt && opt.asLamp, true); } catch (e) { g = null; }
   if (g && (g.gate === 'wire' || g.gate === 'delay') && eggs.some(e => e.gate === 'reach')){ const R = eggReach(c); if (R.len >= 15 && R.rep) g = {gate:'reach', n:g.n, len:R.len}; }   // the bouncy castle: a LONG wire, kept alive by a repeater
-  const egg = g && eggs.find(e => e.gate === g.gate && (!e.n || e.n === g.pulses)) || null;
+  const egg = g && eggs.find(e => e.gate === g.gate && (!e.n || e.n === g.pulses) && (!e.combo || COMBO[e.combo](g))) || null;
   SBX.eggT[k] = {t:now, egg, g}; SBX.lastGate = g;
   TOYLOG.length && (TOYLOG[TOYLOG.length - 1].gate = g ? g.gate : null);
   if (egg) eggWon(id0, egg);
@@ -12635,6 +12648,7 @@ function toyMesh2(c, g, add){
     case 'whoopeemine': { add(cbox(.8, .1, .8), wm(0xe8508a), 0, .05, 0); add(cbox(.6, .04, .6), wm(c.lit ? 0xff8ab8 : 0xd8407a), 0, .11, 0); add(cbox(.04, .4, .04), wm(0xffd84a), .3, .3, .3); add(cbox(.18, .12, .02), wm(0xd8261a), .39, .42, .3); break; }
     case 'bouncy': { if (c.away){ add(cbox(.3, .2, .3), wm(0x666666), 0, .1, 0); break; } add(cbox(.8, .25, .8), wm(0xff5a8a), 0, .13, 0); [[-.32, -.32], [.32, -.32], [-.32, .32], [.32, .32]].forEach(([x, z], i) => add(cbox(.16, .4, .16), wm([0xffd84a, 0x4fa3ff, 0x6ad04a, 0xffd84a][i]), x, .3, z)); break; }
     case 'slimefountain': { add(cbox(.9, .3, .9), M.stone, 0, .15, 0); add(cbox(.7, .05, .7), M.slime, 0, .31, 0); add(cbox(.16, .4, .16), M.slime, 0, .45, 0); add(cbox(.24, .1, .24), M.slime, 0, .66, 0); break; }
+    default: toyMesh3(c, g, add); break;
     case 'teleporter': { add(cbox(.9, .1, .9), wm(0x3a2a5a), 0, .05, 0); add(cbox(.7, .04, .7), M.tele || (M.tele = new THREE.MeshBasicMaterial({color:0xb05cff})), 0, .12, 0); add(cbox(.4, .05, .4), wm(0xe8c8ff), 0, .15, 0); break; }
   }
 }
@@ -12739,6 +12753,7 @@ function toys2Frame(s){
 // leaving (or coming into) the sandbox: put all of it away (from sbClear)
 function toyClear(){
   if (!TPOOL) return;   // (called before this part of the game has loaded)
+  toys3Clear();
   [...hotbar.children, HB.bag].forEach(b => { if (b) b.classList.remove('sbSpark'); });   // (back in the temple: no sparkles; free build puts them back within a second)
   Object.values(TPOOL).forEach(q => { q.list = []; q.m.count = 0; if (q.m.parent) fxRoot.remove(q.m); });
   ['robot', 'orbit', 'megaSheep', 'holyMega'].forEach(k => { const o = SBX[k]; if (!o) return; [o.g, o.beam].forEach(g => { if (g && g.parent) g.parent.remove(g); }); if (o.c) o.c.away = false; if (o.sky){ scene.background.copy(o.sky); scene.fog.color.copy(o.sky); if (o.far) scene.fog.far = o.far; } SBX[k] = null; });
@@ -12794,6 +12809,316 @@ const MEGA_FOR_CARD = {and:'wire an AND gate into the Homing Beacon and see what
   nor:'wire a NOR gate into the Ninja Rope...', nand:'wire a NAND gate into the Goat Pen...', xor:'wire an XOR gate into a Teleporter Pad...', clock:'wire a Clock into the Sheep Strike...', memory:'wire a Memory latch into the MEGA ROBOT...'};
 const gateCardPlain = gateCardHTML;
 gateCardHTML = function(k, quiz){ return gateCardPlain(k, quiz) + (MEGA_FOR_CARD[k] ? `<p class="megaLine" style="clear:both;margin:6px 0 0;font-size:14px"><b>Mega mode unlocked!</b> In Free Build, ${MEGA_FOR_CARD[k]}</p>` : ''); };
+
+/* ================= TOYS, part 3 (wip/leftovers): the Maya's RUBBER BALL, Gerald's COFFIN (Act 3) =================
+   Tom's rules (docs/toys.md): met in the game first, then won; every toy has a Mega mode that is its OWN thing turned up, set
+   off only by a real circuit (eggGate). The Rubber Ball is the pok-ta-pok ball from the Maya's court (won at the Maya's end):
+   COUNTING to FIVE (five dots make a BAR) = the MEGA BALL. Gerald is the ghost train's shy ghost (met at ride 314, won as ride
+   316's bonus): MEMORY (the lid stays open) = the GREAT HAUNTING. */
+['rubberball', 'coffin'].forEach(t => { TOY_SET.add(t); PLUG_INTO.add(t); SOLID.add(t); });
+Object.assign(TOY_EGGS, {
+  rubberball:[{gate:'count', n:5, text:'Mega mode: build a counting circuit to power the rubber ball exactly FIVE times (five dots make a BAR!), and it becomes the MEGA BALL that bounces over the whole sandbox.', power:4, ach:'pokpow'}],
+  coffin:[{gate:'memory', text:'Mega mode: build a MEMORY circuit so the coffin lid stays open after you let go. Then ALL the ghosts come out...', power:4, ach:'haunting'}]
+});
+Object.assign(SB_ACH, {
+  pokpow:{name:'Pok-ta-POW', how:'Five bomps make a BAR: the MEGA BALL bounced right over the sandbox!'},
+  haunting:{name:'The Great Haunting', how:'The coffin stayed open: a GIANT Gerald said BOOOOO to the whole sandbox. Then he went pink.'}
+});
+Object.assign(WONDER, {
+  rubberball:'Five dots make a bar... What if a circuit powered that rubber ball exactly FIVE times?',
+  coffin:'What if Gerald\'s coffin REMEMBERED to stay open? He might bring his friends...'
+});
+SBX.rballs = []; SBX.ghosts = [];
+// the toys as blocks (from toyMesh2): a stone tee with the ball on it (like the court's ring), and Gerald's coffin (its lid opens)
+const G3 = {};
+function toyMesh3(c, g, add){
+  if (c.t === 'rubberball'){
+    add(cbox(.8, .3, .8), M.stone, 0, .15, 0); add(cbox(.56, .12, .56), wm(0xb83a2a), 0, .36, 0);   // a stone tee, painted court-red
+    if (!c.away){ G3.ball = G3.ball || new THREE.IcosahedronGeometry(.3, 1); add(G3.ball, rballMat(), 0, .72, 0); }
+  } else if (c.t === 'coffin'){
+    const wood = wm(0x5a3218), dark = wm(0x3a2010);
+    add(cbox(.62, .34, .92), wood, 0, .17, 0); add(cbox(.5, .04, .8), dark, 0, .35, 0);
+    const lid = add(cbox(.66, .07, .96), wm(0x6e4024), 0, .38, 0); add(cbox(.3, .03, .06), wm(0xd8c8a0), 0, .43, .3);   // a pale wooden handle on the lid
+    if (c.away){ lid.position.set(-.38, .55, 0); lid.rotation.z = 1.2; }   // the lid open: Gerald is out
+  }
+}
+const rballMat = () => M.rball || (M.rball = wm(0x2a2420));
+function rballMesh(){ G3.ballBig = G3.ballBig || new THREE.IcosahedronGeometry(1, 2); const m = new THREE.Mesh(G3.ballBig, rballMat()); m.raycast = () => {}; return m; }
+function bomp(v){ tone(95, .28, 'sine', .09*v, 0, 55); tone(190, .12, 'triangle', .05*v, 0, 120); }
+// open ground for the ball: walls stop it everywhere; blocks only while it is low enough to hit them
+function rballOpen(x, y, low){ if (!inb(x, y) || S.walls[y*NX + x]) return false; if (!low) return true; const q = at(x, y); return !(q && SOLID.has(q.t)) && !upTop(x, y); }
+
+// ---- the RUBBER BALL: power it and a big rubber ball bounces off the way you faced, BOMP, BOMP, and anything it lands near goes BOING.
+// MEGA (COUNTING, exactly five pulses: five dots make a BAR): the MEGA BALL, as big as a house, bounces right across the sandbox five times
+function rballGo(c, power){
+  if (c.away) return;
+  c.away = true; syncVisuals();
+  if (power >= 4) return rballMega(c, power);
+  const p = toyPos(c), d = DIRS[c.dir || 0], g = rballMesh(), r = .55; g.scale.setScalar(r); g.position.set(p.x, 1 + r, p.z); fxRoot.add(g);
+  SBX.rballs.push({g, c, r, p:g.position, v:new THREE.Vector3(d[0]*4.2, 7.5, d[1]*4.2), t:0, n:0, still:0}); bomp(.8);
+}
+function rballMega(c, power){
+  const p = toyPos(c), d = DIRS[c.dir || 0], g = rballMesh(); g.scale.setScalar(.6); g.position.set(p.x, 1.6, p.z); fxRoot.add(g);
+  SBX.rballs.push({g, c, r:4.5, grow:0, mega:true, p:g.position, v:new THREE.Vector3(d[0]*5, 21, d[1]*5), t:0, n:0, still:0});
+  megaJuice(power, null); bomp(1.5); showToast('Five dots make a BAR... it\'s the MEGA BALL!'); sbAchieveQuiet('pokpow');
+}
+const RB_COUNT = ['ONE!', 'TWO!', 'THREE!', 'FOUR!', 'FIVE! That\'s a BAR!'];
+function rballFrame(s){
+  for (const B of [...SBX.rballs]){
+    B.t += s; const grav = B.mega ? 20 : 14; B.v.y -= grav*s;
+    if (B.mega && B.grow < 1){ B.grow = Math.min(1, B.grow + s/.8); B.g.scale.setScalar(.6 + (B.r - .6)*B.grow); }
+    const r = B.mega ? B.r*Math.max(.15, B.grow) : B.r, low = B.p.y - r < 1.05, half = NX/2 - 1.5;
+    // sideways: it bounces off walls (and off blocks, while it's low); the MEGA BALL only off the edge of the yard
+    for (const ax of ['x', 'z']){
+      const v = B.v[ax]; if (!v) continue; const np = B.p[ax] + v*s;
+      if (B.mega){ if (Math.abs(np) > half - r*.4){ B.v[ax] = -v; } else B.p[ax] = np; continue; }
+      const lead = np + Math.sign(v)*r*.8, [cx, cy] = ax === 'x' ? cellAtWorld(lead, B.p.z) : cellAtWorld(B.p.x, lead);
+      if (!rballOpen(cx, cy, low)){ B.v[ax] = -v*.75; if (Math.abs(v) > 1.5) bomp(.4); } else B.p[ax] = np;
+    }
+    B.p.y += B.v.y*s; B.g.rotation.x += B.v.z*s/r; B.g.rotation.z -= B.v.x*s/r;
+    const [gx, gy] = cellAtWorld(B.p.x, B.p.z), q = inb(gx, gy) && at(gx, gy), ground = !B.mega && q && SOLID.has(q.t) && q !== B.c ? 1 : 0;
+    if (B.p.y - r <= ground && B.v.y < 0){
+      B.p.y = ground + r;
+      if (B.mega){ rballLand(B, r); continue; }
+      if (-B.v.y > 2.4){ B.v.y = -B.v.y*.74; B.n++; rballBoing(B, r); } else { B.v.y = 0; B.v.x *= Math.exp(-2.5*s); B.v.z *= Math.exp(-2.5*s); }
+    }
+    B.sq = Math.max(0, (B.sq || 0) - s*4); if (!B.mega){ B.g.scale.set(r*(1 + B.sq*.5), r*(1 - B.sq), r*(1 + B.sq*.5)); }
+    const slow = Math.hypot(B.v.x, B.v.z) < .4 && B.v.y === 0; B.still = slow ? B.still + s : 0;
+    if (B.still > .8 || B.t > (B.mega ? 16 : 9)) rballHome(B);
+  }
+}
+// a normal bounce: BOMP, and anything near goes BOING (hops up, or gets a gentle fling); you bounce too
+function rballBoing(B, r){
+  B.sq = .3; bomp(Math.min(1, .3 + B.n*.15)); const at0 = B.p;
+  for (const m of creatures()){ if (m.userData.fly) continue; const d = Math.hypot(m.position.x - at0.x, m.position.z - at0.z); if (d < r + .9) flingCreature(m, at0, 3); else if (d < 3) m.userData.hop = 2; }
+  if (inFP() && !S.dead && !P.ride && Math.hypot(P.x - at0.x, P.z - at0.z) < r + .7 && P.y < at0.y + .5){ P.vy = 10; P.ground = false; P.airT = 0; sfx.boing(); showToast('BOING!'); }
+}
+// the MEGA BALL lands: a shock wave across the sandbox, the count goes up, and it bounces off to somewhere else in the yard
+function rballLand(B, r){
+  B.n++; if (B.n > 5){ rballHome(B); return; }
+  B.v.y = B.n < 5 ? 21 : 9; sfx.boing(); bomp(2); sfx.thump(48); if (!reduceMotion) shake = 2;
+  shockwave(new THREE.Vector3(B.p.x, 0, B.p.z), 14, 8); bangFx([new THREE.Vector3(B.p.x, .3, B.p.z)], 4, 6, false);
+  showToast(RB_COUNT[Math.min(4, B.n - 1)]);
+  const half = NX/2 - 2 - r*.4, tx = -Math.sign(B.p.x || 1)*(half*.3 + Math.random()*half*.6), tz = (Math.random()*2 - 1)*half*.8, T = 2*B.v.y/20;
+  B.v.x = (tx - B.p.x)/T; B.v.z = (tz - B.p.z)/T;
+  if (B.n === 5){ B.v.x *= .2; B.v.z *= .2; for (let i = 0; i < 40; i++) ipAdd(TPOOL.gold, {p:new THREE.Vector3(B.p.x + (Math.random() - .5)*8, 2 + Math.random()*6, B.p.z + (Math.random() - .5)*8), v:new THREE.Vector3((Math.random() - .5)*3, 2, (Math.random() - .5)*3), stay:0}); }   // FIVE: a shower of gold, one last little hop, and home
+}
+// back on its tee (a little pop), ready to go again
+function rballHome(B){
+  if (B.g.parent) B.g.parent.remove(B.g); SBX.rballs = SBX.rballs.filter(q => q !== B);
+  burst(B.p.clone(), 0x2a2420, B.mega ? 16 : 6); if (at(B.c.x, B.c.y) === B.c){ B.c.away = false; syncVisuals(); sfx.pop && sfx.pop(); }
+}
+
+// ---- GERALD'S COFFIN: power it and the lid creaks open; Gerald the shy ghost floats out, says BOO to whoever is nearest (they jump),
+// then floats back in. Works in the temple too (he says BOO to Barold). MEGA (MEMORY: the lid stays open): THE GREAT HAUNTING:
+// all of Gerald's friends swirl out and become ONE GIANT GERALD, who says BOOOOO to the whole sandbox, then goes pink and pops
+function coffinGo(c, power){
+  if (c.away) return;
+  c.away = true; syncVisuals(); noise(.7, .05, 500, 'bandpass'); tone(160, .6, 'sawtooth', .03, 0, 120);   // creeeak
+  if (isFree() && power >= 4) return hauntGo(c, power);
+  const p = toyPos(c), gh = makeGhost(.5); gh.position.set(p.x, p.y + .3, p.z); fxRoot.add(gh);
+  SBX.ghosts.push({g:gh, c, t:0, home:p.clone(), booed:new Set(), life:7});
+}
+function raspberry(big){ noise(big ? 1.6 : .45, big ? .09 : .06, big ? 160 : 320, 'lowpass'); tone(big ? 70 : 140, big ? 1.6 : .45, 'sawtooth', big ? .07 : .04, 0, big ? 50 : 90); }
+function ghostFrame(s){
+  for (const G of [...SBX.ghosts]){
+    G.t += s; const g = G.g, back = G.t > G.life;
+    let tx = G.home.x, tz = G.home.z;
+    if (!back){ let best = null, bd = 9; for (const m of creatures()){ if (G.booed.has(m) || m.userData.fly) continue; const d = Math.hypot(m.position.x - g.position.x, m.position.z - g.position.z); if (d < bd){ bd = d; best = m; } }
+      if (best){ tx = best.position.x; tz = best.position.z; if (bd < 1.1) ghostBoo(G, best); }
+      else if (inFP() && !G.booedYou){ tx = P.x; tz = P.z; if (Math.hypot(P.x - g.position.x, P.z - g.position.z) < 1.3){ G.booedYou = true; raspberry(false); showToast('BOO! ...sorry. Gerald is very shy.'); } } }
+    const dx = tx - g.position.x, dz = tz - g.position.z, d = Math.hypot(dx, dz), sp = Math.min(d, 2.2*s);
+    if (d > .05){ g.position.x += dx/d*sp; g.position.z += dz/d*sp; g.rotation.y = Math.atan2(dx, dz); }
+    const y0 = G.home.y, up = (G.up = back ? Math.max(.1, (G.up || .3) - s*.8) : Math.min(1, (G.up || .3) + s)); g.position.y = y0 + up + (back ? 0 : Math.sin(G.t*3)*.08);
+    if (back && d < .3 && up <= .15){ fxRoot.remove(g); SBX.ghosts = SBX.ghosts.filter(q => q !== G); if (at(G.c.x, G.c.y) === G.c){ G.c.away = false; syncVisuals(); } tone(300, .2, 'sine', .03, 0, 200); }
+    if (G.t > G.life + 6){ fxRoot.remove(g); SBX.ghosts = SBX.ghosts.filter(q => q !== G); G.c.away = false; syncVisuals(); }   // (a block in the way home: he just fades)
+  }
+  hauntFrame(s);
+}
+function ghostBoo(G, m){
+  G.booed.add(m); raspberry(false); m.userData.hop = 3;
+  if (A.on && m === A.monkey) monkeySay(bag('geraldBoo', ['AAAH! A GHOST! ...Oh. Hello, Gerald.', 'BOO to you too, Gerald!', 'I am NOT scared. My bones are just... rattling. On purpose.']), 3500);
+  else { const q = SBX.mobs.find(k => k.g === m); if (q) sayMob(q, bag('ghostEek', ['EEK!', 'Eep!', 'Whoa!', 'Not again!'])); else if (Math.random() < .5) sayOn(m, 'EEK!', 1500); }
+}
+function hauntGo(c, power){
+  const p = toyPos(c), ring = [];
+  for (let i = 0; i < 12; i++){ const gh = makeGhost(.45); gh.position.set(p.x, .2, p.z); gh.visible = false; fxRoot.add(gh); ring.push(gh); }
+  SBX.haunt = {c, t:0, ring, at:p.clone(), sky:scene.background.clone(), big:null, popped:false};
+  megaJuice(power, null); showToast('The lid stays open... here come ALL of Gerald\'s friends!'); sbAchieveQuiet('haunting');
+}
+const HAUNT_SKY = new THREE.Color(0x2a1a4a);
+function hauntFrame(s){
+  const H = SBX.haunt; if (!H) return; H.t += s; const t = H.t;
+  const dark = Math.min(1, t/2)*(t < 9 ? 1 : Math.max(0, 1 - (t - 9))); scene.background.copy(H.sky).lerp(HAUNT_SKY, dark*.8); if (scene.fog) scene.fog.color.copy(scene.background);
+  if (t < 4){   // out they come, one after another, swirling round and up
+    H.ring.forEach((gh, i) => { const u = t - i*.22; if (u < 0) return; gh.visible = true; const a = u*2.4 + i*.52, R = 1.5 + u*1.6; gh.position.set(H.at.x*(1 - u/4) + Math.cos(a)*R, .3 + u*1.6, H.at.z*(1 - u/4) + Math.sin(a)*R); gh.rotation.y = -a; });
+    if (Math.random() < s*4) raspberry(false);
+  } else if (!H.big){   // they all squeeze together into ONE GIANT GERALD
+    H.ring.forEach(gh => fxRoot.remove(gh)); H.big = makeGhost(1); H.big.position.set(0, 5, 0); H.big.scale.setScalar(.5); fxRoot.add(H.big); burst(new THREE.Vector3(0, 7, 0), 0xf2f2ff, 30);
+  } else if (t < 6){ H.big.scale.setScalar(.5 + (t - 4)/2*6.5); H.big.rotation.y = Math.atan2(P.x, P.z) + Math.sin(t*2)*.2; H.big.position.y = 2 + Math.sin(t*3)*.3; }   // he turns to face you
+  else if (!H.booed){ H.booed = true; raspberry(true); showToast('BOOOOOOOOOOOO!'); SBX.slowT = 1; if (!reduceMotion) shake = 2.2; shockwave(new THREE.Vector3(0, 0, 0), 40, 9); for (const m of creatures()) m.userData.hop = 4; }
+  else if (t < 9){ H.big.position.y = 2 + Math.sin(t*3)*.3; if (t > 7.5 && !H.pink){ H.pink = true; H.big.userData.mat.color.setHex(0xffa8c8); showToast('Gerald has gone pink. "Sorry. Was that too much?"'); } }
+  else if (!H.popped){ H.popped = true; const at0 = H.big.position.clone(); fxRoot.remove(H.big); sfx.pop && sfx.pop(); burst(at0.setY(6), 0xffc8e0, 40);
+    for (let i = 0; i < 30; i++) ipAdd(TPOOL.ghost, {p:new THREE.Vector3((Math.random() - .5)*6, 4 + Math.random()*4, (Math.random() - .5)*6), v:new THREE.Vector3((Math.random() - .5)*4, 1.5 + Math.random()*2, (Math.random() - .5)*4), stay:0, ry:Math.random()*6}); }
+  if (t > 10.5){ scene.background.copy(H.sky); if (scene.fog) scene.fog.color.copy(H.sky); if (H.big && H.big.userData.mat) H.big.userData.mat.color.setHex(0xf2f2ff); if (at(H.c.x, H.c.y) === H.c){ H.c.away = false; syncVisuals(); } SBX.haunt = null; }
+}
+TOY_CAP.ghost = 40; TPOOL.ghost = ipool(cbox(.32, .4, .28), new THREE.MeshLambertMaterial({color:0xf2f2ff, transparent:true, opacity:.85, emissive:0x404060}), TOY_CAP.ghost);
+// redstone sets them off (from sbToy, before the other toys): the ball is a sandbox toy; Gerald works everywhere
+function toyMega3(c){
+  if (c.t === 'rubberball'){ if (isFree()) rballGo(c, toyPower(c)); return true; }
+  if (c.t === 'coffin'){ coffinGo(c, toyPower(c)); return true; }
+  if (c.t === 'madcow' && isFree() && toyPower(c) >= 8){ cowsMega2(c, 8); return true; }   // Mega mode 2 (combined gates)
+  return false;
+}
+function toys3Frame(s){ rballFrame(s); ghostFrame(s); replayFrame(); ipFrame(TPOOL.ghost, s, o => { o.p.addScaledVector(o.v, s); o.ry += s*2; o.sc = Math.max(.05, 1 - o.t/3); return o.t < 3; }); }
+function toys3Clear(){
+  [...(SBX.rballs || []), ...(SBX.ghosts || [])].forEach(o => { if (o.g && o.g.parent) o.g.parent.remove(o.g); if (o.c) o.c.away = false; });
+  const H = SBX.haunt; if (H){ [...H.ring, H.big].forEach(g => { if (g && g.parent) g.parent.remove(g); }); scene.background.copy(H.sky); if (scene.fog) scene.fog.color.copy(H.sky); if (H.c) H.c.away = false; }
+  if (SBX.replay){ delete SBX.power[SBX.replay.id]; SBX.replay = null; }
+  SBX.rballs = []; SBX.ghosts = []; SBX.haunt = null; SBX.megaLog = [];
+}
+
+/* ---- Act 3 (wip/leftovers): the COUNTING Gate Card (won at ride 312, the Bell Ringer), its quiz and its Practise-it gym; the pier's
+   room bonuses (307 a slow lighthouse, 312 three dings, 316 a slow scare = Gerald's Coffin, met at 314 in the ghost train) ---- */
+GATE_CARDS.count = {name:'Counting', rule:'ONE press. The power splits into wires that wait for DIFFERENT times, so each one gets there on its own: ding... ding... DING!', ins:0,
+  table:[['ONE press, 1 wire', 'ding'], ['ONE press, 2 wires that wait differently', 'ding... DING'], ['ONE press, 3 wires that wait differently', 'ding... ding... DING']],
+  home:'A cuckoo clock at 3 o\'clock: CUCKOO, CUCKOO, CUCKOO. A microwave that beeps three times when it\'s done. A doorbell: ding... DONG.', spot:'Next time the microwave finishes, count the beeps. Something inside it is counting them out!'};
+GATE_QUIZ.count = {q:'Which of these is COUNTING?', opts:[
+  {t:'A cuckoo clock at 3 o\'clock: CUCKOO, CUCKOO, CUCKOO. Then it stops.', ok:1, why:'It does it exactly THREE times, then it stops. That\'s counting!'},
+  {t:'Christmas lights that blink on and off, on and off, forever.', why:'They never stop! That\'s a clock. Counting stops after the right number.'},   // clock
+  {t:'The bus bell: one press, and STOPPING stays lit.', why:'That stays ON. It remembers! That\'s memory, not counting.'}]};   // memory
+MEGA_FOR_CARD.count = 'wire a counting circuit that powers the Holy Hand Banana exactly THREE times...';
+EGG_CARD.count = 'count';
+{ const svg0 = gateSVG; gateSVG = function(g){ if (g !== 'count') return svg0(g);   // a button, three wires that wait differently, one lamp
+  const S0 = 'stroke="#2b2b2b" stroke-width="4" fill="none"', rep = (x, y) => `<rect x="${x}" y="${y - 7}" width="14" height="14" fill="#9a9a9a" stroke="#2b2b2b" stroke-width="2"/><rect x="${x + 5}" y="${y - 3}" width="4" height="6" fill="#d8261a"/>`;
+  return `<rect x="8" y="42" width="18" height="16" fill="#8a8a8a" stroke="#2b2b2b" stroke-width="3"/><line x1="26" y1="50" x2="150" y2="50" ${S0}/><path d="M40 50 V22 H150 V40" ${S0}/><path d="M40 50 V78 H150 V60" ${S0}/>${rep(60, 22)}${rep(60, 78)}${rep(82, 78)}${rep(104, 78)}<rect x="150" y="38" width="22" height="24" fill="#ffd56a" stroke="#2b2b2b" stroke-width="3"/><text x="100" y="97" text-anchor="middle" font-family="Pixelify Sans, Trebuchet MS, sans-serif" font-size="13" fill="#7a120a">1 press: ding, ding, DING</text>`; }; }
+// the counting gym (lab coordinates): a button, three wires into the lamp (straight; 3 Repeaters = 12 steps; 6 Repeaters = 24 steps)
+function gymCountBase(){
+  const P2 = [GD(3, 6), ...[4, 5, 6, 7, 8, 9, 10].map(x => GD(x, 6)), GD(3, 5), GD(3, 4), GD(3, 3), GR(4, 3, 4), GR(5, 3, 4), GR(6, 3, 4), ...[7, 8, 9, 10, 11].map(x => GD(x, 3)), GD(11, 4), GD(11, 5),
+    GD(3, 7), GD(3, 8), GD(3, 9), GR(4, 9, 4), GR(5, 9, 4), GR(6, 9, 4), GD(10, 9), GD(11, 9), GD(11, 8), GD(11, 7)];
+  return {kind:'gymcount', inputs:[], lamp:[11, 6], fn:() => true, tools:['dust', 'repeater'], pre:P2,
+    ghosts:[{t:'button', x:2, y:6, locked:true}, GR(7, 9, 4), GR(8, 9, 4), GR(9, 9, 4)],
+    playIntro:'PLAY TIME! This counting machine is already built. Press the button ONCE and count the dings!', playHint:'Press the button once. Count the dings. Then follow each wire to the lamp.',
+    buildIntro:'Your turn! The bottom wire is missing some Repeaters. Put them back so ONE press rings THREE times.', hint:'Put Repeaters on the gap in the bottom wire, pointing at the lamp. Tap each one to make it wait as long as it can.',
+    card:() => `<h3>ONE press, THREE dings</h3><div class="note">Press the button once and count.${GYM.cnt && GYM.cnt.last !== undefined ? `<br>Last try: <b>${GYM.cnt.last}</b> ding${GYM.cnt.last === 1 ? '' : 's'} (needs 3).` : ''}</div>`};
+}
+// one press: count the dings on a copy of the machine (the redstone keeps going as normal), like the Mega checker
+function gymCountDings(btn, lamp){ return eggSim(() => { btn.timer = 0; for (let i = 0; i < 40; i++) step(); btn.timer = BUTTON_TICKS; let n = 0, was = lamp.lit; for (let i = 0; i < 90; i++){ step(); if (lamp.lit && !was) n++; was = lamp.lit; } return n; }); }
+function gymCountFrame(){
+  if (L.done) return; const btn = S.grid.find(c => c && c.t === 'button'), lamp = L.lampCell, C = GYM.cnt = GYM.cnt || {}; if (!btn || !lamp) return;
+  if (!(btn.timer > 0)){ C.down = false; return; }
+  if (C.down) return; C.down = true;
+  C.last = gymCountDings(btn, lamp); renderCard();
+  if (C.last === 3){ sfx.row(); complete(); }
+  else showToast(C.last < 3 ? `${C.last} ding${C.last === 1 ? '' : 's'}! The bottom wire has to reach the lamp too, a LONG time after the others.` : 'Too many dings! Count again.');
+}
+// ---- the pier's room bonuses: a slower lighthouse (more waiting in the clock's loop), and a slower, scarier scare
+TOY_MET.coffin = 314;   // Gerald, the ghost train's shy ghost (ride 314's doors); his coffin opens in the scare (316)
+function slowClockOk(r, rt, b){   // the lamp keeps flashing by itself, and each flash lasts at least b.n steps (3 in a row)
+  const lit = outLit(...r.out[0]);
+  if (lit && !rt.slowPrev) rt.slowUp = S.tick;
+  if (!lit && rt.slowPrev && rt.slowUp != null){ const len = S.tick - rt.slowUp; rt.slowRun = len >= b.n ? (rt.slowRun || 0) + 1 : 0; }
+  rt.slowPrev = lit; return (rt.slowRun || 0) >= 3;
+}
+function slowScareOk(r, rt, b){   // one press: every output in order, each at least b.n steps after the one before
+  const inp = r.inputs.some(([x, y]) => pressedAt(x, y)), lits = r.out.map(([x, y]) => outLit(x, y)); let ok = false;
+  if (inp && !rt.gPrevIn && (rt.gPrevLits || []).every(v => !v)){ rt.gT0 = S.tick; rt.gTs = r.out.map(() => null); }   // (dark on the tick before the press)
+  rt.gPrevLits = lits;
+  if (rt.gT0 != null){ lits.forEach((v, q) => { if (v && rt.gTs[q] == null) rt.gTs[q] = S.tick; });
+    if (rt.gTs.every(t => t != null)){ ok = rt.gTs.every((t, q) => !q || t - rt.gTs[q - 1] >= b.n); rt.gT0 = null; }
+    else if (S.tick - rt.gT0 > 80) rt.gT0 = null; }
+  rt.gPrevIn = inp; return ok;
+}
+
+/* ---- toys leftovers (wip/leftovers): "Mega mode 2" lines that need COMBINED gates (after Act 2's bureaucracy rooms), checked by the
+   same truth-table simulation; the FINALE EGG (one circuit, five Mega toys in a row); and a REPLAY of a Mega from the item page ---- */
+// a combined circuit's truth table (eggGate: 3 or 4 switches that all matter, and not one plain gate): which combination is it?
+const comboBit = (g, r, j) => !!((r >> (g.n - 1 - j)) & 1);
+const COMBO = {
+  // a combination lock: of all 16 ways to set four levers, exactly ONE works, and it has two levers ON and two OFF
+  lock4:g => g.n === 4 && g.tab.filter(Boolean).length === 1 && [0, 1, 2, 3].filter(j => comboBit(g, g.tab.indexOf(true), j)).length === 2,
+  // (EITHER of two) AND NOT (the third): whichever switch is the "farmer's lever"
+  orAndNot:g => g.n === 3 && [0, 1, 2].some(k => g.tab.every((v, r) => v === ([0, 1, 2].filter(j => j !== k).some(j => comboBit(g, r, j)) && !comboBit(g, r, k))))
+};
+EGG_NAME.combo = 'a COMBINATION circuit'; EGG_CARD.combo = 'code';
+TOY_EGGS.beacon.push({gate:'combo', combo:'lock4', text:'Mega mode 2: build a 4-lever combination lock, so the donkey only comes when two levers are ON and the other two are OFF. (Only ONE way out of 16 works!)', power:8, legend:true, megaAch:'donkeylock'});   // (megaAch, not ach: the toy keeps its first Mega's achievement as well)
+TOY_EGGS.madcow.push({gate:'combo', combo:'orAndNot', text:'Mega mode 2: build a circuit so the cows stampede when EITHER barn lever is ON, but NOT while the farmer\'s lever is ON.', power:8, megaAch:'greatmoo'});
+Object.assign(SB_ACH, {
+  donkeylock:{name:'Donkey Safe Cracker', how:'One way out of sixteen... CLICK. A donkey so big it blotted out the sky!'},
+  greatmoo:{name:'The Great Moo', how:'Either barn, but NOT while the farmer is looking: THREE colossal cows!'}
+});
+// the cows' Mega mode 2: the stampede, then THREE colossal cows side by side, shaking the whole yard
+function cowsMega2(c, power){
+  madCows(c, 5); const d = DIRS[c.dir || 0];
+  later(2.2, () => { if (!isFree()) return; showToast('MOOOOOOO! Here come THREE colossal cows!'); sfx.thump(48); if (!reduceMotion) shake = 2;
+    [-3, 0, 3].forEach((side, i) => later(i*.25, () => { const x = c.x + d[0] - d[1]*side, y = c.y + d[1] + d[0]*side, sp = inb(x, y) ? [x, y] : [c.x, c.y];
+      const m = addMob('cow', makeCow(5), sp[0], sp[1]); m.dir = [d[0], d[1]]; m.speed = 3.2; m.life = 10; m.g.rotation.y = Math.atan2(d[0], d[1]); tone(70, 1.4, 'sawtooth', .07, 0, 50); })); });
+}
+// ---- the FINALE EGG (docs/toys.md): ONE planned circuit sets off FIVE different toys, one after another, each in its Mega form.
+// Checked on the real circuit: every one of the five has the SAME switch upstream of it, and they go off in a row (not all at once)
+SBX.megaLog = [];
+function eggSwitchesAll(c){   // like eggSwitches, without the four-switch limit: every switch wired to this toy
+  const seen = new Set([c.y*NX + c.x]), q = [c], sw = [];
+  while (q.length && seen.size < 900){ const n0 = q.shift();
+    for (let d = 0; d < 4; d++){ const n = nb(n0, d); if (!n || seen.has(n.y*NX + n.x) || !EGG_WIRE.has(n.t)) continue; seen.add(n.y*NX + n.x); if (n.t === 'lever' || n.t === 'button' || n.t === 'plate') sw.push(n.y*NX + n.x); else q.push(n); } }
+  return sw;
+}
+function finaleLog(id, c){
+  if (!isFree() || GYM.on || SBX.finaleT > SBX.t - 30) return;
+  const t = S.tick, L2 = SBX.megaLog; if (L2.some(e => e.id === id && t - e.t < 15)) return;   // (redstone steps, not seconds: slow-mo can't squash a row into one moment; a clock sets the same toy off again and again: once is enough)
+  L2.push({id, t, sw:new Set(eggSwitchesAll(c))}); while (L2.length && t - L2[0].t > 250) L2.shift();
+  const last = new Map(); L2.forEach(e => last.set(e.id, e)); const es = [...last.values()]; if (es.length < 5) return;
+  for (const k of es[es.length - 1].sw){ const sh = es.filter(e => e.sw.has(k)).sort((a, b) => a.t - b.t); if (sh.length < 5) continue;
+    const row = [sh[0]]; sh.slice(1).forEach(e => { if (e.t - row[row.length - 1].t >= 2) row.push(e); }); if (row.length >= 5){ finaleGo(row.map(e => e.id)); return; } }
+}
+function finaleGo(ids){
+  SBX.finaleT = SBX.t; SBX.megaLog = [];
+  const names = ids.slice(0, 5).map(id => (ITEMS.find(i => i.id === id) || {name:id}).name);
+  later(4, () => { if (!isFree()) return;
+    try { musicCue('fanfare'); } catch (e) {} if (!reduceMotion) shake = 1.5;
+    for (let i = 0; i < 10; i++) later(i*.35, () => { const x = 3 + Math.floor(Math.random()*(NX - 6)), y = 3 + Math.floor(Math.random()*(NY - 6)); sfx.firework(); launchFirework(cellPos(x, y)); });
+    [262, 330, 392, 523].forEach((f, i) => tone(f, 2.2, 'triangle', .05, i*.08, f)); confetti();
+    if (achAward('finale')) setTimeout(() => { sfx.chime(); showCard('THE GRAND FINALE!', `ONE switch set off FIVE Mega modes, one after another: ${names.join(', ')}!<br><b>ACHIEVEMENT: The Grand Finale</b>`); }, 2500);
+  });
+}
+// every Mega that goes off (from eggCheck): a combined one can be the hardest (Logic Legend); five in a row from one switch, the finale
+{ const eggCheck1 = eggCheck; eggCheck = function(c, opt){ const e = eggCheck1(c, opt); if (e && isFree() && !GYM.on){ if (e.megaAch) achAward(e.megaAch); if (e.legend) achAward('legend'); try { finaleLog((opt && opt.id) || c.t, c); } catch (er) {} } return e; }; }
+
+// ---- REPLAY (docs/toys.md: "after he's done it: a star, plus a small replay of the big moment"): from the item page's starred line,
+// the big moment goes off again in front of you. The toy (and a redstone block to power it) are put down LOCKED (a locked cell is
+// never saved with your build), set off at its Mega size by the toy's own code, and taken away again when the show is over.
+const REPLAY_SKIP = new Set(['banana', 'sheep']);   // (the night shift builds a real tower; the flock is the sheep's own: their own buttons below)
+const REPLAY_T = {goldfish:14, bouncy:12, slimefountain:6, sheepstrike:8, chickencannon:8, madcow:9, skunk:10, coffin:12, rubberball:16, holybanana:11, spacetoilet:16, beacon:9};
+const REPLAY_CLOCK = new Set(['sheepstrike', 'chickencannon', 'slimefountain', 'skunk']);
+const replayOK = id => !!(TOY_EGGS[id] && ITEMS.some(i => i.id === id) && !REPLAY_SKIP.has(id) || id === 'sheep');
+function megaReplay(id, gate){
+  if (!isFree() || SBX.replay) return false;
+  const eggs = TOY_EGGS[id] || [], egg = eggs.find(e => e.gate === gate) || eggs[0]; if (!egg) return false;
+  const [px, py] = cellAtWorld(P.x, P.z), dir = camDir(), d = DIRS[dir];
+  if (id === 'tnt' || id === 'fart'){ const p = cellPos(...nearFree(px + d[0]*5, py + d[1]*5)); megaJuice(4, null); bangFx([new THREE.Vector3(p.x, .5, p.z)], id === 'tnt' ? 9 : 6, 40, false); sfx.boom(id === 'tnt' ? 64 : 24); shockwave(p, 10, 6); if (id === 'fart') stinkCloud(new THREE.Vector3(p.x, .3, p.z), 0, 0, 8, true); showToast(id === 'tnt' ? 'Replay: three piles, ONE giant BANG!' : 'Replay: parp... KA-BOOM!'); return true; }
+  if (id === 'sheep'){ flockGo(cellPos(px + d[0]*4, py + d[1]*4), 4); return true; }
+  // where: right under you (the Bounce Pad, the rope), or a few steps in front, on an empty spot
+  const under = id === 'launcher', beside = id === 'ninjarope';
+  let [x, y] = under ? [px, py] : beside ? [px - d[1], py + d[0]] : nearFree(px + d[0]*4, py + d[1]*4);
+  if (at(x, y) || !inb(x, y) || S.walls[y*NX + x]) [x, y] = nearFree(x, y);
+  const nbs = [0, 1, 2, 3].map(k => [x + DIRS[k][0], y + DIRS[k][1]]).filter(([qx, qy]) => inb(qx, qy) && !S.walls[qy*NX + qx] && !at(qx, qy) && !(qx === px && qy === py));
+  if (!nbs.length) return false;
+  const c = makeCell(id, x, y, {locked:true, dir}), rb = makeCell('rblock', nbs[0][0], nbs[0][1], {locked:true}); c.replay = true;   // (a replay never breaks your build)
+  setCell(x, y, c); syncVisuals();
+  SBX.power[id] = egg.power; SBX.replay = {id, c, rb, until:SBX.t + (REPLAY_T[id] || 8)};
+  setCell(rb.x, rb.y, rb); syncVisuals(); showToast('REPLAY!');
+  if (REPLAY_CLOCK.has(id)) [1.6, 3.2, 4.8].forEach(t => later(t, () => { const R = SBX.replay; if (R && R.c === c && at(c.x, c.y) === c) toyGo(c); }));
+  return true;
+}
+function replayFrame(){
+  const R = SBX.replay; if (!R) return;
+  if (SBX.t > R.until + 1){ if (at(R.c.x, R.c.y) === R.c) setCell(R.c.x, R.c.y, null); SBX.replay = null; syncVisuals(); return; }
+  if (SBX.t > R.until && at(R.rb.x, R.rb.y) === R.rb){ setCell(R.rb.x, R.rb.y, null); syncVisuals(); }
+  if (!R.fired && R.c.lit) R.fired = SBX.t;
+  if (SBX.t > R.until - 1 || (R.fired && !REPLAY_CLOCK.has(R.id) && SBX.t - R.fired > .5)) delete SBX.power[R.id];   // (only the replay's own toy goes Mega)
+}
+const replayBtnHTML = (id, e) => replayOK(id) ? `<button class="btn megaReplay" data-replay="${id}" data-gate="${e.gate}" style="flex:none;padding:4px 8px;font-size:13px">Replay</button>` : '';
+document.addEventListener('click', e => { const b = e.target && e.target.closest && e.target.closest('[data-replay]'); if (!b) return; e.preventDefault(); e.stopPropagation(); sfx.click(); $('#paneClose').click(); megaReplay(b.dataset.replay, b.dataset.gate); });
 
 /* ================= ACHIEVEMENTS (Tom, 5 Oct: grow the 20 discoveries into a proper page; docs/achievements.md) =================
    One table. Each entry: id, cat, name, line (the funny line on the toast), clue (shown on a locked one once you're close), icon,
@@ -12858,6 +13183,7 @@ const ACH_LIST = [
   {id:'g_clock', cat:'learn', gate:'clock', name:'Tick Tock', line:'It does it by ITSELF!', clue:'Build a clock: a torch that keeps switching itself off.', near:labNear},
   {id:'g_memory', cat:'learn', gate:'memory', name:'Elephant Brain', line:'It REMEMBERS!', clue:'Build a memory: two torches holding each other.', near:labNear},
   {id:'g_xor', cat:'learn', gate:'xor', name:'Odd One Out', line:'Only one. Not two.', clue:'Build an XOR: either switch flips the light.', near:labNear},
+  {id:'g_count', cat:'learn', gate:'count', name:'Ding Ding DING!', line:'One press. Lots of dings!', clue:'Build a counting machine: ONE press, and a lamp comes on again and again by itself, then stops.', near:c => c.gates.has('count') || c.gates.has('clock')},   // the Counting Gate Card (Act 3, ride 312)
   {id:'keeper', cat:'learn', name:'Gate Keeper', line:'Collect them all!', clue:'Win every Gate Card in Act 1.', icon:'trophy', near:c => c.gates.size > 0, n:c => [ACT1_GATES.filter(g => c.gates.has(g)).length, ACT1_GATES.length]},
   // ---- clever building
   {id:'penny', cat:'clever', name:'Penny Pincher', line:'Not one part wasted!', clue:'Fix a big room with no more parts than the temple\'s own answer.', icon:'dust', near:c => solvedN(c) >= 5},
@@ -12869,7 +13195,8 @@ const ACH_LIST = [
   {id:'debugger', cat:'clever', name:'Debugger', line:'Bug squashed!', clue:'Fix a broken machine in under 30 seconds.', icon:'pick', near:c => solvedN(c) >= 4},
   {id:'safecrack', cat:'clever', name:'Safe Cracker', line:'Click. Click. Click. OPEN!', clue:'Build a 4-lever lock: two levers ON, the other two OFF.', icon:'lever', near:labNear},
   {id:'bureaucrat', cat:'clever', name:'Bureaucrat', line:'Three switches, three jobs. Very official.', clue:'Build one machine where three switches do different jobs.', icon:'scroll', near:labNear},
-  {id:'legend', cat:'clever', name:'Logic Legend', line:'The hardest Mega mode of all!', clue:'Unlock a toy\'s hardest Mega mode.', icon:'trophy', when:() => false},   // waits for the combined ("Mega mode 2") lines
+  {id:'legend', cat:'clever', name:'Logic Legend', line:'The hardest Mega mode of all!', clue:'Unlock a toy\'s hardest Mega mode: a "Mega mode 2" with a combination lock.', icon:'trophy', near:c => c.solved.has(211)},   // the donkey's 4-lever combination lock (TOY_EGGS beacon, legend:true)
+  {id:'finale', cat:'toys', name:'The Grand Finale', line:'Five Mega toys. ONE circuit. One BIG show!', clue:'A secret: ONE switch... FIVE Mega toys, one after another...', icon:'firework', near:() => megaGot().length >= 3},   // the finale egg (finaleLog)
   // ---- toys and Mega modes (free build)
   {id:'sixtyfour', cat:'toys', name:'TN' + 'T'.repeat(63), line:'One T for every Boom Block!', clue:'Set off ' + TNT_ACH + ' Boom Blocks in ONE chain.', icon:'tnt', near:c => kitHas(c, 'tnt')},
   {id:'destroyer', cat:'toys', name:'For I am become Steve, destroyer of worlds', line:'The skunk\'s stink covered EVERYTHING. Then... KA-BOOM!', clue:'Skunk Mega mode... and then a spark.', icon:'skunk', when:() => megaLive('skunk'), near:c => kitHas(c, 'skunk')},
@@ -12998,7 +13325,7 @@ const ACHF = {t:0, mode:'', sig:'', sigT:0, scanned:true, solved:null, room:null
 const ACH_WIRE = new Set([...EGG_WIRE, 'rblock']);
 const ACH_SW = new Set(['lever', 'button', 'plate']);
 const ACH_OUT = c => c && (c.t === 'lamp' || c.t === 'fart' || c.t === 'bridge' || (c.t === 'door' && c.wired) || (TOY_SET.has(c.t) && c.t !== 'tnt'));
-const GATE_ACH = {not:'g_not', or:'g_or', and:'g_and', nor:'g_nor', nand:'g_nand', clock:'g_clock', memory:'g_memory', xor:'g_xor'};
+const GATE_ACH = {not:'g_not', or:'g_or', and:'g_and', nor:'g_nor', nand:'g_nand', clock:'g_clock', memory:'g_memory', xor:'g_xor', count:'g_count'};
 function achFrame(dt){
   if (GYM.on){ gymFrame(dt); return; }
   if ($('#hud').hidden || !L) { ACHF.mode = ''; return; }
@@ -13226,6 +13553,7 @@ const GYM_WHY = {
 // the machine for each gym, straight from its Lab mission (NAND: the AND mission without its last torch; DELAY: a wire with slow repeaters)
 function gymBase(g){
   const src = GYM_SRC[g];
+  if (g === 'count') return gymCountBase();
   if (typeof src === 'number'){ const l = LESSONS.find(q => q.id === src); return {kind:l.kind, inputs:l.inputs, lamp:l.lamp, outputs:l.outputs, labels:l.labels, outName:l.outName, fn:l.fn, pre:l.pre || [], ghosts:l.ghosts, tools:l.tools || ['dust', 'stone', 'torch', 'repeater'], hint:l.hint}; }
   if (g === 'nand') return {kind:'table', inputs:[[1, 2], [1, 4]], lamp:[10, 3], fn:(a, b) => !(a && b), pre:[], tools:['dust', 'stone', 'torch'],
     ghosts:[GD(2, 2), GD(2, 4), {t:'stone', x:3, y:2}, {t:'torch', x:4, y:2, attach:3}, {t:'stone', x:3, y:4}, {t:'torch', x:4, y:4, attach:3}, GD(5, 2), GD(5, 3), GD(5, 4), GD(6, 3), GD(7, 3), GD(8, 3), GD(9, 3)],
@@ -13239,14 +13567,14 @@ const GYM_KEY = gh => gh.filter(q => q.t !== 'dust').length ? gh.filter(q => q.t
 function gymDef(g, stage){
   const B = gymBase(g); if (!B) return null;
   const nm = gymName(g), base = {id:GYM_ID, gym:true, gymGate:g, gymStage:stage, gate:GATE_CARDS[g] || BOOK[g] ? g : 'wire', inputs:B.inputs, lamp:B.lamp, outputs:B.outputs, labels:B.labels, outName:B.outName, fn:B.fn};
-  if (stage === 'play') return Object.assign(base, {kind:B.kind === 'delay' ? 'table' : B.kind, play:true, name:'Play with it!', pre:[], tools:[],
+  if (stage === 'play') return Object.assign(base, {kind:B.kind === 'delay' ? 'table' : B.kind, play:true, name:'Play with it!', pre:[], tools:[], card:B.card,
     ghosts:[...B.pre, ...B.ghosts].map(p => Object.assign({}, p, {locked:true})),
-    intro:B.kind === 'clock' ? `PLAY TIME! This ${nm} is already built. Don't touch anything. Just watch the lamp!` : B.kind === 'memory' ? `PLAY TIME! This ${nm} is already built. Press SET, let go, then press RESET. What does the lamp do?` : `PLAY TIME! This ${nm} already works. Try every mix of the switches and watch the lamp.`,
-    hint:B.kind === 'clock' ? 'Just watch. Count the blinks.' : B.kind === 'memory' ? 'Press SET. Let go. Is the lamp still on? Then press RESET.' : 'Try every mix: everything OFF, then one ON, then the other, then both.'});
+    intro:B.playIntro || (B.kind === 'clock' ? `PLAY TIME! This ${nm} is already built. Don't touch anything. Just watch the lamp!` : B.kind === 'memory' ? `PLAY TIME! This ${nm} is already built. Press SET, let go, then press RESET. What does the lamp do?` : `PLAY TIME! This ${nm} already works. Try every mix of the switches and watch the lamp.`),
+    hint:B.playHint || (B.kind === 'clock' ? 'Just watch. Count the blinks.' : B.kind === 'memory' ? 'Press SET. Let go. Is the lamp still on? Then press RESET.' : 'Try every mix: everything OFF, then one ON, then the other, then both.')});
   const key = GYM_KEY(B.ghosts), rest = B.ghosts.filter(q => !key.includes(q));
   return Object.assign(base, {kind:B.kind === 'delay' ? 'gymdelay' : B.kind, name:'Your turn!', pre:[...B.pre, ...rest].filter(p => !p.locked), ghosts:[...key, ...rest.filter(p => p.locked)], tools:B.tools,
-    intro:B.kind === 'delay' ? 'Your turn! Make the lamp light up a moment LATER than the lever. Put the Repeaters back.' : `Your turn! Some parts of the ${nm} are missing. Put them back and make it work.`, hint:B.hint || 'Press the lightbulb again to see where the parts go.',
-    card:B.kind === 'delay' ? () => `<h3>Make it WAIT</h3><div class="note">Lever ON... the lamp should light a moment later.${GYM.dl && GYM.dl.last ? `<br>Last try: <b>${GYM.dl.last}</b> ticks (needs 4).` : ''}</div>` : null});
+    intro:B.buildIntro || (B.kind === 'delay' ? 'Your turn! Make the lamp light up a moment LATER than the lever. Put the Repeaters back.' : `Your turn! Some parts of the ${nm} are missing. Put them back and make it work.`), hint:B.hint || 'Press the lightbulb again to see where the parts go.',
+    card:B.card || (B.kind === 'delay' ? () => `<h3>Make it WAIT</h3><div class="note">Lever ON... the lamp should light a moment later.${GYM.dl && GYM.dl.last ? `<br>Last try: <b>${GYM.dl.last}</b> ticks (needs 4).` : ''}</div>` : null)});
 }
 // where you are now, so Back can put you there again
 function gymHere(){
@@ -13271,7 +13599,7 @@ function gymOpen(g, toy){
   return true;
 }
 function gymStage(stage){
-  GYM.stage = stage; GYM.def = gymDef(GYM.gate, stage); GYM.dl = null;
+  GYM.stage = stage; GYM.def = gymDef(GYM.gate, stage); GYM.dl = null; GYM.cnt = null;
   CARDQ.length = 0; loadLesson(GYM_ID, true); refreshHotbar(); selectFirstVisible(); refreshViewUI();
   $('#lessonNum').textContent = 'Gate gym · ' + gymName(GYM.gate); $('#lessonTitle').textContent = GYM.def.name;
   gymBarold();
@@ -13309,6 +13637,7 @@ function gymDemo(){
 }
 function gymFrame(dt){
   if (GYM.barold && !reduceMotion){ GYM.barold.position.y = Math.abs(Math.sin((A.clock || 0)*.004))*(DLG.on ? .12 : 0); }
+  if (L && L.def && L.def.kind === 'gymcount') return gymCountFrame();
   const d = L && L.def; if (!d || d.kind !== 'gymdelay' || L.done) return;
   const lv = L.inputs[0], lamp = L.lampCell, D = GYM.dl = GYM.dl || {};
   if (!lv.on){ D.done = false; return; }
@@ -13337,6 +13666,10 @@ function gymLeave(){
   b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><path d="M14 5l-7 7 7 7"/><path d="M8 12h12"/></svg><span class="lbl">Back</span>';
   b.addEventListener('click', () => { sfx.click(); gymLeave(); }); $('#btnMenu').before(b); }
 const gymBtnHTML = (g, toy) => GYM_SRC[g] ? `<button class="btn gymBtn" data-gym="${g}"${toy ? ` data-toy="${toy}"` : ''}>Practise it</button>` : '';
+// the counting gym (Act 3's Gate Card, wip/leftovers): its machine is gymCountBase (TOYS, part 3)
+GYM_SRC.count = 'count';
+GYM_WHY.count = [{say:'Watch me. ONE press of the button...', at:[2, 6], set:[[2, 6, true]]}, {say:'The power splits three ways. This wire is quick: the first DING!', at:[9, 6]},
+  {say:'This one goes through three Repeaters. It WAITS a bit... second DING!', at:[5, 3]}, {say:'And this one has SIX Repeaters. It waits even longer... third DING! Three dings from ONE press.', at:[6, 9]}];
 
 /* ================= ACT 4: THE MAYA ("The Builders": back to the day the temple was built) =================
    WORLD.md's Act 3½. Sir Reginald "accidentally" flies the ship back in time, to the day the temple was finished: the SAME temple,
@@ -14160,7 +14493,7 @@ function mayaEndCard(){
   stopMoving();
   const pw = MAYA_PW[MAYA_PW.length - 1]; pwKeep(pw.words);
   $('#endCard .card').innerHTML = endCardHTML({title:'TO BE CONTINUED...', tease:'You counted like a Maya scribe, cracked the lamp-code lock, timed the sun window and won at pok-ta-pok! The Heart was a STAR MAP all along.<br><b>Next stop: Tuesday... and the University!</b><br><small>The Maya are still here: millions of Maya people live in Mexico, Guatemala, Belize and Honduras today, and many speak Maya languages.</small>', stats:mayaStats(), note:`Secret password for this spot: <b>${pw.words}</b>`,
-    buttons:[['endNext', 'Fly home!', true], ['endPlay', 'Free Play'], ['endBuild', 'Free Build'], ['endMenu', 'Main menu']], foot:'<b>Fly home:</b> back to the present, and the University.<br><b>Free Play:</b> keep exploring the Maya city. Everything you built stays.<br><b>Free Build:</b> the sandbox. Build anything you like.'});
+    buttons:[['endNext', 'Fly home!', true], ['endPlay', 'Free Play'], ['endBuild', 'Free Build'], ['endMenu', 'Main menu']], foot:'<b>Fly home:</b> back to the present, and the University.<br><b>Free Play:</b> keep exploring the Maya city. Everything you built stays.<br><b>Free Build:</b> the sandbox. Build anything you like. NEW: the RUBBER BALL from the ball court!'});
   $('#endNext').onclick = () => { sfx.click(); $('#endCard').hidden = true; goAct(UNI_ACT); };   // on to Redstone University (code act 5)
   $('#endPlay').onclick = () => { sfx.click(); $('#endCard').hidden = true; };
   $('#endBuild').onclick = () => { sfx.click(); $('#endCard').hidden = true; startLesson(FREE_ID); };
@@ -15818,6 +16151,8 @@ window.__game.opening = {
 // test hooks for TNT and the sandbox (test-tnt.js, test-freebuild.js)
 window.__game.toys = {
   bonuses(){ return TEMPLE_ROOMS.filter(q => q.bonus).map(q => ({id:q.id, reward:q.bonus.reward || null, badge:q.bonus.badge || null, needs:q.bonus.toy || null, why:!!(q.bonus.why || q.bonus.kind === 'dust' || q.bonus.kind === 'pulses'), met:!!q.bonus.reward && TOY_MET[q.bonus.reward] !== undefined && TOY_MET[q.bonus.reward] <= q.id})); },
+  state3(){ return {balls:SBX.rballs.map(b => ({mega:!!b.mega, n:b.n, y:+b.p.y.toFixed(1)})), ghosts:SBX.ghosts.length, haunt:SBX.haunt ? {t:+SBX.haunt.t.toFixed(1), big:!!SBX.haunt.big, booed:!!SBX.haunt.booed, pink:!!SBX.haunt.pink} : null, replay:SBX.replay ? {id:SBX.replay.id, x:SBX.replay.c.x, y:SBX.replay.c.y} : null, donkey:SBX.donkey ? {power:SBX.donkey.power, landed:!!SBX.donkey.broke} : null, bigCows:SBX.mobs.filter(m => m.kind === 'cow' && m.g.userData.big >= 5).length}; },
+  replay(id, gate){ return megaReplay(id, gate); }, megaLog(){ return SBX.megaLog.map(e => [e.id, e.t]); },
   cap:TOY_CAP, eggs:TOY_EGGS, lastGate(){ return SBX.lastGate || null; }, ach(){ const o = Object.assign({}, progress.sbAch || {}); achGotSet().forEach(id => { if (SB_ACH[id]) o[id] = o[id] || 1; }); return o; },
   pools(){ return Object.fromEntries(Object.entries(TPOOL).map(([k, q]) => [k, q.list.length])); },
   state(){ return {barrage:!!SBX.barrage, robot:SBX.robot ? +SBX.robot.sc.toFixed(2) : 0, orbit:SBX.orbit ? {t:+SBX.orbit.t.toFixed(2), y:+SBX.orbit.g.position.y.toFixed(1), rider:SBX.orbit.rider} : null, castles:SBX.castles.map(k => ({size:k.size, k:+k.k.toFixed(2)})), geysers:SBX.geysers.length, swing:!!SBX.swing, ride:SBX.ride ? {mecha:!!SBX.ride.mecha} : null, march:!!SBX.march, megaSheep:!!SBX.megaSheep, holyMega:!!SBX.holyMega, holy:(SBX.holy || []).length, planes:(SBX.planes || []).length, balls:SBX.balls.length, slow:SBX.slowT > 0}; },
@@ -15868,7 +16203,8 @@ window.__game.gym = {
   open(g, toy){ return gymOpen(g, toy); }, leave(){ gymLeave(); }, on:() => GYM.on, state(){ return {on:GYM.on, gate:GYM.gate, stage:GYM.stage, from:GYM.from && GYM.from.kind, tip:GYM.tip, kind:L && L.def && L.def.kind, done:!!(L && L.done)}; },
   gates:() => Object.keys(GYM_SRC), def(g, st){ return gymDef(g, st); }, talk(){ let n = 0; while (DLG.on && n++ < 60) dlgAdvance(); return n; },
   inputs(){ return L ? L.inputs.map(c => [c.x, c.y]) : []; }, rows(){ return L && L.rows ? L.rows.slice() : []; }, ghosts(){ return L ? L.ghosts.map(g => ({t:g.t, x:g.x, y:g.y, dir:g.dir, attach:g.attach, delay:g.delay})) : []; },
-  kit(){ const k = kitFor(); return k ? [...k] : null; }, barold:() => !!(GYM.barold && GYM.barold.parent), frame(){ gymFrame(16); }
+  kit(){ const k = kitFor(); return k ? [...k] : null; }, barold:() => !!(GYM.barold && GYM.barold.parent), frame(){ gymFrame(16); },
+  pressBtn(){ const b = S.grid.find(c => c && c.t === 'button'); if (b) interact(b); return !!b; }
 };
 // ---- the pixel-ratio governor: on a slow iPad/iPhone, draw fewer pixels rather than drop frames. Steps the resolution down
 // (2 -> 1.75 -> 1.5 -> 1.25 -> 1) after ~1.5 s of slow frames, and back up after ~8 s of smooth ones (never straight back to
