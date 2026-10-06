@@ -4,4 +4,4 @@ A Minecraft-style redstone adventure for kids: learn how computers think by fixi
 
 **Play it:** https://tomsauls.github.io/sparks-and-bones/
 
-Act 1, the Temple of the Thunder Monkey; Act 2, the Ape Planet and the Crystal Mine; plus Free build. More acts are on the way. Works in any modern browser, phone, tablet or computer; controllers supported. Saves stay on the device.
+Act 1, the Temple of the Thunder Monkey; Act 2, the Ape Planet and the Crystal Mine; Act 3, the seaside pirate funfair (and its ghost train); then back in time to the Maya; plus Free build. The University is on the way. Works in any modern browser, phone, tablet or computer; controllers supported. Saves stay on the device.
