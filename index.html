@@ -597,7 +597,17 @@ const ITEMS = [
   {id:'bananabomb', name:'Banana Bomb', tip:'Give it power: a bunch of bananas goes POP, everywhere!'},
   {id:'madcow', name:'Mad Cow Barn', tip:'Give it power: a stampede of cows charges out the way you faced. MOO!'},
   {id:'skunk', name:'Skunk Hutch', tip:'Give it power: out comes a skunk. It leaves a stinky trail (and stink goes BANG near TNT)'},
-  {id:'groovitron', name:'Groovitron', tip:'Give it power: a disco ball goes up, and everyone nearby HAS to dance'}
+  {id:'groovitron', name:'Groovitron', tip:'Give it power: a disco ball goes up, and everyone nearby HAS to dance'},
+  {id:'goat', name:'Goat Pen', tip:'Give it power: out trots a GOAT that headbutts things. Tap the pen to ride it!'},
+  {id:'granny', name:'Granny\'s Cottage', tip:'Give it power: out comes a granny with her shopping trolley. Mind out!'},
+  {id:'sheepstrike', name:'Sheep Strike', tip:'Give it power: a plane flies over the way you faced and drops sheep on parachutes'},
+  {id:'holybanana', name:'Holy Hand Banana', tip:'Give it power to pull the pin. HALLELUJAH! (Count to three, not five)'},
+  {id:'ninjarope', name:'Ninja Rope', tip:'Stand next to it and give it power: SWING across the way it faces!'},
+  {id:'chickencannon', name:'Chicken Cannon', tip:'Give it power: BWAK! Chickens fly out the way you faced. They land fine'},
+  {id:'whoopeemine', name:'Whoopee Mine', tip:'A whoopee cushion hidden in the floor. Give it power: PARP!'},
+  {id:'bouncy', name:'Bouncy Castle', tip:'Give it power and it blows up into a bouncy castle. Jump on!'},
+  {id:'slimefountain', name:'Slime Fountain', tip:'Give it power: SPLURT! Stand on it for a slimy bounce'},
+  {id:'teleporter', name:'Teleporter Pad', tip:'Put down TWO. Stand on one and give it power: ZWOOP, you pop out of the other!'}
 ];
 
 /* ================= lessons ================= */
@@ -1292,6 +1302,16 @@ ICONS.madcow = icon(g => { g.fillStyle = '#a8322a'; g.fillRect(1,6,14,9); g.fill
 ICONS.skunk = icon(g => { g.fillStyle = '#1a1a1a'; g.fillRect(2,8,8,5); g.fillRect(9,7,4,4); g.fillRect(1,2,3,7); g.fillStyle = '#f2f2f2'; g.fillRect(4,8,5,1); g.fillRect(2,2,1,6); g.fillRect(11,7,1,2); g.fillStyle = '#97a83a'; g.fillRect(5,3,1,1); g.fillRect(6,2,1,1); g.fillRect(7,3,1,1); g.fillStyle = '#fff'; g.fillRect(12,8,1,1); });
 ICONS.groovitron = icon(g => { g.fillStyle = '#dfe6ee'; g.fillRect(4,3,8,8); g.fillStyle = '#ff7fb0'; g.fillRect(5,4,2,2); g.fillStyle = '#4fa3ff'; g.fillRect(9,6,2,2); g.fillStyle = '#ffd84a'; g.fillRect(6,8,2,2); g.fillStyle = '#6a6a6a'; g.fillRect(7,11,2,4); g.fillStyle = '#fff'; g.fillRect(1,1,1,1); g.fillRect(14,2,1,1); g.fillRect(13,12,1,1); });
 ICONS.beacon = icon(g => { g.fillStyle = '#4a4a4a'; g.fillRect(3,11,10,4); g.fillStyle = '#7a7a7a'; g.fillRect(5,8,6,3); g.fillStyle = '#ff3b1f'; g.fillRect(6,5,4,3); g.fillStyle = '#fff8a0'; g.fillRect(7,0,2,5); g.fillStyle = '#ffe36b'; g.fillRect(4,2,1,1); g.fillRect(11,2,1,1); });
+ICONS.goat = icon(g => { g.fillStyle = '#8a5e33'; g.fillRect(0,12,16,4); g.fillStyle = '#f0ece4'; g.fillRect(3,7,8,5); g.fillRect(9,4,5,4); g.fillStyle = '#d8c8a0'; g.fillRect(10,1,1,3); g.fillRect(12,1,1,3); g.fillStyle = '#111'; g.fillRect(12,5,1,1); g.fillStyle = '#8a7a66'; g.fillRect(4,12,1,2); g.fillRect(9,12,1,2); g.fillRect(12,8,2,2); });
+ICONS.granny = icon(g => { g.fillStyle = '#d6d6d6'; g.fillRect(4,1,6,3); g.fillStyle = '#f0c8a8'; g.fillRect(4,3,6,4); g.fillStyle = '#111'; g.fillRect(5,4,1,1); g.fillRect(8,4,1,1); g.fillRect(5,5,4,0.5); g.fillStyle = '#8a4fa0'; g.fillRect(3,7,8,6); g.fillStyle = '#e8d8c0'; g.fillRect(4,13,2,3); g.fillRect(8,13,2,3); g.fillStyle = '#9aa3ad'; g.fillRect(11,8,5,5); g.fillStyle = '#ff8a5a'; g.fillRect(12,9,3,3); });
+ICONS.sheepstrike = icon(g => { g.fillStyle = '#d8261a'; g.fillRect(2,3,12,3); g.fillRect(7,1,2,6); g.fillStyle = '#f0e6c8'; g.fillRect(0,4,16,1); g.fillStyle = '#f2f2ee'; [[2,10],[7,12],[12,9]].forEach(([x,y]) => g.fillRect(x,y,3,3)); g.fillStyle = '#ff5a3c'; [[2,8],[7,10],[12,7]].forEach(([x,y]) => g.fillRect(x,y,3,1)); });
+ICONS.holybanana = icon(g => { g.fillStyle = '#ffd84a'; for (let i = 0; i < 9; i++) g.fillRect(3+i, 9-Math.round(Math.sin(i/8*Math.PI)*4), 2, 3); g.fillStyle = '#6b4a24'; g.fillRect(2,8,1,2); g.fillRect(13,8,1,2); g.fillStyle = '#fff6c0'; g.fillRect(7,0,1,2); g.fillRect(3,2,1,1); g.fillRect(12,2,1,1); g.fillStyle = '#8a4fa0'; g.fillRect(1,13,14,3); });
+ICONS.ninjarope = icon(g => { g.fillStyle = '#8a5e33'; g.fillRect(6,5,3,11); g.fillStyle = '#c8a060'; for (let i = 0; i < 4; i++) g.fillRect(4,7+i*2,7,1); g.fillStyle = '#9aa3ad'; g.fillRect(6,0,3,3); g.fillRect(4,2,2,1); g.fillRect(9,2,2,1); g.fillStyle = '#c8a060'; g.fillRect(11,3,1,1); g.fillRect(12,4,1,1); g.fillRect(13,5,1,1); });
+ICONS.chickencannon = icon(g => { g.fillStyle = '#4a4a4a'; g.fillRect(1,8,10,5); g.fillRect(2,13,3,3); g.fillRect(7,13,3,3); g.fillStyle = '#f6f6f2'; g.fillRect(10,4,5,5); g.fillStyle = '#d8261a'; g.fillRect(12,2,2,2); g.fillStyle = '#ffb000'; g.fillRect(15,6,1,1); g.fillStyle = '#111'; g.fillRect(13,5,1,1); });
+ICONS.whoopeemine = icon(g => { g.fillStyle = '#7a5a3a'; g.fillRect(0,12,16,4); g.fillStyle = '#e8508a'; g.fillRect(2,9,12,4); g.fillStyle = '#ff8ab8'; g.fillRect(3,9,10,1); g.fillStyle = '#ffd84a'; g.fillRect(7,3,1,6); g.fillStyle = '#d8261a'; g.fillRect(8,3,4,3); });
+ICONS.bouncy = icon(g => { g.fillStyle = '#ff5a8a'; g.fillRect(1,9,14,6); g.fillStyle = '#ffd84a'; g.fillRect(1,4,3,6); g.fillRect(12,4,3,6); g.fillStyle = '#4fa3ff'; g.fillRect(6,6,4,4); g.fillStyle = '#6ad04a'; g.fillRect(1,3,3,1); g.fillRect(12,3,3,1); g.fillRect(6,5,4,1); });
+ICONS.slimefountain = icon(g => { g.fillStyle = '#8a8a8a'; g.fillRect(1,11,14,5); g.fillStyle = '#7ccf5a'; g.fillRect(3,11,10,2); g.fillRect(7,2,2,9); g.fillRect(4,1,2,2); g.fillRect(10,2,2,2); g.fillRect(2,5,1,2); g.fillRect(13,6,1,2); });
+ICONS.teleporter = icon(g => { g.fillStyle = '#3a2a5a'; g.fillRect(1,11,14,4); g.fillStyle = '#b05cff'; g.fillRect(2,10,12,2); g.fillStyle = '#e8c8ff'; g.fillRect(4,2,1,7); g.fillRect(8,1,1,8); g.fillRect(11,3,1,6); });
 
 /* ================= three.js scene ================= */
 const canvas = $('#view');
@@ -1450,7 +1470,8 @@ function buildMesh(c, ghost){
   switch (c.t){
     case 'stone': add(G.cube, M.stone); break;
     case 'rblock': if (c.sheep) sbMesh(c, g, add); else add(G.cube, M.rblock); break;   // a redstone sheep carries an invisible redstone block about
-    case 'steel': case 'rglass': case 'monkeys': case 'beacon': case 'bananabomb': case 'madcow': case 'skunk': case 'groovitron': sbMesh(c, g, add); break;
+    case 'steel': case 'rglass': case 'monkeys': case 'beacon': case 'bananabomb': case 'madcow': case 'skunk': case 'groovitron':
+    case 'goat': case 'granny': case 'sheepstrike': case 'holybanana': case 'ninjarope': case 'chickencannon': case 'whoopeemine': case 'bouncy': case 'slimefountain': case 'teleporter': sbMesh(c, g, add); break;
     case 'tnt': add(G.cube, (c.fuse > 0 && c.fuse % 4 < 2) ? M.tntFlash : M.tnt); break;
     case 'glass': add(G.cube, M.glass); break;
     case 'bridge': {
@@ -1737,6 +1758,7 @@ function vkey(c){
     case 'gate': return 'G'+c.lit+(c.dir % 2);
     case 'dispenser': case 'launcher': case 'disco': case 'airhorn': case 'gunge': return c.t + c.lit;
     case 'bananacannon': return c.t + c.lit + c.dir;
+    case 'goat': case 'granny': case 'sheepstrike': case 'holybanana': case 'ninjarope': case 'chickencannon': case 'whoopeemine': case 'bouncy': case 'slimefountain': case 'teleporter': return c.t + c.lit + c.dir + (c.away ? 'a' : '');
     case 'vein': return 'V' + !!c.open;
   }
   return c.t;
@@ -2559,7 +2581,7 @@ function ghostAt(x,y){ return L ? L.ghosts.find(g => g.x===x && g.y===y && ghost
 function plan(item, x, y, clicked){
   if (!inb(x,y) || item === 'pick' || wallAt(x,y) || isPit(x,y)) return null;   // like Java: nothing goes down on thin air (dust can't cross a gap)
   const p = {t:item, x, y, dir:0, delay:1, attach:-1};
-  if (item === 'water' || item === 'bananacannon' || item === 'repeater' || item === 'madcow' || item === 'skunk') p.dir = camDir();
+  if (item === 'water' || item === 'bananacannon' || item === 'repeater' || item === 'madcow' || item === 'skunk' || ['goat', 'granny', 'sheepstrike', 'holybanana', 'ninjarope', 'chickencannon'].includes(item)) p.dir = camDir();
   if ((item === 'torch' || item === 'lever' || item === 'button') && clicked && clicked.t === 'stone') for (let d=0; d<4; d++) if (x+DIRS[d][0]===clicked.x && y+DIRS[d][1]===clicked.y) p.attach = d;
   return p;
 }
@@ -3831,7 +3853,7 @@ const TEMPLE_ROOMS = [
     hint:'Flip the lever ON. Watch the torch. Then flip it OFF again.',
     win:'The torch is GRUMPY: when its block gets power, it switches OFF. No power? ON! In real electronics that\'s called a NOT gate. You get Stone blocks.',
     mc:'In Minecraft, a torch on the side of a block turns OFF when that block gets power. This is the most important trick in redstone!',
-    bonus:{text:'BONUS: make the lamp come on 4 times to win the Temple Gong!', kind:'pulses', n:4, unit:'times', reward:'gong'},
+    bonus:{text:'BONUS: make the lamp come on 4 times. Win a Confetti Cannon, like the one at the Monkey Disco!', kind:'pulses', n:4, unit:'times', reward:'confetti', why:'You made the lamp come on 4 times!'},   // toys are won only after he's met them (Tom): the disco's confetti, room 12
     unlock:['stone'], sol:[] },
   // first room that USES the grumpy torch: no wire this time. The lever sits low, so a wire that just walks up to the block runs PAST it (room 4's lesson again)
   { id:15, ch:2, name:'Into the block', check:'table', inputs:[[2,6]], out:[[8,4]], fn:a=>!a, missInto:[6,4], missLamp:true,
@@ -3852,7 +3874,7 @@ const TEMPLE_ROOMS = [
     hint:'Power can\'t go into see-through glass, so the torch can\'t feel it. Swap the glass for a stone block.',
     win:'Fixed! Torches only notice SOLID blocks. Glass lets light through, but not power.',
     mc:'Glass doesn\'t carry redstone power in Minecraft, and you can\'t stick a torch on its side. Use solid blocks!',
-    bonus:{text:'BONUS: add your Whoopee Cushion so it parps when the lamp is ON. Win a Water Cannon!', kind:'toyLit', toy:'fart', reward:'water'},
+    bonus:{text:'BONUS: add your Whoopee Cushion so it parps when the lamp is ON. Win the TWO-JOB WIRE badge!', kind:'toyLit', toy:'fart', badge:'TWO-JOB WIRE', why:'Your circuit lit the lamp AND made the Whoopee Cushion parp!', card:'One circuit, two jobs: a lamp AND a parp. Very clever. Very stinky.'},
     unlock:['glass'], sol:[K('stone',4,4)] },
   { id:17, ch:2, name:'Night-light', give:['dust','stone','torch'], check:'table', inputs:[[3,4]], out:[[8,4]], fn:a=>!a,
     fixed:[K('plate',3,4),K('lamp',8,4)],
@@ -3862,7 +3884,7 @@ const TEMPLE_ROOMS = [
     hint:'Plate, then dust into a stone block, a torch on the far side, then dust to the lamp.',
     win:'You built a NOT gate! It flips the answer. Computers do that billions of times a second.',
     mc:'Build a NOT gate in Minecraft: dust into a block, a torch on the other side. The torch does the opposite!',
-    bonus:{text:'BONUS: make your Water Cannon squirt when someone stands on the plate. Win a Confetti Cannon!', kind:'toyOnInput', toy:'water', reward:'confetti'},
+    bonus:{text:'BONUS: make your Confetti Cannon pop when someone stands on the plate. Win your own Disco Ball, like the Monkey Disco\'s!', kind:'toyOnInput', toy:'confetti', reward:'disco', why:'You made the Confetti Cannon pop when someone stood on the plate!'},
     sol:[D(4,4),K('stone',5,4),K('torch',6,4,{attach:3}),D(7,4)] },
   // CO-OP (OR): Barold stands on his plate to raise the bridge. Then it's HIS turn: he steps OFF and it sinks in front of him.
   // You cope by wiring the far side's lever in too: his plate OR your lever holds the bridge. Solved when he's across. (coop*, below)
@@ -3889,7 +3911,7 @@ const TEMPLE_ROOMS = [
     hint:'Wire Barold\'s plate into a stone block. Stick a grumpy torch on the other side of the block, right next to the pad.',
     win:'WHOOSH! Barold stepped OFF and the pad went ON. The grumpy torch flipped it: a NOT gate!',
     mc:'In Minecraft, a torch on a block always does the opposite of the block. Great for traps that go off when you step OFF.',
-    bonus:{text:'BONUS: make your Confetti Cannon pop when the Bounce Pad is ON. Win Fireworks!', kind:'toyLit', toy:'confetti', reward:'firework', why:'You made the Confetti Cannon pop when the Bounce Pad went ON: one torch, two things!'},
+    bonus:{text:'BONUS: make your Confetti Cannon pop when the Bounce Pad is ON. Win the PARTY LAUNCHER badge!', kind:'toyLit', toy:'confetti', badge:'PARTY LAUNCHER', why:'You made the Confetti Cannon pop when the Bounce Pad went ON: one torch, two things!', card:'BOING and BANG at the same moment. Barold wants to do it again. And again. And AGAIN.'},
     sol:[D(2,6),K('stone',3,6),K('torch',3,5,{attach:2})] },
   // ---------------- Chapter 3: TIRED SIGNALS ----------------
   { id:20, ch:3, name:'How far does power go?', give:['rblock','dust'], check:'lit', out:[[1,3]], showPower:true,
@@ -3910,7 +3932,7 @@ const TEMPLE_ROOMS = [
     tired:'The power got tired! Remember the grumpy torch? What if TWO torches flipped it twice?',
     win:'Two flips make it the right way round, and fresh! That\'s exactly what a Repeater does inside.',
     mc:'Old-school Minecraft trick: torch, block, torch. Two flips give you a fresh signal at full strength!',
-    bonus:{text:'BONUS: launch Fireworks when the lamp lights up. Win... a SPACE TOILET!', kind:'toyLit', toy:'firework', reward:'spacetoilet'},
+    bonus:{text:'BONUS: make your Disco Ball light up with the lamp. Win FIREWORKS, like the Showtime ones!', kind:'toyLit', toy:'disco', reward:'firework', why:'You made the Disco Ball light up with the lamp!'},
     naive:[...row(1,2,9), ...col(9,2,7), ...row(7,8,2)],
     sol:[...row(1,2,9), D(9,2), K('stone',9,3), K('torch',9,4,{attach:0}), D(9,5), K('stone',9,6), K('torch',8,6,{attach:1}), ...row(7,8,2)] },
   { id:22, ch:3, name:'The slowpoke', give:['repeater'], check:'table', inputs:[[4,1]], out:[[9,1]], fn:a=>a, showPower:true,
@@ -3951,6 +3973,7 @@ const TEMPLE_ROOMS = [
     hint:'The lever is ON, so the torch is OFF. Turn the lever OFF and the torch comes back on. Oh, and there\'s a gap in the wire!',
     win:'The bridge is UP! The Chamber of the Crystal Skull is through that door...',
     mc:'Inverted switches like this are used all over Minecraft: a lever that turns something OFF when it\'s ON.',
+    bonus:{text:'BONUS: launch Fireworks when the bridge comes up. Win... a SPACE TOILET, like the Great Golden Toilet!', kind:'toyLit', toy:'firework', reward:'spacetoilet', why:'You launched Fireworks as the bridge came up!'},
     after:[['lever', 2, 6, false]], sol:[D(5,6)] }
 ];
 let ROOMS = TEMPLE_ROOMS;   // the rooms of the act you're in (Act 2 swaps in FUN_ROOMS)
@@ -8471,6 +8494,8 @@ function roomMiss(r){
   if (r.missLamp && fed(r.out[0]).some(Boolean)) return 'Your wire goes into the lamp. But the lamp is ALREADY on! More power can\'t switch it OFF. What makes the TORCH go off?';
   return null;
 }
+// where Max first meets each toy a room bonus gives (Tom: never win a toy he hasn't met). Room 3's MEGA ROBOT came first (Tom's own pick)
+const TOY_MET = {fart:5, lamp:1, firework:11, confetti:12, disco:12, spacetoilet:8, launcher:10};
 function checkBonus(r, rt){
   const b = r.bonus; if (!b || A.bonus.has(r.id)) return;
   let ok = false;
@@ -9416,7 +9441,7 @@ function creatures(){
 }
 // send a creature flying away from a point, happily (it spins, lands, and carries on). power ~ how hard (3 gentle, 14 huge)
 function flingCreature(m, from, power){
-  if (!m) return; const u = m.userData, dx = m.position.x - from.x, dz = m.position.z - from.z, h = Math.hypot(dx, dz) || 1;
+  if (!m || m.userData.mecha) return; const u = m.userData, dx = m.position.x - from.x, dz = m.position.z - from.z, h = Math.hypot(dx, dz) || 1;
   if (A.on && !m.userData.sbx) power = Math.min(power, 6);   // in the temple: a short hop, so nobody lands in the next room
   const sp = Math.max(2, Math.min(14, power)), k = sp*.6;
   u.fly = {vx:dx/h*k + (Math.random() - .5), vz:dz/h*k + (Math.random() - .5), vy:4.5 + sp*.85 + Math.random()*2, spin:(Math.random() < .5 ? -1 : 1)*(6 + sp*.6), t:0};
@@ -9462,7 +9487,7 @@ function blast(origins, R, opt){
   }
   const pts = origins.map(o => voxWorld(o.x, o.y, o.z));
   // you: close = a tumble (red flash, fall over, back on your feet nearby); further = knocked back. Unless something blast-proof is in the way.
-  if (inFP() && !S.dead){
+  if (inFP() && !S.dead && !(SBX.ride && SBX.ride.mecha)){   // (riding the Mecha Goat: the blast bounces off)
     const [px, py] = cellAtWorld(P.x, P.z), pz = Math.max(0, Math.floor(P.y - floorAt(px, py) + .2));
     let best = null;
     origins.forEach((o, i) => { const w = pts[i], d = Math.hypot(w.x - P.x, w.y - (P.y + .9), w.z - P.z); if (d < R*1.6 && (!best || d < best.d) && blastRay(o, px, py, pz)) best = {d, w}; });
@@ -9658,12 +9683,13 @@ function sbTick(){
 }
 // every frame
 function sbFrame(dt){
-  const s = Math.min(.05, dt/1000); SBX.t += s;
+  const s = Math.min(.05, dt/1000)*(SBX.slowT > 0 ? .3 : 1); SBX.t += s;   // (slowT: a Mega moment's slow-motion beat)
   bangFrame(dt); tumbleFrame(dt);
   if (isFree()){
     mobFrame(s); grooveFrame(s); miniFrame(s); rideFrame(); donkeyFrame(s); mushFrame(s);
     SBX.bananas.forEach(b => { if (b.landed){ if (b.eat !== undefined){ b.eat -= s; if (b.eat <= 0) b.g.visible = false; } return; } b.t = Math.min(1, b.t + s*1.6); b.g.position.lerpVectors(b.from, b.to, b.t); b.g.position.y += Math.sin(b.t*Math.PI)*2; b.g.rotation.y += s*12; if (b.t >= 1) b.landed = true; });
     if ((SBX.fireT = (SBX.fireT || 0) - dt) <= 0){ SBX.fireT = 250; fireNearStink(); }
+    toys2Frame(s);
   }
   syncUp();
 }
@@ -9694,7 +9720,7 @@ function sbClear(){
   SBX.mobs.forEach(m => { if (m.g.parent) m.g.parent.remove(m.g); if (m.cell && at(m.cell.x, m.cell.y) === m.cell) setCell(m.cell.x, m.cell.y, null); });
   SBX.mobs = []; SBX.helper = null; SBX.minis.forEach(b => fxRoot.remove(b.g)); SBX.minis = []; if (SBX.mush){ fxRoot.remove(SBX.mush.g); SBX.mush = null; } if (SBX.groove){ fxRoot.remove(SBX.groove.ball); SBX.groove = null; } SBX.bananas.forEach(b => fxRoot.remove(b.g)); SBX.bananas = [];
   if (SBX.donkey){ SBX.donkey.parts.forEach(p => fxRoot.remove(p)); if (SBX.donkey.beam) fxRoot.remove(SBX.donkey.beam); SBX.donkey = null; }
-  P.ride = null; P.chute = false; if (SBX.chute) SBX.chute.visible = false;
+  P.ride = null; P.chute = false; if (SBX.chute) SBX.chute.visible = false; toyClear();
 }
 SBX.bananas = []; SBX.root = new THREE.Group(); world.add(SBX.root);
 
@@ -9732,6 +9758,7 @@ function sbAct(h, mode, item){
   if (c && mode === 'use' && c.t === 'monkeys'){ releaseMonkeys(c); return true; }
   if (c && mode === 'use' && c.t === 'beacon' && item !== 'pick'){ beaconGo(c); return true; }
   if (c && mode === 'use' && c.t === 'spacetoilet' && item !== 'pick'){ rideToilet(c); return true; }
+  if (c && mode === 'use' && toyUse(c, item)) return true;
   if (item === 'banana' && mode !== 'break'){ throwBanana(h); return true; }
   if (item === 'sheep' && mode !== 'break'){ if (!c && h.x !== undefined && !upTop(h.x, h.y)) addSheep(h.x, h.y); else { sfx.nope(); showToast('The sheep needs an empty spot on the floor.'); } return true; }
   // the top of a block on the floor: stack on it
@@ -9813,20 +9840,29 @@ function openInventory(){
 
 // the "Mega mode" lines (Tom): ??? with the Gate Card's symbol greyed out until that card is earned, then the line, then a star when done
 function megaHTML(ids){
-  const sv = sbSave(), gates = new Set(sv && sv.gates || []), st = sbSolved(), done = progress.sbEggs || {};
-  const known = g => gates.has(g) || st.launched && g !== 'count' || (g === 'delay' && st.solved.has(BIG_BANG_ROOM));
-  const rows = []; ids.forEach(id => (TOY_EGGS[id] || []).forEach(e => { const k = known(e.gate), ok2 = done[id + ':' + e.gate];
-    rows.push(`<div class="megaRow" style="display:flex;gap:8px;align-items:center;margin:4px 0;font-size:15px"><img src="${ICONS[id]}" alt="" style="width:28px;height:28px;image-rendering:pixelated">${ok2 ? '<b style="color:#b38f00">&#9733;</b> ' : ''}<span>${k ? e.text + (ok2 ? ` <b>That was ${EGG_NAME[e.gate] || e.gate}!</b>` : '') : 'Mega mode: ???'}</span>${!k && GATE_CARDS[e.gate] ? `<svg viewBox="0 0 200 100" width="44" height="22" style="opacity:.3;filter:grayscale(1);flex:none">${gateSVG(e.gate)}</svg>` : ''}</div>`); }));
+  const sv = sbSave(), done = progress.sbEggs || {};
+  const rows = []; ids.forEach(id => (TOY_EGGS[id] || []).forEach(e => { const k = megaKnown(e.gate, sv), ok2 = done[id + ':' + e.gate], cardK = EGG_CARD[e.gate] || e.gate;
+    const grey = !k ? (GATE_CARDS[cardK] ? `<svg viewBox="0 0 200 100" width="44" height="22" style="opacity:.3;filter:grayscale(1);flex:none">${gateSVG(cardK)}</svg>` : `<img src="${ICONS.repeater}" alt="" style="width:22px;height:22px;opacity:.3;filter:grayscale(1);image-rendering:pixelated;flex:none">`) : '';
+    rows.push(`<div class="megaRow" style="display:flex;gap:8px;align-items:center;margin:4px 0;font-size:15px"><img src="${ICONS[id]}" alt="" style="width:28px;height:28px;image-rendering:pixelated">${ok2 ? '<b style="color:#b38f00">&#9733;</b> ' : ''}<span>${k ? e.text + (ok2 ? ` <b>That was ${EGG_NAME[e.gate] || e.gate}!</b>` : '') : 'Mega mode: ???'}</span>${grey}</div>`); }));
+  progress.megaSeen = progress.megaSeen || {}; ids.forEach(id => { if (TOY_EGGS[id]) progress.megaSeen[id] = 1; }); saveProgress(); sbSparkle();   // he has opened the page: the hotbar sparkle can stop
   return rows.length ? '<p style="margin:12px 0 2px"><b>MEGA MODES</b> (build the right circuit and the toy goes HUGE):</p>' + rows.join('') : '';
+}
+// which Gate Card's greyed symbol stands for a skill that isn't a card of its own; and has he learned the skill yet?
+const EGG_CARD = {count:'clock', delay:null, reach:null};
+function megaKnown(g, sv){
+  sv = sv === undefined ? sbSave() : sv; const gates = new Set(sv && sv.gates || []), st = sbSolved();
+  if (g === 'delay' || g === 'reach') return st.launched || st.solved.has(BIG_BANG_ROOM);   // repeaters (room 22)
+  if (g === 'count') return gates.has('clock');   // counting pulses comes with clocks
+  return gates.has(g) || (st.launched && ['and', 'not', 'or'].includes(g));   // Act 1 teaches AND, NOT and OR; NOR, NAND, XOR, clocks and memory come later
 }
 // ---- unlocks: free build starts with the basics and wins more through the temple; each one is told when it's won ----
 const SANDBOX_BASE = ['pick', 'dust', 'lever', 'button', 'lamp', 'stone', 'torch', 'repeater', 'rblock', 'plate', 'glass', 'lantern', 'steel', 'rglass'];
 const SANDBOX_UNLOCKS = [
   {id:'ch1', room:8, items:['tnt', 'fart', 'confetti'], how:'Finish the Golden Toilet room', say:'Boom Blocks and Whoopee Cushions'},
-  {id:'wing', room:12, items:['monkeys', 'banana', 'bananacannon', 'launcher', 'disco', 'bananabomb', 'groovitron'], how:'Finish the monkey rooms', say:'the Monkey Button, Bananas for your helper monkey, the Banana Bomb and the Groovitron'},
-  {id:'ch2', room:19, items:['sheep', 'skunk', 'gunge', 'water', 'airhorn'], how:'Finish the torch rooms (the crypt)', say:'the Redstone Sheep and the Skunk'},
-  {id:'ch3', room:25, items:['beacon', 'madcow', 'firework', 'gong', 'goldfish'], how:'Finish the power rooms (the sky rooms)', say:'the Homing Beacon (something VERY big comes down...), the Mad Cows and the MEGA ROBOT'},
-  {id:'top', launched:true, items:['spacetoilet'], how:'Get to the very top of the temple', say:'the SPACE TOILET (you can ride it!)'}
+  {id:'wing', room:12, items:['monkeys', 'banana', 'bananacannon', 'launcher', 'disco', 'bananabomb', 'groovitron', 'whoopeemine', 'chickencannon'], how:'Finish the monkey rooms', say:'the Monkey Button, Bananas for your helper monkey, the Banana Bomb, the Groovitron, Whoopee Mines and the Chicken Cannon'},
+  {id:'ch2', room:19, items:['sheep', 'skunk', 'gunge', 'water', 'airhorn', 'bouncy', 'slimefountain'], how:'Finish the torch rooms (the crypt)', say:'the Redstone Sheep, the Skunk, the Bouncy Castle and the Slime Fountain'},
+  {id:'ch3', room:25, items:['beacon', 'madcow', 'firework', 'gong', 'goldfish', 'granny', 'sheepstrike', 'ninjarope'], how:'Finish the power rooms (the sky rooms)', say:'the Homing Beacon (something VERY big comes down...), the Mad Cows, the MEGA ROBOT, Granny, the Sheep Strike and the Ninja Rope'},
+  {id:'top', launched:true, items:['spacetoilet', 'goat', 'holybanana', 'teleporter'], how:'Get to the very top of the temple', say:'the SPACE TOILET (you can ride it!), the GOAT, the Holy Hand Banana and the Teleporter Pads'}
 ];
 const BIG_BANG_ROOM = 22;   // the slowpoke: repeaters as a delay. That's the skill the REALLY big bang needs
 function sbSave(){ try { return advLoad() || null; } catch (e) { return null; } }
@@ -9871,6 +9907,7 @@ function sbMesh(c, g, add){
   else if (c.t === 'skunk'){ add(cbox(.85, .55, .85), M.wood, 0, .28, 0); add(cbox(.95, .12, .95), wm(0x5a3d22), 0, .62, 0); const [dx, dz] = DIRS[c.dir || 0]; add(cbox(dx ? .04 : .4, .3, dz ? .04 : .4), wm(0x111111), dx*.43, .25, dz*.43); add(cbox(.08, .3, .08), wm(0xf2f2f2), 0, .82, 0); }
   else if (c.t === 'groovitron'){ add(cbox(.7, .2, .7), M.smooth, 0, .1, 0); add(cbox(.1, .3, .1), wm(0x6a6a6a), 0, .35, 0); add(cbox(.55, .55, .55), M.mirror, 0, .78, 0); }
   else if (c.t === 'rblock' && c.sheep) add(cbox(.8, .9, .8), M.hidden || (M.hidden = new THREE.MeshBasicMaterial({visible:false})), 0, .45, 0);   // the sheep you see is drawn separately; this is what you click
+  else toyMesh2(c, g, add);
 }
 
 // ---- creatures: capuchins from the Monkey Button, your banana helper monkey, redstone sheep. They wander the yard, get flung by blasts, land happily ----
@@ -9921,7 +9958,7 @@ function makeSheep(){
 }
 function sayMob(m, text){ try { sayOn(m.g, text, 2500); } catch (e) {} }
 // creatures standing on a pressure plate press it, like you do
-function sbOnCell(x, y){ for (const m of SBX.mobs){ if (m.g.userData.fly || m.kind === 'sheep') continue; const [cx, cy] = cellAtWorld(m.g.position.x, m.g.position.z); if (cx === x && cy === y) return true; } return false; }
+function sbOnCell(x, y){ if (SBX.noFeet) return false; for (const m of SBX.mobs){ if (m.g.userData.fly || m.kind === 'sheep') continue; const [cx, cy] = cellAtWorld(m.g.position.x, m.g.position.z); if (cx === x && cy === y) return true; } return false; }
 function mobFrame(s){
   const half = NX/2 - .5;
   for (const m of [...SBX.mobs]){
@@ -10054,9 +10091,9 @@ function donkeyFrame(s){
 }
 // redstone sets toys off too (from toyGo)
 function sbToy(c){
-  if (!isFree() && ['monkeys', 'beacon', 'bananabomb', 'madcow', 'skunk', 'groovitron'].includes(c.t)) return true;   // sandbox toys only work in the sandbox
+  if (!isFree() && (['monkeys', 'beacon', 'bananabomb', 'madcow', 'skunk', 'groovitron'].includes(c.t) || TOYS2.includes(c.t))) return true;   // sandbox toys only work in the sandbox
   const egg = eggCheck(c); c.power = egg ? egg.power : 0;   // wired to its Mega mode? It goes MEGA
-  if (sbToy2(c)) return true;
+  if (sbToy2(c) || toyMega(c)) return true;
   if (c.t === 'monkeys'){ releaseMonkeys(c, toyPower(c)); return true; }
   if (c.t === 'beacon'){ beaconGo(c, toyPower(c)); return true; }
   if (c.t === 'spacetoilet' && isFree()){ const p = cellPos(c.x, c.y); if (!P.ride && Math.hypot(P.x - p.x, P.z - p.z) < .7 && P.y < 1.6) P.ride = {c, launched:false}; }
@@ -10075,18 +10112,28 @@ function fireNearStink(){
 const TOY_EGGS = {
   tnt:[{gate:'delay', text:'Mega mode: build wires that light three piles of TNT at the SAME moment, from far away, so they all go off in ONE giant bang.', power:4}],   // a natural chain staggers its fuses, so it never counts as one bang
   fart:[{gate:'delay', text:'Mega mode: build a DELAY so the whoopee cushion parps after the TNT is lit, but before it goes BANG.', power:2}],
-  bananacannon:[{gate:'or', text:'Mega mode: build an OR gate so EITHER plate fires the banana cannon.', power:3}],
-  monkeys:[{gate:'count', text:'Mega mode: build a counting circuit to press the Monkey Button exactly 5 times.', power:4}],
-  banana:[{gate:'not', text:'Mega mode: build a NOT gate so your helper monkey only works when the lamp is OFF.', power:2}],
-  sheep:[{gate:'and', text:'Mega mode: build an AND gate so the sheep only fizzes when BOTH gates are open.', power:4}],
-  goldfish:[{gate:'memory', text:'Mega mode: build a MEMORY circuit so the robot stays big after you let go.', power:4}],
-  launcher:[{gate:'delay', text:'Mega mode: build a DELAY so the second pad fires just as you land.', power:2}],
-  spacetoilet:[{gate:'and', text:'Mega mode: build an AND gate so the space toilet only blasts off when BOTH flush handles are down.', power:3}],
+  bananacannon:[{gate:'or', text:'Mega mode: build an OR gate so EITHER plate fires the banana cannon.', power:3, ach:'barrage'}],
+  monkeys:[{gate:'count', n:5, text:'Mega mode: build a counting circuit that presses the Monkey Button exactly 5 times by itself.', power:4, ach:'conga'}],
+  banana:[{gate:'not', text:'Mega mode: build a NOT gate so the lamp goes OFF while your helper monkey stands on his plate. (He works the night shift!)', power:2, ach:'nightshift'}],
+  sheep:[{gate:'and', text:'Mega mode: build an AND gate so the sheep only fizzes when BOTH levers are ON. (Point the last torch at the sheep.)', power:4, ach:'flock'}],
+  goldfish:[{gate:'memory', text:'Mega mode: build a MEMORY circuit so the robot stays big after you let go.', power:4, ach:'robot'}],
+  launcher:[{gate:'delay', text:'Mega mode: build a DELAY so a second Bounce Pad fires just as you land on it.', power:4, ach:'clouds'}],
+  spacetoilet:[{gate:'and', text:'Mega mode: build an AND gate so the space toilet only blasts off when BOTH flush handles (levers) are down.', power:3, ach:'orbit'}],
   beacon:[{gate:'and', text:'Mega mode: build an AND gate so the donkey only comes when BOTH levers are ON.', power:4}],
   bananabomb:[{gate:'delay', text:'Mega mode: build a DELAY chain so every mini banana goes off again.', power:3}],
   madcow:[{gate:'clock', text:'Mega mode: build a CLOCK to keep the barn door opening all by itself.', power:4}],
   skunk:[{gate:'clock', text:'Mega mode: build a CLOCK to make the skunk spray again and again until the stink covers everything.', power:4}],
-  groovitron:[{gate:'memory', text:'Mega mode: build a MEMORY circuit so the disco ball stays on after you let go.', power:4}]
+  groovitron:[{gate:'memory', text:'Mega mode: build a MEMORY circuit so the disco ball stays on after you let go.', power:4}],
+  goat:[{gate:'nand', text:'Mega mode: build a NAND gate so the goat comes out unless BOTH levers are ON.', power:4, ach:'mecha'}],
+  granny:[{gate:'and', text:'Mega mode: build an AND gate so the granny only sets off when BOTH pressure plates are pressed.', power:4, ach:'band'}],
+  sheepstrike:[{gate:'clock', text:'Mega mode: build a CLOCK circuit to make the sheep strike go off again and again all by itself. (Three of them on clocks, in step...?)', power:4, ach:'woolly'}],
+  holybanana:[{gate:'count', n:3, text:'Mega mode: build a counting circuit to pull the pin exactly THREE times. Not four. Five is RIGHT OUT.', power:4, ach:'holy'}],
+  ninjarope:[{gate:'nor', text:'Mega mode: build a NOR gate so the rope only fires when NEITHER lever is on.', power:4, ach:'swing'}],
+  chickencannon:[{gate:'clock', text:'Mega mode: build a CLOCK to fire chickens all by itself.', power:4, ach:'chickens'}],
+  whoopeemine:[{gate:'or', text:'Mega mode: build an OR gate so ANY of three plates sets the mines off.', power:4, ach:'symphony'}],
+  bouncy:[{gate:'reach', text:'Mega mode: build a wire 15 or more blocks long, with a REPEATER in it, to power the bouncy castle from far away.', power:4, ach:'castle'}],
+  slimefountain:[{gate:'clock', text:'Mega mode: build a CLOCK to make the slime fountain spurt again and again all by itself. Then stand on it!', power:4, ach:'geyser'}],
+  teleporter:[{gate:'xor', text:'Mega mode: build an XOR gate so the teleporter only works when exactly ONE of two plates is pressed.', power:4, ach:'massport'}]
 };
 // what's driving a toy's input right now (so a later checker can trace the circuit back to its switches)
 function toyDrivers(c){
@@ -10097,7 +10144,6 @@ function toyDrivers(c){
 // how big a toy goes: 1 normally. (The egg checker sets c.power, or SBX.power[id], when a real circuit earns the MEGA version.)
 const toyPower = c => Math.max(1, Math.min(8, (c && c.power) || (SBX.power && SBX.power[c && c.t]) || 1));
 SBX.power = {};
-function megaJuice(p){ if (p < 2) return; if (!reduceMotion) shake = Math.min(2.5, .6 + p*.3); try { musicCue('fanfare'); } catch (e) {} }
 
 // banana bomb: a fizzing bunch of bananas. BOOM: mini bananas fly everywhere and each goes pop (and the monkeys chase them)
 function bananaBomb(c, power){
@@ -10174,7 +10220,7 @@ function grooveFrame(s){
 SBX.minis = [];
 // the extra toys' movement (cows charge in a line; the skunk wanders and stinks)
 function toyMobFrame(m, s){
-  const g = m.g;
+  const g = m.g; if (toyMobFrame2(m, s)) return true;
   if (m.kind === 'cow'){
     m.life -= s; const nx = g.position.x + m.dir[0]*m.speed*s, nz = g.position.z + m.dir[1]*m.speed*s, [cx, cy] = cellAtWorld(nx, nz);
     g.position.y = Math.abs(Math.sin(SBX.t*12 + g.id))*.12;
@@ -10216,27 +10262,39 @@ function eggSwitches(c){
 }
 function eggSim(fn){
   const saved = S.grid.map(c => c && Object.assign({}, c, {buf:c.buf ? c.buf.slice() : null, pts:c.pts ? c.pts.slice() : c.pts, offs:c.offs ? c.offs.slice() : c.offs}));
-  const keep = {tick:S.tick, lastSnap:S.lastSnap, stable:S.stable, ev:S.events.length}, was = S.simulating;
-  S.simulating = true;
+  const keep = {tick:S.tick, lastSnap:S.lastSnap, stable:S.stable, ev:S.events.length, py:P.y}, was = S.simulating;
+  S.simulating = true; P.y = 1e5; SBX.noFeet = true;   // nobody's feet on the plates while the circuit is tried out (the switches are set by hand)
   try { return fn(); }
-  finally { S.simulating = was; S.grid.forEach((c, i) => { if (c && saved[i]) Object.assign(c, saved[i]); }); S.tick = keep.tick; S.lastSnap = keep.lastSnap; S.stable = keep.stable; S.events.length = keep.ev; }
+  finally { S.simulating = was; P.y = keep.py; SBX.noFeet = false; S.grid.forEach((c, i) => { if (c && saved[i]) Object.assign(c, saved[i]); }); S.tick = keep.tick; S.lastSnap = keep.lastSnap; S.stable = keep.stable; S.events.length = keep.ev; }
 }
 function eggSet(sw, v){ if (sw.t === 'lever') sw.on = v; else { sw.timer = v ? 999 : 0; sw.on = false; } }
-function eggGate(c){
-  const sw = eggSwitches(c);
+function eggGate(c, litFn, asLamp, firing){   // firing: the toy is going off right now, so the gate's answer right now must be ON
+  const sw = eggSwitches(c), lit = litFn || (() => !!c.lit);
+  const now = sw.reduce((r, s, i) => r | ((s.t === 'lever' ? s.on : (s.on || s.timer > 0)) ? 1 << (sw.length - 1 - i) : 0), 0);   // how the switches are set right now
   return eggSim(() => {
-    const run = n => { const seq = []; for (let t = 0; t < n; t++){ step(); seq.push(!!c.lit); } return seq; };
-    // a clock: nothing touched, and the toy's input keeps flipping on its own
-    { const seq = run(60); let flips = 0; for (let i = 1; i < seq.length; i++) if (seq[i] !== seq[i - 1]) flips++; if (flips >= 4) return {gate:'clock', n:sw.length}; }
+    if (asLamp){ c.t = 'lamp'; c.lit = false; S.gridDirty = true; }   // (the redstone sheep: what would a lamp in its place see?)
+    const run = n => { const seq = []; for (let t = 0; t < n; t++){ step(); seq.push(lit()); } return seq; };
+    const flipsIn = (seq, a) => { let f = 0; for (let i = Math.max(1, a); i < seq.length; i++) if (seq[i] !== seq[i - 1]) f++; return f; };
+    // a clock: nothing touched, and the toy's input keeps flipping on its own (still flipping 6 s later: a counter that is
+    // part-way through its count stops, a clock doesn't)
+    { const seq = run(120); if (flipsIn(seq, 60) >= 4) return {gate:'clock', n:sw.length}; }
     if (!sw.length) return null;
+    // counting (Tom: "pull the pin exactly THREE times"): ONE press of a switch, and the circuit sends a few pulses by itself, then stops
+    for (const s of sw){
+      sw.forEach(q => eggSet(q, false)); run(60); if (lit()) continue;
+      if (s.t === 'lever') s.on = true; else s.timer = s.t === 'button' ? BUTTON_TICKS : PLATE_TICKS;
+      const seq = run(260); let n = 0; for (let i = 0; i < seq.length; i++) if (seq[i] && (i === 0 || !seq[i - 1])) n++;
+      if (n >= 2 && flipsIn(seq, seq.length - 60) === 0) return {gate:'count', n:sw.length, pulses:n};
+    }
+    // memory: press each switch and let go. With every switch off again, does the answer depend on WHICH one you pressed last?
+    { const rest = sw.map(s => { sw.forEach(q => eggSet(q, false)); run(10); eggSet(s, true); run(20); eggSet(s, false); run(40); return lit(); }); if (rest.some(v => v !== rest[0])) return {gate:'memory', n:sw.length}; }
     const k = sw.length, rows = [];
     for (let r = 0; r < (1 << k); r++){ sw.forEach((s, i) => eggSet(s, !!((r >> (k - 1 - i)) & 1))); const seq = run(40); rows.push(seq[seq.length - 1]); }
-    // memory: all off, then each switch on and off again: does the answer stay changed?
-    { sw.forEach(s => eggSet(s, false)); run(30); const before = !!c.lit; for (const s of sw){ eggSet(s, true); run(20); eggSet(s, false); run(20); if (!!c.lit !== before) return {gate:'memory', n:k}; } }
     // which switches matter at all
     const used = [...Array(k).keys()].filter(i => rows.some((v, r) => v !== rows[r ^ (1 << (k - 1 - i))]));
     if (!used.length) return null;
     const tab = []; for (let r = 0; r < (1 << used.length); r++){ let full = 0; used.forEach((i, j) => { if ((r >> (used.length - 1 - j)) & 1) full |= 1 << (k - 1 - i); }); tab.push(rows[full]); }
+    if (firing && !rows[now]) return {gate:'blip', n:used.length};   // it went off while the gate's answer is OFF (a flicker as it was built): not a real answer, so no Mega
     const key = tab.map(v => v ? 1 : 0).join(''), m = used.length;
     let gate = m === 1 ? (key === '10' ? 'not' : 'wire') : null;
     if (m >= 2){ const all = tab.every((v, r) => v === (r === tab.length - 1)), any = tab.every((v, r) => v === (r > 0)), none = tab.every((v, r) => v === (r === 0)), notAll = tab.every((v, r) => v === (r !== tab.length - 1));
@@ -10244,30 +10302,831 @@ function eggGate(c){
       gate = all ? 'and' : any ? 'or' : none ? 'nor' : notAll ? 'nand' : odd ? 'xor' : null; }
     // a delay: from everything off to the switches that fire it, how long until the toy gets power?
     if (gate === 'wire' || gate === 'and' || gate === 'or'){ const r = tab.findIndex(Boolean); if (r >= 0){ sw.forEach(s => eggSet(s, false)); run(30); used.forEach((i, j) => eggSet(sw[i], !!((r >> (m - 1 - j)) & 1))); const seq = run(20), at = seq.indexOf(true); if (at >= 4 && gate === 'wire') gate = 'delay'; } }
-    return gate ? {gate, n:m} : null;
+    return gate ? {gate, n:m, used:used.map(i => sw[i])} : null;
   });
 }
 // a toy is going off: is it wired to its Mega mode? Then it goes MEGA (and the item page can tick it later)
-const EGG_NAME = {and:'AND', or:'OR', not:'NOT', nor:'NOR', nand:'NAND', xor:'XOR', clock:'a CLOCK', memory:'a MEMORY', delay:'a DELAY'};
+const EGG_NAME = {and:'AND', or:'OR', not:'NOT', nor:'NOR', nand:'NAND', xor:'XOR', clock:'a CLOCK', memory:'a MEMORY', delay:'a DELAY', count:'a COUNTING circuit', reach:'a LONG wire with a REPEATER'};
 SBX.eggT = {};
-function eggCheck(c){
-  const eggs = TOY_EGGS[c.t]; if (!eggs || !isFree() || c.z) return null;
-  const now = SBX.t; if (SBX.eggT[c.y*NX + c.x] && now - SBX.eggT[c.y*NX + c.x].t < 1.5) return SBX.eggT[c.y*NX + c.x].egg;   // a clock fires it often: check once a beat
-  let g = null; try { g = eggGate(c); } catch (e) { g = null; }
-  const egg = g && eggs.find(e => e.gate === g.gate) || null;
-  SBX.eggT[c.y*NX + c.x] = {t:now, egg};
+// c: the toy's cell. key/litFn: for a toy that isn't a plain block (the redstone sheep: what a lamp in its place would see)
+function eggCheck(c, opt){
+  const id0 = (opt && opt.id) || c.t, eggs = TOY_EGGS[id0]; if (!eggs || !isFree() || c.z) return null;
+  const k = (opt && opt.key) || c.y*NX + c.x, now = SBX.t; if (SBX.eggT[k] && now - SBX.eggT[k].t < 1.5){ SBX.lastGate = SBX.eggT[k].g; return SBX.eggT[k].egg; }   // a clock fires it often: check once a beat
+  let g = null; try { g = eggGate(c, opt && opt.lit, opt && opt.asLamp, true); } catch (e) { g = null; }
+  if (g && (g.gate === 'wire' || g.gate === 'delay') && eggs.some(e => e.gate === 'reach')){ const R = eggReach(c); if (R.len >= 15 && R.rep) g = {gate:'reach', n:g.n, len:R.len}; }   // the bouncy castle: a LONG wire, kept alive by a repeater
+  const egg = g && eggs.find(e => e.gate === g.gate && (!e.n || e.n === g.pulses)) || null;
+  SBX.eggT[k] = {t:now, egg, g}; SBX.lastGate = g;
   TOYLOG.length && (TOYLOG[TOYLOG.length - 1].gate = g ? g.gate : null);
-  if (egg){
-    progress.sbEggs = progress.sbEggs || {}; const id = c.t + ':' + egg.gate, first = !progress.sbEggs[id];
-    progress.sbEggs[id] = progress.sbEggs[id] || Date.now(); saveProgress();
-    if (first) setTimeout(() => { sfx.chime(); showCard('MEGA MODE!', `That was ${EGG_NAME[egg.gate] || egg.gate}! ${egg.text.replace(/^Mega mode: /, '')}`); }, 2500);
-  }
+  if (egg) eggWon(id0, egg);
   return egg;
+}
+// the first time a Mega mode is done: a short card naming the gate (and its achievement). The spectacle is the real reward.
+function eggWon(id0, egg){
+  progress.sbEggs = progress.sbEggs || {}; const id = id0 + ':' + egg.gate, first = !progress.sbEggs[id];
+  progress.sbEggs[id] = progress.sbEggs[id] || Date.now();
+  const a = egg.ach && SB_ACH[egg.ach]; let ach = '';
+  if (a){ progress.sbAch = progress.sbAch || {}; if (!progress.sbAch[egg.ach]){ progress.sbAch[egg.ach] = Date.now(); ach = `<br><b>ACHIEVEMENT: <span style="word-break:break-word">${a.name}</span></b>`; } }
+  saveProgress();
+  if (first || ach) setTimeout(() => { sfx.chime(); showCard('MEGA MODE!', `That was ${EGG_NAME[egg.gate] || egg.gate}! ${egg.text.replace(/^Mega mode: /, '')}${ach}`); }, 2500);
+}
+// how long is the wire into this toy (dust and repeaters only), and is a repeater keeping it going? (the shortest powered way back to a switch)
+function eggReach(c){
+  const key = n => n.y*NX + n.x, prev = new Map([[key(c), null]]), q = [c];
+  while (q.length){
+    const n0 = q.shift();
+    for (let d = 0; d < 4; d++){ const n = nb(n0, d); if (!n || prev.has(key(n))) continue;
+      if (n.t === 'lever' || n.t === 'button' || n.t === 'plate'){ let len = 0, rep = false; for (let p = n0; p && p !== c; p = prev.get(key(p))){ len++; if (p.t === 'repeater') rep = true; } return {len, rep}; }
+      if ((n.t === 'dust' && n.pw > 0) || (n.t === 'repeater' && n.out)){ prev.set(key(n), n0); q.push(n); } }
+  }
+  return {len:0, rep:false};
 }
 hbSetup();
 // every toy that goes off, and what set it off (redstone, a click, a blast...), so circuits that combine toys can be spotted later
 const TOYLOG = [];
-function toyFire(id, src, c, opt){ TOYLOG.push({id, src, x:c ? c.x : null, y:c ? c.y : null, tick:S.tick, t:Math.round(SBX.t*1000), power:(opt && opt.power) || toyPower(c), by:src === 'power' ? toyDrivers(c) : []}); if (TOYLOG.length > 200) TOYLOG.shift(); }
+function toyFire(id, src, c, opt){ if (isFree()) toyUsed(id); TOYLOG.push({id, src, x:c ? c.x : null, y:c ? c.y : null, tick:S.tick, t:Math.round(SBX.t*1000), power:(opt && opt.power) || toyPower(c), by:src === 'power' ? toyDrivers(c) : []}); if (TOYLOG.length > 200) TOYLOG.shift(); }
+
+/* ================= TOYS, part 2: every toy's Mega payoff, ten more toys (docs/toys.md), and the hints that lead to them =================
+   Rules (Tom): a toy's Mega mode is THAT toy's own thing turned up to ridiculous, and only a REAL circuit (eggGate) sets it off.
+   Everything flung lands happily (a parachute, a bounce); nothing is hurt. Big numbers are capped (TOY_CAP) and the masses
+   (bananas, slime, wool) are instanced, so a Mega moment costs an iPad about what a normal one does. */
+const TOYS2 = ['goat', 'granny', 'sheepstrike', 'holybanana', 'ninjarope', 'chickencannon', 'whoopeemine', 'bouncy', 'slimefountain', 'teleporter'];
+TOYS2.forEach(t => { TOY_SET.add(t); PLUG_INTO.add(t); });
+['goat', 'granny', 'sheepstrike', 'holybanana', 'ninjarope', 'chickencannon'].forEach(t => SOLID.add(t));   // pads, mines, the castle and the fountain are flat: you stand on them
+const TOY_CAP = {mobs:90, chickens:30, ssheep:24, flock:12, grannies:10, goats:2, slime:150, bananas:200, wool:240, gold:90};
+Object.assign(SB_ACH, {
+  barrage:{name:'Banana Barrage', how:'The banana cannon buried the yard in bananas!'}, conga:{name:'Capuchin Conga', how:'Five presses, all by itself: monkeys EVERYWHERE!'},
+  nightshift:{name:'Night Shift', how:'Your helper monkey put on a torch hat and built you a tower!'}, flock:{name:'Woolly Lights', how:'A whole flock of redstone sheep lit up the yard!'},
+  robot:{name:'Taller Than The Temple', how:'The MEGA ROBOT remembered to stay big... and kept growing!'}, clouds:{name:'Into The Clouds', how:'A double bounce sent you up into the clouds!'},
+  orbit:{name:'Toilet In Orbit', how:'You flushed all the way into space and saw the whole planet!'}, mecha:{name:'MECHA GOAT', how:'An iron goat that headbutts TNT like a football!'},
+  band:{name:'Granny Band', how:'A whole marching band of grannies with trolleys. Oom-pah-pah!'}, woolly:{name:'Woolly Weather', how:'It rained sheep until the ground was woolly!'},
+  supersheep:{name:'MEGA SHEEP', how:'Three sheep strikes in step: a giant sheep in a cape flew over!'}, holy:{name:'HALLELUJAH!', how:'You counted to THREE. The sky opened. A banana the size of a mountain!'},
+  fiveout:{name:'Five Is Right Out', how:'You counted to FIVE. The holy hand banana went... pfff. Three! It has to be THREE!'}, swing:{name:'Swing Across The World', how:'The longest rope EVER: right across the whole yard!'},
+  chickens:{name:'Chicken Storm', how:'It rained chickens. They all landed fine. Bwaak!'}, symphony:{name:'Whoopee Symphony', how:'Every whoopee mine parped in tune!'},
+  castle:{name:'Bouncy Temple', how:'A bouncy castle as big as the temple!'}, geyser:{name:'Slime Rider', how:'You rode a slime geyser up into the sky!'},
+  massport:{name:'Mass Teleport', how:'Everything vanished at once, then rained back down on parachutes!'}
+});
+SBX.later = [];
+function later(sec, fn){ SBX.later.push({at:SBX.t + sec, fn}); }   // a little later, on the sandbox's own clock (slow-mo slows it too; leaving the sandbox drops it)
+function laterFrame(){ if (!SBX.later.length) return; const due = SBX.later.filter(q => SBX.t >= q.at); if (!due.length) return; SBX.later = SBX.later.filter(q => SBX.t < q.at); due.forEach(q => { try { q.fn(); } catch (e) {} }); }
+const DIR_TOYS = new Set(['goat', 'granny', 'sheepstrike', 'holybanana', 'ninjarope', 'chickencannon']);
+const mobsOf = kind => SBX.mobs.filter(m => m.kind === kind).length;
+const mobRoom = () => SBX.mobs.length < TOY_CAP.mobs;
+const toyPos = c => cellPos(c.x, c.y);
+function bleat(f, d){ tone(f, d || .35, 'sawtooth', .05, 0, f*.75); }
+// a little body-builder for the creatures (every face has eyes)
+function mobBox(g, w, h, d, m, x, y, z){ const b = new THREE.Mesh(cbox(w, h, d), m); b.position.set(x, y, z); b.raycast = () => {}; g.add(b); return b; }
+function mobEyes(g, y, z, sx, glowEye){ [-1, 1].forEach(s => { if (!glowEye) mobBox(g, .07, .07, .02, wm(0xffffff), s*sx, y, z); mobBox(g, .04, .05, .02, glowEye ? (M.glowEyeB || (M.glowEyeB = new THREE.MeshBasicMaterial({color:0xff3b1f}))) : wm(0x111111), s*sx, y, z + .01); }); }
+
+// one draw call a creature (Tom: cheap on an iPad even at Mega size): a creature's plain boxes are merged into ONE mesh with
+// vertex colours, built once per kind and shared by every copy; glowing bits (sprites, lit eyes) stay as they are
+const MOBMAT = new THREE.MeshLambertMaterial({vertexColors:true}), MOBGEO = {};
+function mobModel(key, build){
+  let M2 = MOBGEO[key];
+  if (!M2){
+    const src = build(), pos = [], nor = [], col = [], extras = [];
+    src.updateMatrixWorld(true);
+    src.children.forEach(o => {
+      if (o.isMesh && o.material && o.material.type === 'MeshLambertMaterial' && !o.material.map && !o.material.emissive.getHex()){
+        const gg = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone(); gg.applyMatrix4(o.matrix);
+        pos.push(...gg.attributes.position.array); nor.push(...gg.attributes.normal.array); const c = o.material.color; for (let i = 0; i < gg.attributes.position.count; i++) col.push(c.r, c.g, c.b); gg.dispose();
+      } else extras.push(o);
+    });
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    M2 = MOBGEO[key] = {geo, extras};
+  }
+  const g = new THREE.Group(), m = new THREE.Mesh(M2.geo, MOBMAT); m.raycast = () => {}; g.add(m);
+  M2.extras.forEach(o => { const q = o.clone(); q.raycast = () => {}; g.add(q); });
+  return g;
+}
+// ---- slow-mo beat, shock wave and music sting: the juice of every Mega moment ----
+function shockwave(pos, R, power, opt){
+  opt = opt || {};
+  let ring = SBX.ring; if (!ring){ ring = SBX.ring = new THREE.Mesh(new THREE.RingGeometry(.8, 1, 40), new THREE.MeshBasicMaterial({color:0xfff2b0, transparent:true, depthWrite:false, side:THREE.DoubleSide})); ring.rotation.x = -Math.PI/2; ring.raycast = () => {}; }
+  ring.position.set(pos.x, .15, pos.z); ring.userData.t = 0; ring.userData.R = R; ring.scale.setScalar(.1); if (!ring.parent) fxRoot.add(ring);
+  for (const m of creatures()){ if (m.userData.mecha || m.userData.fly) continue; const d = Math.hypot(m.position.x - pos.x, m.position.z - pos.z); if (d < R) flingCreature(m, pos, Math.max(4, power*(1 - d/R)*1.2 + 3)); }
+  if (!opt.noPlayer && inFP() && !S.dead && !P.ride && !(SBX.ride && SBX.ride.mecha)){ const d = Math.hypot(P.x - pos.x, P.z - pos.z); if (d < R) knockPlayer(pos, Math.min(12, 4 + power*(1 - d/R))); }
+  sfx.thump(Math.min(64, 4*power));
+}
+function megaJuice(p, pos){
+  if (p < 2) return;
+  const fresh = SBX.t - (SBX.juiceT || -9) > 3; SBX.juiceT = SBX.t;   // a clock fires a Mega toy again and again: the big moment once, not every tick
+  if (!reduceMotion) shake = Math.min(2.5, .6 + p*.3);
+  if (!fresh) return;
+  if (!reduceMotion) SBX.slowT = .7;   // a slow-motion beat
+  try { musicCue('fanfare'); } catch (e) {}
+  if (pos) shockwave(pos, 5 + p*1.5, p);
+}
+function juiceFrame(s){
+  const r = SBX.ring; if (r && r.parent){ const u = r.userData; u.t += s; const k = Math.min(1, u.t/.7); r.scale.setScalar(.1 + u.R*k); r.material.opacity = .8*(1 - k); if (k >= 1) fxRoot.remove(r); }
+}
+
+// ---- instanced pools: hundreds of bananas, slime blobs and wool tufts in one draw call each ----
+const _im = new THREE.Matrix4(), _iq = new THREE.Quaternion(), _is = new THREE.Vector3(), _ie = new THREE.Euler();
+function ipool(geo, mat, max){ const m = new THREE.InstancedMesh(geo, mat, max); m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); m.frustumCulled = false; m.raycast = () => {}; m.count = 0; return {m, max, list:[]}; }
+function ipAdd(P2, o){ if (P2.list.length >= P2.max) return false; o.t = 0; P2.list.push(o); return true; }
+function ipFrame(P2, s, fn){
+  if (!P2.list.length){ if (P2.m.count){ P2.m.count = 0; if (P2.m.parent) fxRoot.remove(P2.m); } return; }
+  if (!P2.m.parent) fxRoot.add(P2.m);
+  let k = 0; const keep = [];
+  for (const o of P2.list){ o.t += s; if (fn(o, s) === false) continue; keep.push(o); _iq.setFromEuler(_ie.set(o.rx || 0, o.ry || 0, o.rz || 0)); _is.setScalar(o.sc || 1); _im.compose(o.p, _iq, _is); P2.m.setMatrixAt(k++, _im); }
+  P2.list = keep; P2.m.count = k; P2.m.instanceMatrix.needsUpdate = true;
+}
+var TPOOL = {
+  banana:ipool(cbox(.36, .1, .12), M.banana, TOY_CAP.bananas), slime:ipool(cbox(.32, .32, .32), M.slime, TOY_CAP.slime),
+  wool:ipool(cbox(.5, .12, .5), new THREE.MeshLambertMaterial({color:0xf6f6f2}), TOY_CAP.wool), gold:ipool(cbox(.16, .16, .16), new THREE.MeshBasicMaterial({color:0xffd84a}), TOY_CAP.gold)
+};
+// a thrown thing in a pool: up, over, down; it lands and stays a while (bananas, wool) or splats (slime)
+function poolThrow(P2, from, vx, vy, vz, stay){ return ipAdd(P2, {p:from.clone(), v:new THREE.Vector3(vx, vy, vz), stay:stay || 0, rx:Math.random()*6, ry:Math.random()*6, sp:4 + Math.random()*8}); }
+function poolPhysics(o, s, g){
+  if (o.landed){ o.stay -= s; if (o.stay < 1) o.sc = Math.max(.01, o.stay); return o.stay > 0; }
+  o.v.y -= (g || 14)*s; o.p.addScaledVector(o.v, s); o.rx += o.sp*s; o.ry += o.sp*.7*s;
+  const half = NX/2 - 1; if (Math.abs(o.p.x) > half + 8 || Math.abs(o.p.z) > half + 8) return false;
+  if (o.p.y <= .06 && o.v.y < 0){ o.p.y = .06; if (!o.stay) return false; o.landed = true; o.rx = 0; o.rz = 0; }
+  return true;
+}
+
+// ================= the temple toys' Mega payoffs (and the sandbox's own version of them) =================
+// banana cannon: normally 5 bananas the way it faces. MEGA (OR): a barrage that buries the yard in bananas, and every monkey dives in
+function cannonGo(c, power){
+  const p = toyPos(c), [dx, dz] = DIRS[c.dir || 0];
+  if (power < 2){ sfx.pop(); for (let i = 0; i < 5; i++) poolThrow(TPOOL.banana, new THREE.Vector3(p.x, .9, p.z), dx*5 + (Math.random() - .5)*1.5, 5 + Math.random()*2, dz*5 + (Math.random() - .5)*1.5, 8); bananaChase(p.x + dx*5, p.z + dz*5); return; }
+  SBX.barrage = {c, t:0, n:0, max:Math.min(TOY_CAP.bananas, 70*power/2)}; megaJuice(power, p); showToast('BANANA BARRAGE!'); sbAchieveQuiet('barrage');
+}
+function bananaChase(x, z){ SBX.mobs.forEach(m => { if ((m.kind === 'capuchin' || m.kind === 'helper') && !m.g.userData.fly && m !== SBX.helper){ m.tx = x + (Math.random() - .5)*4; m.tz = z + (Math.random() - .5)*4; } }); }
+function barrageFrame(s){
+  const B = SBX.barrage; if (!B) return; B.t += s;
+  if (at(B.c.x, B.c.y) !== B.c || B.n >= B.max){ SBX.barrage = null; return; }
+  const p = toyPos(B.c), a0 = Math.atan2(DIRS[B.c.dir || 0][1], DIRS[B.c.dir || 0][0]);
+  for (let k = 0; k < 3 && B.n < B.max; k++){ const a = a0 + (Math.random() - .5)*1.6, sp = 3 + Math.random()*7; if (poolThrow(TPOOL.banana, new THREE.Vector3(p.x, 1, p.z), Math.cos(a)*sp, 6 + Math.random()*5, Math.sin(a)*sp, 25 + Math.random()*5)) B.n++; }
+  if (Math.random() < .5) tone(500 + Math.random()*300, .05, 'square', .03, 0, 260);
+  if (B.n % 20 < 3) bananaChase(p.x + Math.cos(a0)*5, p.z + Math.sin(a0)*5);
+}
+// the Bounce Pad in free build: it launches you (Tom: if it launches monkeys, it launches him). MEGA (DELAY): into the clouds
+function padGo(c, power){
+  sfx.piston(); sfx.boing(); const p = toyPos(c), mega = power >= 4;
+  if (inFP() && !S.dead && Math.hypot(P.x - p.x, P.z - p.z) < 1 && P.y < 3){
+    P.vy = mega ? 44 : 11; P.ground = false; P.airT = 0; P.kb = null;
+    if (mega){ megaJuice(power, null); showToast('DOUBLE BOUNCE! Up, up... into the CLOUDS!'); sbAchieveQuiet('clouds'); }
+  }
+  for (const m of creatures()){ if (m.userData.fly || m.userData.mecha) continue; if (Math.hypot(m.position.x - p.x, m.position.z - p.z) < 1.2) m.userData.fly = {vx:(Math.random() - .5)*2, vz:(Math.random() - .5)*2, vy:mega ? 24 : 10, spin:6, t:0}; }
+}
+function padFrame(){   // walk onto a pad that's already ON: boing
+  if (!inFP() || S.dead || !P.ground || P.ride) return;
+  const [x, y] = cellAtWorld(P.x, P.z), c = at(x, y);
+  if (c && c.t === 'launcher' && c.lit && SBX.t - (SBX.padT || -9) > .5){ SBX.padT = SBX.t; padGo(c, toyPower(c)); }
+}
+// the MEGA ROBOT, MEGA (MEMORY): the memory keeps it powered, so it keeps growing, stomping, until it's taller than the temple
+function robotMega(c, power){
+  if (c.away || SBX.robot) return; c.away = true; syncVisuals();
+  const p = toyPos(c), rb = makeRobot(); rb.position.set(p.x, 0, p.z); rb.rotation.y = Math.atan2(P.x - p.x, P.z - p.z); fxRoot.add(rb);
+  SBX.robot = {g:rb, c, t:0, sc:1, stomp:1.4, p}; sfx.piston(); tone(80, 1.2, 'sawtooth', .08, 0, 300);
+  megaJuice(power, null); showToast('The MEGA ROBOT is growing... and GROWING...'); sbAchieveQuiet('robot');
+}
+function robotFrame(s){
+  const R = SBX.robot; if (!R) return; R.t += s;
+  const held = at(R.c.x, R.c.y) === R.c && R.c.lit && R.t < 16;
+  R.sc = held ? Math.min(26, R.sc + s*(1 + R.sc*.25)) : Math.max(0, R.sc - s*R.sc*1.8 - s);
+  R.g.scale.setScalar(Math.max(.05, R.sc)); const ud = R.g.userData; if (ud.arms) ud.arms.forEach((a, i) => { a.rotation.z = (i ? -1 : 1)*(2.2 + Math.sin(R.t*3)*.4); });
+  if (held && (R.stomp -= s) <= 0){ R.stomp = 1.6; shockwave(R.p, 3 + R.sc*.45, 4 + R.sc*.3); if (R.sc > 20 && !R.said){ R.said = true; showToast('It\'s taller than the TEMPLE now!'); } }
+  if (!held && R.sc <= .3){ fxRoot.remove(R.g); R.c.away = false; syncVisuals(); SBX.robot = null; }
+}
+// the space toilet, MEGA (AND): no stopping at the clouds. It goes into ORBIT, and you can see the whole planet
+function orbitGo(c, power){
+  if (SBX.orbit || c.away) return; c.away = true; syncVisuals(); sfx.flush(); setTimeout(() => sfx.rocket(), 400);
+  const p = toyPos(c), t = makeToilet(); t.scale.setScalar(.45); t.position.set(p.x, .08, p.z); fxRoot.add(t);
+  const jet = new THREE.Mesh(new THREE.ConeGeometry(.5, 2.4, 6), new THREE.MeshBasicMaterial({color:0xff8a1c, transparent:true, opacity:.85})); jet.rotation.x = Math.PI; jet.position.y = -1.2; t.add(jet);
+  const rider = !!(P.ride && P.ride.c === c) || (inFP() && Math.hypot(P.x - p.x, P.z - p.z) < .8 && P.y < 1.6); P.ride = null;
+  SBX.orbit = {g:t, jet, c, t:0, p, rider, sky:scene.background.clone(), far:scene.fog.far};
+  megaJuice(power, null); showToast(rider ? '3, 2, 1... FLUSH OFF! This one isn\'t stopping...' : 'FLUSH OFF! Ride it next time: sit on it first!');
+}
+function planetMesh(){
+  if (SBX.planet) return SBX.planet;
+  const g = new THREE.Group(), R = 120, sea = new THREE.Mesh(new THREE.SphereGeometry(R, 32, 16), new THREE.MeshBasicMaterial({color:0x2f6fd0})); g.add(sea);
+  const land = new THREE.MeshBasicMaterial({color:0x4fa83a}), sand = new THREE.MeshBasicMaterial({color:0xd8c47a});
+  for (let i = 0; i < 18; i++){ const b = new THREE.Mesh(new THREE.BoxGeometry(14 + Math.random()*26, 3, 12 + Math.random()*20), i % 4 ? land : sand); const a = Math.random()*6.28, el = -.2 + Math.random()*1.5; b.position.set(Math.cos(a)*Math.cos(el)*R, Math.sin(el)*R, Math.sin(a)*Math.cos(el)*R); b.lookAt(0, 0, 0); g.add(b); }
+  const sp = []; for (let i = 0; i < 400; i++){ const a = Math.random()*6.28, el = Math.random()*1.4, r = 380; sp.push(Math.cos(a)*Math.cos(el)*r, Math.sin(el)*r + 125, Math.sin(a)*Math.cos(el)*r); }
+  const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3)); g.add(new THREE.Points(sg, new THREE.PointsMaterial({color:0xffffff, size:2.5, sizeAttenuation:false})));
+  g.traverse(o => { o.raycast = () => {}; }); g.position.y = -R - 5; SBX.planet = g; return g;
+}
+const SPACE_BLACK = new THREE.Color(0x050a24);
+function orbitFrame(s){
+  const O = SBX.orbit; if (!O) return; O.t += s; const t = O.t;
+  O.jet.scale.set(1 + Math.random()*.3, 1 + Math.random()*.6, 1 + Math.random()*.3);
+  const top = 150, y = t < 5 ? .08 + top*Math.pow(t/5, 2.2) : top;
+  if (t < 9.5){ O.g.position.y = y; if (Math.random() < .8) burst(O.g.position.clone(), Math.random() < .5 ? 0xff9a2a : 0xdddddd, 1); }
+  const k = Math.max(0, Math.min(1, (y - 30)/90));   // the sky goes black, the planet appears below
+  scene.background.copy(O.sky).lerp(SPACE_BLACK, k); scene.fog.color.copy(scene.background); scene.fog.far = O.far + k*2000;
+  if (k > 0){ const pl = planetMesh(); if (!pl.parent) fxRoot.add(pl); pl.visible = true; }
+  [ground, under, under2].forEach(m => { m.visible = k < .3; });   // (the yard's own lawn would hide the planet)
+  if (O.rider){ P.x = O.g.position.x; P.z = O.g.position.z; P.y = O.g.position.y + .5; P.vy = 0; P.ground = false; P.airT = 0;
+    if (t > 5 && !O.saw){ O.saw = true; P.pitch = Math.min(P.pitch, -1.1); showToast('ORBIT! You can see the WHOLE PLANET!'); sbAchieveQuiet('orbit'); } }
+  if (t > 9.5 && !O.down){ O.down = true; if (O.rider){ P.y = 26; P.vy = 0; P.airT = 2.5; showToast('Wheee! Back down you go...'); } O.g.visible = false; }   // home: you drop back in just above the yard, the parachute takes it from there
+  if (t > 10.5){ [ground, under, under2].forEach(m => { m.visible = true; }); scene.background.copy(O.sky); scene.fog.color.copy(O.sky); scene.fog.far = O.far; if (SBX.planet) SBX.planet.visible = false; fxRoot.remove(O.g); O.c.away = false; syncVisuals(); SBX.orbit = null; }
+}
+// the redstone sheep: a torch (or a repeater, or a powered block) pointed at it gives it a jolt: it fizzes. MEGA (AND): a whole flock lights up the yard
+function sheepJolt(m){
+  const c = m.cell; if (!c) return false;
+  for (let d = 0; d < 4; d++){ const n = nb(c, d); if (!n || n.t === 'rblock' || n.t === 'dust') continue; if (srcPower(n, opp(d)) > 0 || (n.t === 'stone' && n.powered)) return true; }
+  return false;
+}
+function sheepFrame(){
+  for (const m of SBX.mobs){ if (m.kind !== 'sheep' || m.g.userData.fly) continue;
+    const j = sheepJolt(m); if (j && !m.jolt) sheepFizz(m); m.jolt = j; }
+}
+function sheepFizz(m){
+  toyFire('sheep', 'power', m.cell);
+  const egg = eggCheck(m.cell, {id:'sheep', key:'sheep' + (m.id || (m.id = ++SBX.mobN)), asLamp:true}), p = m.g.position;
+  sayMob(m, 'BAAA-ZZZT!'); m.g.userData.hop = 1.2; noise(.4, .08, 5200, 'highpass'); burst(new THREE.Vector3(p.x, .9, p.z), 0xff3b1f, 12);
+  if (egg) flockGo(p, egg.power);
+}
+SBX.mobN = 0;
+function flockGo(p, power){
+  megaJuice(power, p); showToast('A WHOLE FLOCK of redstone sheep! The yard is glowing!'); sbAchieveQuiet('flock');
+  for (let i = 0; i < TOY_CAP.flock - mobsOf('flock') && mobRoom(); i++){ const x = 2 + Math.floor(Math.random()*(NX - 4)), y = 2 + Math.floor(Math.random()*(NY - 4)), sp = yardFree(x, y) ? [x, y] : nearFree(x, y);
+    const m = addMob('flock', makeSheepLite(true), sp[0], sp[1]); m.g.position.y = 10 + Math.random()*8; m.g.userData.fly = {vx:0, vz:0, vy:0, spin:0, t:0}; mobChute(m.g, true); m.life = 16 + Math.random()*4; }
+}
+// the banana helper, MEGA (NOT): he stands on his plate and the lamp goes OFF: the night shift! A torch hat, and he builds you a tower
+function helperFrame(s){
+  const m = SBX.helper; if (!m || !m.g.parent || m.g.userData.fly || (m.tx !== null && m.tx !== undefined)) { if (m) m.onPlate = null; return; }
+  const [x, y] = cellAtWorld(m.g.position.x, m.g.position.z), c = at(x, y);
+  if (!c || c.t !== 'plate'){ m.onPlate = null; return; }
+  if (m.onPlate === c || SBX.t - (SBX.towerT || -99) < 12) return; m.onPlate = c;
+  const lamps = []; for (const q of S.grid) if (q && q.t === 'lamp' && lamps.length < 12) lamps.push(q);
+  for (const L2 of lamps){ if (!eggSwitches(L2).includes(c)) continue; let g = null; try { g = eggGate(L2); } catch (e) {}
+    if (g && g.gate === 'not' && g.used && g.used[0] === c){ toyFire('banana', 'power', c); eggWon('banana', TOY_EGGS.banana[0]); nightShift(m, c); return; } }
+}
+function nightShift(m, plate){
+  SBX.towerT = SBX.t; megaJuice(2, null); showToast('NIGHT SHIFT! Your helper monkey has a torch hat... and he\'s building you a TOWER!'); sbAchieveQuiet('nightshift');
+  if (!m.g.userData.hat){ const h = new THREE.Group(); mobBox(h, .08, .3, .08, wm(0x6b4a24), 0, 0, 0); mobBox(h, .12, .12, .12, M.hotOn, 0, .2, 0); const gl = glow(M.glowGold, .9, .25); h.add(gl); h.position.y = 1.15; m.g.add(h); m.g.userData.hat = h; }
+  sayMob(m, 'Night shift! I LOVE the night shift!');
+  const quiet = (x, y) => yardFree(x, y) && !at(x, y) && DIRS.every(([ax, ay]) => { const n = at(x + ax, y + ay); return !n || !['dust', 'repeater', 'torch', 'lever', 'button', 'plate'].includes(n.t); });   // not next to his wires
+  const spot = [[1, 0], [-1, 0], [0, 1], [0, -1], [2, 0], [-2, 0], [0, 2], [0, -2], [1, 1], [-1, -1]].map(([dx, dy]) => [plate.x + dx, plate.y + dy]).find(([x, y]) => quiet(x, y)); if (!spot) return;
+  const [x, y] = spot; setCell(x, y, makeCell('stone', x, y, {})); syncVisuals();
+  for (let z = 1; z < UP_MAX; z++) later(z*.45, () => { if (!isFree() || at(x, y) === null || upAt(x, y, z) || upOverlapsPlayer(x, y, z)) return; upSet(x, y, z, {t:'stone', fuse:0}); syncUp(); sfx.place('stone'); });
+  later(UP_MAX*.45 + .1, () => saveBuildSoon());
+}
+
+// ================= the new toys =================
+// ---- the GOAT (Goat Simulator): out of its pen it trots, headbutting things across the yard. Tap the pen to RIDE it.
+// MEGA (NAND): the MECHA GOAT: iron armour, glowing eyes, TNT-proof (blasts bounce off it), and it headbutts lit TNT away like a football
+function makeGoat(mecha){ const g = mobModel(mecha ? 'goatM' : 'goat', () => makeGoat0(mecha)); if (mecha) g.userData.mecha = true; return g; }
+function makeGoat0(mecha){
+  const g = new THREE.Group(), fur = wm(mecha ? 0x9aa3ad : 0xf0ece4), dk = wm(mecha ? 0x5a6168 : 0x8a7a66), horn = wm(0xd8c8a0);
+  mobBox(g, .5, .45, .95, fur, 0, .62, 0); [[-.17, .3], [.17, .3], [-.17, -.3], [.17, -.3]].forEach(([x, z]) => mobBox(g, .12, .42, .12, dk, x, .21, z));
+  mobBox(g, .3, .32, .4, fur, 0, .95, .55); mobBox(g, .12, .16, .08, dk, 0, .76, .72); [-1, 1].forEach(s => { const h = mobBox(g, .07, .26, .07, horn, s*.1, 1.2, .48); h.rotation.x = -.6; });
+  mobEyes(g, 1.0, .76, .09, mecha); mobBox(g, .1, .14, .1, fur, 0, .8, -.5);
+  if (mecha){ const iron = wm(0x6d757d); mobBox(g, .56, .2, .7, iron, 0, .88, 0); mobBox(g, .34, .1, .3, iron, 0, 1.13, .55); [-1, 1].forEach(s => mobBox(g, .04, .3, .6, iron, s*.28, .6, 0)); const gl = glow(M.glowRed, 1.2, .95); gl.position.z = .7; g.add(gl); g.userData.mecha = true; }
+  return g;
+}
+function goatGo(c, power){
+  const mecha = power >= 4, p = toyPos(c), goats = SBX.mobs.filter(m => m.kind === 'goat');
+  if (goats.length >= TOY_CAP.goats){ const m = goats.find(q => q.pen === c) || goats[0]; if (mecha && !m.mecha) goatMecha(m, power); else { sayMob(m, 'MEEEH!'); m.g.userData.hop = 1; bleat(420); } return; }
+  const d = DIRS[c.dir || 0], sp = yardFree(c.x + d[0], c.y + d[1]) ? [c.x + d[0], c.y + d[1]] : nearFree(c.x, c.y);
+  const m = addMob('goat', makeGoat(false), sp[0], sp[1]); m.pen = c; m.charge = 1.5; bleat(400, .5); sayMob(m, 'MEEEEH!');
+  if (mecha) goatMecha(m, power); else showToast('A GOAT! It headbutts things. Tap its pen to ride it!');
+}
+function goatMecha(m, power){
+  const pos = m.g.position.clone(), rot = m.g.rotation.y; SBX.root.remove(m.g); m.g = makeGoat(true); m.g.position.copy(pos); m.g.rotation.y = rot; m.g.userData.sbx = true; SBX.root.add(m.g); m.mecha = true;
+  megaJuice(power, pos); tone(140, .8, 'square', .06, 0, 420); showToast('MECHA GOAT! Iron armour ON. TNT can\'t touch it, and it kicks lit TNT away! Tap its pen to ride it.'); sbAchieveQuiet('mecha');
+}
+function goatRide(c){
+  if (SBX.ride){ goatOff(); return; }
+  const m = SBX.mobs.filter(q => q.kind === 'goat' && !q.g.userData.fly).sort((a, b) => (b.pen === c) - (a.pen === c))[0];
+  if (!m){ sfx.nope(); showToast('No goat yet! Give the pen power and out comes a goat.'); return; }
+  SBX.ride = m; m.tx = m.tz = null; P.x = m.g.position.x; P.z = m.g.position.z; P.y = 0; P.vy = 0; SBX.rideLast = [P.x, P.z]; bleat(380);
+  showToast(m.mecha ? 'You\'re riding the MECHA GOAT! Charge through the TNT! (Jump to hop off.)' : 'You\'re riding the goat! Run into things to headbutt them. (Jump to hop off.)');
+}
+function goatOff(){ const m = SBX.ride; SBX.ride = null; if (m){ m.wait = 1; m.tx = m.tz = null; } showToast('You hopped off the goat.'); }
+function goatRideFrame(s){
+  const m = SBX.ride; if (!m) return;
+  if (!m.g.parent || !isFree() || S.dead || P.ride){ SBX.ride = null; return; }
+  if (P.vy > 2 && !P.ground){ goatOff(); return; }   // jumped off
+  const [lx, lz] = SBX.rideLast, dx = P.x - lx, dz = P.z - lz; if (Math.hypot(dx, dz) > .002 && Math.hypot(dx, dz) < .5) moveP(dx*.7, dz*.7, .55);   // a goat is faster than you
+  SBX.rideLast = [P.x, P.z];
+  const fx2 = -Math.sin(P.yaw), fz2 = -Math.cos(P.yaw); m.g.position.set(P.x + fx2*.3, 0, P.z + fz2*.3); m.g.rotation.y = Math.atan2(fx2, fz2);
+  goatButt(m, s);
+}
+// a goat's headbutt: anything right in front of it goes flying (happily); the Mecha Goat kicks lit TNT away like a football
+function goatButt(m, s){
+  const g = m.g, ahead = new THREE.Vector3(g.position.x + Math.sin(g.rotation.y)*.7, 0, g.position.z + Math.cos(g.rotation.y)*.7);
+  for (const o of creatures()){ if (o === g || o.userData.fly || o.userData.mecha) continue; if (Math.hypot(o.position.x - ahead.x, o.position.z - ahead.z) < .8){ flingCreature(o, g.position, m.mecha ? 10 : 7); bleat(460, .2); if (Math.random() < .5) sayMob(m, 'BONK!'); } }
+  if (m.mecha){ const [x, y] = cellAtWorld(ahead.x, ahead.z); for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++){ const t = at(x + dx, y + dy); if (t && t.t === 'tnt' && t.fuse > 1 && Math.hypot(toyPos(t).x - ahead.x, toyPos(t).z - ahead.z) < 1.1) kickTNT(t, g.position, m); } }
+}
+SBX.balls = [];
+function kickTNT(c, from, m){
+  const fuse = c.fuse, p0 = toyPos(c); setCell(c.x, c.y, null); syncVisuals();
+  const dx = p0.x - from.x, dz = p0.z - from.z, h = Math.hypot(dx, dz) || 1, dist = 7 + Math.random()*3;
+  const g = new THREE.Mesh(G.cube, M.tntFlash || M.tnt); g.scale.setScalar(.8); g.position.set(p0.x, .5, p0.z); g.raycast = () => {}; fxRoot.add(g);
+  SBX.balls.push({g, from:g.position.clone(), to:new THREE.Vector3(p0.x + dx/h*dist, .5, p0.z + dz/h*dist), t:0, T:.9, fuse, chain:c.chain});
+  tone(200, .12, 'square', .1, 0, 120); if (m) sayMob(m, bag('goatKick', ['GOOOAL!', 'BOOT!', 'Not today, TNT!', 'MEH-HEH-HEH!']));
+}
+function ballFrame(s){
+  for (const b of [...SBX.balls]){
+    b.t += s; const k = Math.min(1, b.t/b.T); b.g.position.lerpVectors(b.from, b.to, k); b.g.position.y = .5 + Math.sin(k*Math.PI)*3.5; b.g.rotation.x += s*12; b.g.rotation.z += s*7;
+    if (k < 1) continue;
+    fxRoot.remove(b.g); SBX.balls = SBX.balls.filter(q => q !== b);
+    const [x, y] = cellAtWorld(b.to.x, b.to.z), left = Math.max(2, b.fuse - Math.round(b.T*10));
+    if (inb(x, y) && yardFree(x, y) && !at(x, y)){ const t = makeCell('tnt', x, y, {}); t.fuse = left; t.chain = b.chain; setCell(x, y, t); syncVisuals(); sfx.place('tnt'); }
+    else { bangFx([b.to.clone()], TNT_R, 1, false); sfx.boom(1); }   // over the wall: it goes off out there, where it can't hurt anything
+  }
+}
+// ---- the OLD LADY: a granny with a shopping trolley shuffles out, muttering. Anything in her way gets a telling-off and a nudge.
+// MEGA (AND of two plates): a whole marching band of grannies with trolleys. Oom-pah-pah!
+function makeGranny(){ return mobModel('granny', makeGranny0); }
+function makeGranny0(){
+  const g = new THREE.Group(), coat = wm(0x8a4fa0), skin = wm(0xf0c8a8), hair = wm(0xd6d6d6), sock = wm(0xe8d8c0), dk = wm(0x333333);
+  [-1, 1].forEach(s => mobBox(g, .12, .4, .12, sock, s*.1, .2, 0)); mobBox(g, .42, .55, .32, coat, 0, .66, 0); mobBox(g, .3, .3, .28, skin, 0, 1.1, .02);
+  mobBox(g, .32, .12, .3, hair, 0, 1.28, 0); mobBox(g, .14, .14, .14, hair, 0, 1.38, -.1);
+  mobEyes(g, 1.12, .17, .07); mobBox(g, .24, .03, .02, dk, 0, 1.15, .18);   // glasses
+  mobBox(g, .14, .16, .08, wm(0x3a6a3a), .26, .62, .05);   // handbag
+  const tr = (w, h, d, m, x, y, z) => mobBox(g, w, h, d, m, x, y, z + .55);   // the trolley
+  tr(.44, .34, .4, wm(0x9aa3ad), 0, .52, 0); tr(.4, .3, .36, wm(0xff8a5a), 0, .56, 0); tr(.44, .04, .04, dk, 0, .82, -.26);
+  [[-.18, .15], [.18, .15], [-.18, -.15], [.18, -.15]].forEach(([x, z]) => tr(.08, .1, .08, dk, x, .06, z));
+  return g;
+}
+function grannyGo(c, power){
+  const band = power >= 4, n = band ? 8 : 1, d = DIRS[c.dir || 0], room = Math.min(TOY_CAP.grannies - mobsOf('granny'), TOY_CAP.mobs - SBX.mobs.length);
+  if (room <= 0){ sfx.nope(); showToast('That\'s plenty of grannies for one yard!'); return; }
+  if (band){ megaJuice(power, toyPos(c)); SBX.march = {t:0, beat:0, until:SBX.t + 15}; showToast('THE GRANNY MARCHING BAND! Oom-pah-pah!'); sbAchieveQuiet('band'); }
+  for (let i = 0; i < Math.min(n, room); i++) later(i*(band ? .5 : 0), () => { if (!isFree() || at(c.x, c.y) !== c) return;
+    const side = band ? (i % 2 ? 1 : -1)*.6 : 0, x = c.x + d[0], y = c.y + d[1], sp = yardFree(x, y) ? [x, y] : nearFree(c.x, c.y);
+    const m = addMob('granny', makeGranny(), sp[0], sp[1]); m.g.position.x += d[1]*side; m.g.position.z += d[0]*side; m.dir = [d[0], d[1]]; m.speed = band ? 1.5 : .9; m.life = band ? 16 : 11; m.band = band;
+    m.g.rotation.y = Math.atan2(d[0], d[1]); if (i === 0 || Math.random() < .3) sayMob(m, bag('granny', ['Youth of today!', 'In MY day we built with real blocks!', 'Mind my trolley, dear.', 'Out of the way, I\'ve got shopping!', 'Tsk, tsk, tsk.']));
+    tone(260, .3, 'triangle', .04, 0, 220); });
+}
+function grannyMove(m, s){
+  const g = m.g, nx = g.position.x + m.dir[0]*m.speed*s, nz = g.position.z + m.dir[1]*m.speed*s, [cx, cy] = cellAtWorld(nx + m.dir[0]*.8, nz + m.dir[1]*.8);
+  if (!yardFree(cx, cy) || (at(cx, cy) && SOLID.has(at(cx, cy).t))){ m.dir = [-m.dir[1], m.dir[0]]; g.rotation.y = Math.atan2(m.dir[0], m.dir[1]); if (Math.random() < .5) sayMob(m, 'Who put THAT there?'); return true; }
+  g.position.x = nx; g.position.z = nz; const beat = m.band ? Math.abs(Math.sin(SBX.t*Math.PI*2)) : Math.abs(Math.sin(SBX.t*5 + g.id));
+  g.position.y = beat*(m.band ? .16 : .04);
+  for (const o of creatures()){ if (o === g || o.userData.fly || o.userData.mecha || SBX.mobs.some(q => q.g === o && q.kind === 'granny')) continue; if (Math.hypot(o.position.x - nx, o.position.z - nz) < .9){ flingCreature(o, g.position, 3); if (Math.random() < .4) sayMob(m, bag('grannyTold', ['Shoo!', 'Manners!', 'Watch where you\'re going!'])); } }
+  if (inFP() && !P.kb && !S.dead && Math.hypot(P.x - nx, P.z - nz) < .8){ knockPlayer(g.position, 3); if (SBX.t - (SBX.toldT || -9) > 3){ SBX.toldT = SBX.t; showToast(bag('grannyYou', ['"Young people! Always in the WAY!"', '"Excuse YOU, dear!"', '"Tsk! Some of us have shopping to do!"'])); } }
+  return true;
+}
+function marchFrame(s){
+  const M2 = SBX.march; if (!M2) return; if (SBX.t > M2.until){ SBX.march = null; return; }
+  M2.t += s; if (M2.t < .5) return; M2.t -= .5; M2.beat++;
+  const bass = [98, 147, 110, 147][M2.beat % 4]; tone(bass, .22, 'square', .07, 0, bass*.98);   // oom...
+  if (M2.beat % 2) { tone(392, .12, 'square', .03, 0, 392); tone(494, .12, 'square', .03, 0, 494); } else noise(.08, .05, 2400, 'bandpass');   // ...pah!
+}
+// ---- CAPUCHIN CONGA (the Monkey Button's Mega: a counting circuit presses it exactly 5 times). The monkeys line up behind a
+// leader and conga round the yard: one, two, three, four, five, six, seven... KICK! Then they dance off over the wall, still in line.
+const congaR = () => Math.max(3, (NX + NY)/4 - 3), congaGap = () => .95/congaR();   // about a block apart, however big the yard
+function congaPath(a){ const rx = Math.max(3, NX/2 - 3), rz = Math.max(3, NY/2 - 3); return {x:rx*Math.cos(a), z:rz*Math.sin(a) + .9*Math.sin(3*a)}; }   // a wiggly loop round the yard
+function congaGo(c, power){
+  const room = Math.min(16, TOY_CAP.mobs - SBX.mobs.length) - mobsOf('conga');
+  const Q = SBX.conga;
+  if (Q && SBX.t < Q.until){ for (let i = 0; i < Math.min(2, room); i++) congaJoin(); Q.until = Math.max(Q.until, SBX.t + 8); sfx.ook(520); return; }   // more presses: two more join the end of the line
+  if (room < 4){ sfx.nope(); showToast('That\'s LOTS of monkeys! Blast some out of the yard first.'); return; }
+  megaJuice(power, toyPos(c)); sbAchieveQuiet('conga'); showToast('THE CAPUCHIN CONGA! One, two, three... KICK!');
+  sfx.button(); later(.15, () => sfx.ook(460));
+  const p = toyPos(c); let a0 = Math.atan2(p.z, p.x); if (!isFinite(a0)) a0 = 0;
+  SBX.conga = {a:a0, t:0, beat:0, kick:0, until:SBX.t + 16, n:0};
+  for (let i = 0; i < Math.min(12, room); i++) congaJoin();
+  plogEvent('toy');
+}
+function congaJoin(){
+  const Q = SBX.conga, i = Q.n++, q = congaPath(Q.a - i*congaGap());
+  const m = addMob('conga', makeWild('capuchin', 1), 0, 0); m.g.position.set(q.x, 4 + i*.3, q.z); m.slot = i;
+  m.g.userData.fly = {vx:0, vz:0, vy:2, spin:0, t:0};   // they drop into the line from above
+}
+// a conga monkey's move: its place in the line, a bob on every beat, a big sideways KICK on the eighth
+function congaMove(m, s){
+  const Q = SBX.conga, g = m.g;
+  if (!Q || SBX.t >= Q.until){ later(m.slot*.18, () => { if (g.parent && !g.userData.fly) mobHome(m); }); m.kind = 'congaOff'; return true; }
+  const a = Q.a - m.slot*congaGap(), q = congaPath(a), q2 = congaPath(a + .05), [cx, cy] = cellAtWorld(q.x, q.z), up = at(cx, cy) && SOLID.has(at(cx, cy).t) ? 1 : 0;
+  g.position.x = q.x; g.position.z = q.z; g.rotation.y = Math.atan2(q2.x - q.x, q2.z - q.z);
+  const ph = (Q.t % .3)/.3, kick = Q.kick > 0;
+  g.position.y = up + (kick ? .5*Math.sin(Math.min(1, (.45 - Q.kick)/.45)*Math.PI) : .1*Math.abs(Math.sin(ph*Math.PI)));
+  g.rotation.z = kick ? (m.slot % 2 ? .45 : -.45) : Math.sin(Q.t*Math.PI/.6)*.12;
+  return true;
+}
+function congaFrame(s){
+  const Q = SBX.conga; if (!Q) return;
+  if (SBX.t >= Q.until + 6){ SBX.conga = null; return; }
+  if (SBX.t >= Q.until) return;
+  Q.a += s*1.8/congaR(); Q.t += s; Q.kick = Math.max(0, Q.kick - s);
+  if (Q.t >= (Q.beat + 1)*.3){ Q.beat++;
+    if (Q.beat % 8 === 0){ Q.kick = .45; sfx.ook(560); noise(.12, .06, 6000, 'highpass'); tone(196, .25, 'square', .06, 0, 196); }   // KICK!
+    else { tone(Q.beat % 2 ? 330 : 220, .09, 'sine', .08, 0, Q.beat % 2 ? 250 : 170); if (Q.beat % 4 === 3) tone(392, .1, 'triangle', .04); }   // the bongos
+  }
+}
+// ---- SHEEP STRIKE (Worms): a plane flies over the row you aim it down and drops a line of sheep on parachutes.
+// MEGA (CLOCK): it rains sheep until the ground is woolly. Three sheep strikes on clocks, in step: one MEGA SHEEP in a cape.
+function makeSheepLite(lit){ return mobModel(lit ? 'flock' : 'ssheep', () => makeSheepLite0(lit)); }
+function makeSheepLite0(lit){
+  const g = new THREE.Group(), wool = wm(0xf2f2ee), face = wm(0x3a2a22);
+  mobBox(g, .6, .5, .85, wool, 0, .6, 0); [[-.18, .26], [.18, .26], [-.18, -.26], [.18, -.26]].forEach(([x, z]) => mobBox(g, .13, .38, .13, face, x, .19, z));
+  mobBox(g, .32, .32, .28, face, 0, .82, .5); mobBox(g, .38, .14, .3, wool, 0, 1.0, .48); mobEyes(g, .86, .645, .08);
+  if (lit){ mobBox(g, .62, .08, .87, M.hotOn, 0, .88, 0); const gl = glow(M.glowRed, 2.6, .7); g.add(gl); }
+  return g;
+}
+function makePlane(){
+  const g = new THREE.Group(), red = wm(0xd8261a), cream = wm(0xf0e6c8);
+  mobBox(g, .7, .7, 3, red, 0, 0, 0); mobBox(g, 5, .12, .9, cream, 0, .2, .4); mobBox(g, 2, .1, .5, cream, 0, .2, -1.3); mobBox(g, .1, .7, .5, red, 0, .5, -1.3);
+  const prop = mobBox(g, 1.4, .12, .06, wm(0x333333), 0, 0, 1.55); g.userData.prop = prop; return g;
+}
+function sheepStrike(c, power){
+  const clock = power >= 4, d = DIRS[c.dir || 0], p = toyPos(c);
+  if (clock){
+    const tk = S.tick; SBX.ssTick = SBX.ssTick || {}; Object.keys(SBX.ssTick).forEach(k => { if (tk - k > 3) delete SBX.ssTick[k]; });
+    (SBX.ssTick[tk] = SBX.ssTick[tk] || new Set()).add(c.y*NX + c.x);
+    if (SBX.ssTick[tk].size >= 3 && !SBX.megaSheep) megaSheep();
+    if (SBX.t - (SBX.woolT || -9) > 4){ SBX.woolT = SBX.t; megaJuice(power, null); showToast('It\'s raining SHEEP!'); }
+    for (let i = 0; i < 6; i++){ const x = 2 + Math.floor(Math.random()*(NX - 4)), y = 2 + Math.floor(Math.random()*(NY - 4)); dropSheep(cellPos(x, y), 12 + Math.random()*8); }
+    return;
+  }
+  // one plane, down the row the strike faces, from one side of the yard to the other
+  const half = NX/2, a = new THREE.Vector3(p.x - d[0]*half*1.2, 11, p.z - d[1]*half*1.2), b = new THREE.Vector3(p.x + d[0]*half*1.4, 11, p.z + d[1]*half*1.4);
+  if (Math.abs(d[0])) { a.x = -half*1.3*d[0]; b.x = half*1.4*d[0]; } else { a.z = -half*1.3*d[1]; b.z = half*1.4*d[1]; }
+  a.x += d[1] ? p.x - a.x : 0; b.x += d[1] ? p.x - b.x : 0; a.z += d[0] ? p.z - a.z : 0; b.z += d[0] ? p.z - b.z : 0;
+  const pl = makePlane(); pl.position.copy(a); pl.lookAt(b); fxRoot.add(pl); SBX.planes = SBX.planes || []; SBX.planes.push({g:pl, a, b, t:0, T:4, drops:[.35, .45, .55, .65, .75]});
+  noise(4, .03, 300, 'lowpass'); tone(90, 4, 'sawtooth', .02, 0, 95); showToast('SHEEP STRIKE! Here comes the plane...');
+}
+function dropSheep(pos, h){
+  if (mobsOf('ssheep') >= TOY_CAP.ssheep || !mobRoom()) return;
+  const [x, y] = cellAtWorld(pos.x, pos.z); if (!inb(x, y)) return;
+  const m = addMob('ssheep', makeSheepLite(false), x, y); m.g.position.set(pos.x, h, pos.z); m.g.userData.fly = {vx:0, vz:0, vy:0, spin:0, t:0}; mobChute(m.g, true); m.life = 14 + Math.random()*4;
+  if (Math.random() < .5) bleat(500 + Math.random()*200, .4);
+}
+function planeFrame(s){
+  for (const Q of [...(SBX.planes || [])]){
+    Q.t += s; const k = Q.t/Q.T; Q.g.position.lerpVectors(Q.a, Q.b, Math.min(1, k)); Q.g.userData.prop.rotation.z += s*40;
+    while (Q.drops.length && k >= Q.drops[0]){ Q.drops.shift(); dropSheep(Q.g.position.clone(), 10); }
+    if (k >= 1){ fxRoot.remove(Q.g); SBX.planes = SBX.planes.filter(q => q !== Q); }
+  }
+}
+// wool: a sheep that lands leaves a tuft or two. Lots of sheep, woolly ground
+function woolTuft(pos){ for (let i = 0; i < 2; i++) ipAdd(TPOOL.wool, {p:new THREE.Vector3(pos.x + (Math.random() - .5)*.8, .06, pos.z + (Math.random() - .5)*.8), ry:Math.random()*3, stay:40, landed:true, v:new THREE.Vector3()}); }
+function megaSheep(){
+  const g = new THREE.Group(); g.add(makeSheepLite(false)); const cape = mobBox(g, .7, .04, 1.1, wm(0xd8261a), 0, .9, -.6); cape.rotation.x = .5; g.userData.cape = cape;
+  g.scale.setScalar(7); g.position.set(-NX, 18, -NY*.4); fxRoot.add(g); SBX.megaSheep = {g, t:0};
+  megaJuice(6, null); bleat(220, 1.6); showToast('THREE in step... it\'s MEGA SHEEP! In a CAPE!'); sbAchieveQuiet('supersheep');
+}
+function megaSheepFrame(s){
+  const Q = SBX.megaSheep; if (!Q) return; Q.t += s; const t = Q.t, g = Q.g;
+  if (t < 4){ const k = t/4; g.position.set(-NX*1.2 + k*NX*1.5, 18 + Math.sin(t*2)*3, -NY*.4 + k*NY*.4); g.rotation.y = Math.PI/2; g.userData.cape.rotation.x = .5 + Math.sin(t*14)*.25; }   // across the sky, cape flapping
+  else if (t < 5.2){ const k = (t - 4)/1.2; g.position.set(NX*.3*(1 - k), 18*(1 - k*k), 0); g.rotation.y += s*4; }   // a dive into the middle of the yard
+  else if (!Q.landed){ Q.landed = true; g.position.set(0, 0, 0); shockwave(g.position.clone(), 16, 10); sfx.boom(16); bleat(160, 1.4); for (let i = 0; i < 30; i++) woolTuft(new THREE.Vector3((Math.random() - .5)*9, 0, (Math.random() - .5)*9)); }
+  else { g.position.y += s*(t - 5.2)*12; g.rotation.y += s*2; if (t > 9){ fxRoot.remove(g); SBX.megaSheep = null; } }   // and off it flies, BAAA!
+}
+// ---- the HOLY HAND BANANA (Worms): pull the pin (power it) and a golden banana sails off, a choir sings HALLELUJAH, and a big (harmless) bang.
+// MEGA (COUNTING, exactly three pulses): the sky opens and a golden banana the size of a mountain comes down. Five pulses: FIVE IS RIGHT OUT.
+function choir(big){
+  const notes = [[523, 659, 784], [587, 740, 880], [659, 784, 988], [784, 988, 1175]];
+  (big ? [0, 1, 2, 3, 0, 2, 3] : [0, 1, 3]).forEach((k, i) => notes[k].forEach(f => tone(f, big ? 1.1 : .6, 'triangle', big ? .045 : .03, i*(big ? .8 : .45), f)));
+}
+function makeGoldBanana(){
+  const g = new THREE.Group(), gold = M.gold, tip = wm(0x6b4a24);
+  [[-.3, .12, .5], [-.12, .03, .2], [.08, 0, -.1], [.28, .08, -.45]].forEach(([x, y, rz]) => { const b = mobBox(g, .26, .16, .16, gold, x, y, 0); b.rotation.z = rz; });
+  mobBox(g, .08, .08, .08, tip, -.45, .2, 0); mobBox(g, .1, .1, .1, tip, .44, .2, 0); return g;
+}
+function holyGo(c, power){
+  if (c.away) return;
+  const g = SBX.lastGate;
+  if (g && g.gate === 'count' && g.pulses === 5){ c.away = true; later(3, () => { c.away = false; }); noise(.5, .06, 900, 'bandpass'); sfx.aww(); burst(new THREE.Vector3(toyPos(c).x, 1, toyPos(c).z), 0x999999, 8); showToast('Pffft. FIVE IS RIGHT OUT! Count to THREE!'); sbAchieve('fiveout'); return; }
+  c.away = true; syncVisuals();
+  if (power >= 4) return holyMega(c, power);
+  const p = toyPos(c), d = DIRS[c.dir || 0], b = makeGoldBanana(); b.position.set(p.x, 1, p.z); fxRoot.add(b);
+  SBX.holy = SBX.holy || []; SBX.holy.push({g:b, c, t:0, from:b.position.clone(), to:new THREE.Vector3(p.x + d[0]*6, .3, p.z + d[1]*6)}); choir(false); showToast('HALLELUJAH!');
+}
+function holyFrame(s){
+  for (const H of [...(SBX.holy || [])]){
+    H.t += s; const k = Math.min(1, H.t/1.6); H.g.position.lerpVectors(H.from, H.to, k); H.g.position.y = .3 + Math.sin(k*Math.PI)*4.5; H.g.rotation.y += s*8;
+    if (Math.random() < .4) ipAdd(TPOOL.gold, {p:H.g.position.clone(), v:new THREE.Vector3((Math.random() - .5), .5, (Math.random() - .5)), stay:0, sc:.6});
+    if (k < 1) continue;
+    fxRoot.remove(H.g); SBX.holy = SBX.holy.filter(q => q !== H);
+    bangFx([H.to.clone()], 3.5, 4, false); sfx.boom(4); shockwave(H.to, 4.5, 5); if (!reduceMotion) shake = .8;   // a big bang, but nothing breaks
+    later(2.5, () => { if (at(H.c.x, H.c.y) === H.c){ H.c.away = false; syncVisuals(); } });
+  }
+  const Q = SBX.holyMega; if (!Q) return; Q.t += s; const t = Q.t;
+  const k = Math.min(1, t/1.5); scene.background.copy(Q.sky).lerp(HOLY_GOLD, k*(t < 9 ? 1 : Math.max(0, 1 - (t - 9)))); scene.fog.color.copy(scene.background);
+  Q.beam.material.opacity = .5*Math.min(1, t)*(t < 9 ? 1 : Math.max(0, 1 - (t - 9)));
+  if (t < 6){ const e = Math.min(1, t/6); Q.g.position.y = 140 - 140*(e*e); Q.g.rotation.y += s*.4; if (Math.random() < .6) ipAdd(TPOOL.gold, {p:new THREE.Vector3((Math.random() - .5)*NX, 25 + Math.random()*20, (Math.random() - .5)*NY), v:new THREE.Vector3(0, -4, 0), stay:0, sc:1.2}); }
+  else if (!Q.landed){ Q.landed = true; Q.g.position.y = 0; SBX.slowT = 1.2; shockwave(new THREE.Vector3(Q.at.x, 0, Q.at.z), 40, 14); bangFx([Q.at.clone().setY(2)], 12, 64, false); sfx.boom(64); if (!reduceMotion) shake = 2.5; showToast('KA-HALLELUJAH-BOOM!!!'); }
+  else if (t > 8){ Q.g.scale.multiplyScalar(Math.exp(-s*3)); }
+  if (t > 10.5){ fxRoot.remove(Q.g); fxRoot.remove(Q.beam); scene.background.copy(Q.sky); scene.fog.color.copy(Q.sky); Q.c.away = false; syncVisuals(); SBX.holyMega = null; }
+}
+const HOLY_GOLD = new THREE.Color(0xffe9a0);
+function holyMega(c, power){
+  const p = toyPos(c), g = makeGoldBanana(); g.scale.setScalar(36); g.position.set(0, 140, 0); fxRoot.add(g);
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(6, 10, 160, 12, 1, true), new THREE.MeshBasicMaterial({color:0xfff2b0, transparent:true, opacity:0, depthWrite:false, side:THREE.DoubleSide})); beam.position.set(0, 80, 0); beam.raycast = () => {}; fxRoot.add(beam);
+  SBX.holyMega = {g, beam, c, t:0, at:new THREE.Vector3(0, 0, 0), sky:scene.background.clone()};
+  megaJuice(power, null); choir(true); showToast('ONE... TWO... THREE! The sky is OPENING...'); sbAchieveQuiet('holy');
+  setTimeout(() => { if (SBX.holyMega) choir(true); }, 4000);
+}
+// ---- the NINJA ROPE (Worms): power it and the rope shoots out and swings whoever is next to it across a gap (you, or a creature).
+// MEGA (NOR): a rope so long you swing across the WHOLE yard
+function ropeGo(c, power){
+  const mega = power >= 4, p = toyPos(c), d = DIRS[c.dir || 0], len = mega ? 20 : 7, h = mega ? 13 : 5;
+  const tx = Math.max(2, Math.min(NX - 3, c.x + d[0]*len)), ty = Math.max(2, Math.min(NY - 3, c.y + d[1]*len)), land = yardFree(tx, ty) && !at(tx, ty) ? [tx, ty] : nearFree(tx, ty), b = cellPos(...land);
+  tone(1400, .25, 'square', .03, 0, 300); noise(.3, .06, 3000, 'highpass');
+  if (mega){ megaJuice(power, null); sbAchieveQuiet('swing'); }
+  const hook = new THREE.Vector3((p.x + b.x)/2, h + 4, (p.z + b.z)/2);
+  if (inFP() && !S.dead && !P.ride && Math.hypot(P.x - p.x, P.z - p.z) < 1.8){
+    SBX.swing = {ax:P.x, az:P.z, ay:P.y, bx:b.x, bz:b.z, t:0, T:mega ? 2.6 : 1.4, h, hook}; showToast(mega ? 'The LONGEST ROPE EVER! WHEEEEEEE!' : 'NINJA ROPE! Wheee!');
+  } else {
+    const m = creatures().find(o => !o.userData.fly && !o.userData.mecha && Math.hypot(o.position.x - p.x, o.position.z - p.z) < 3);
+    if (m){ const T = 1.4, dx = b.x - m.position.x, dz = b.z - m.position.z; m.userData.fly = {vx:dx/T, vz:dz/T, vy:16*T/2, spin:0, t:0}; } else showToast('Stand next to the ninja rope, then give it power!');
+  }
+  ropeLine(p, hook, 1.6);
+}
+function ropeLine(from, hook, life){
+  let L2 = SBX.rope; if (!L2){ L2 = SBX.rope = new THREE.Mesh(cbox(.06, .06, 1), wm(0x6b4a24)); L2.raycast = () => {}; }
+  L2.userData = {hook, t:0, life, from}; if (!L2.parent) fxRoot.add(L2);
+}
+function swingFrame(s){
+  const W = SBX.swing, R = SBX.rope;
+  if (W){ W.t += s; const k = Math.min(1, W.t/W.T); P.x = W.ax + (W.bx - W.ax)*k; P.z = W.az + (W.bz - W.az)*k; P.y = W.ay*(1 - k) + W.h*4*k*(1 - k); P.vy = 0; P.ground = false; P.airT = 0;
+    if (W.T > 2 && Math.abs(k - .5) < .05 && !reduceMotion) SBX.slowT = Math.max(SBX.slowT || 0, .3);
+    if (k >= 1){ SBX.swing = null; P.y = 0; P.ground = true; sfx.step && sfx.step('stone'); } camera.position.set(P.x, P.y + EYE, P.z); }
+  if (R && R.parent){ const u = R.userData; u.t += s; const end = W ? new THREE.Vector3(P.x, P.y + 1.4, P.z) : u.from.clone().setY(1); const mid = u.hook;
+    R.position.copy(end).add(mid).multiplyScalar(.5); R.lookAt(mid); R.scale.set(1, 1, end.distanceTo(mid)); if (!W && u.t > u.life) fxRoot.remove(R); }
+}
+// ---- the CHICKEN CANNON: BWAK! Three chickens fly out the way it faces, land, and strut off. MEGA (CLOCK): a chicken STORM
+function makeChicken(){ return mobModel('chicken', makeChicken0); }
+function makeChicken0(){
+  const g = new THREE.Group(), w = wm(0xf6f6f2);
+  mobBox(g, .3, .3, .42, w, 0, .35, 0); mobBox(g, .22, .24, .2, w, 0, .58, .18); mobBox(g, .06, .1, .14, wm(0xd8261a), 0, .76, .16); mobBox(g, .1, .06, .1, wm(0xffb000), 0, .55, .32);
+  mobEyes(g, .62, .285, .07); [-1, 1].forEach(s => mobBox(g, .04, .2, .04, wm(0xffa030), s*.08, .1, 0)); return g;
+}
+function chickenGo(c, power){
+  const mega = power >= 4, p = toyPos(c), d = DIRS[c.dir || 0], room = Math.min(TOY_CAP.chickens - mobsOf('chicken'), TOY_CAP.mobs - SBX.mobs.length);
+  if (room <= 0){ sfx.nope(); showToast('The yard is FULL of chickens!'); return; }
+  sfx.pop(); tone(900, .12, 'square', .04, 0, 1300); tone(700, .15, 'square', .04, .12, 1100);
+  if (mega && SBX.t - (SBX.stormT || -9) > 4){ SBX.stormT = SBX.t; megaJuice(power, null); showToast('CHICKEN STORM! Bwak bwak BWAAAK!'); sbAchieveQuiet('chickens'); }
+  for (let i = 0; i < Math.min(mega ? 6 : 3, room); i++){
+    const m = addMob('chicken', makeChicken(), c.x, c.y); m.g.position.y = 1; m.life = 16 + Math.random()*4; m.g.rotation.y = Math.atan2(d[0], d[1]);
+    const a = mega ? Math.random()*6.28 : Math.atan2(d[1], d[0]) + (Math.random() - .5)*.6, sp = mega ? 2 + Math.random()*5 : 4 + Math.random()*2;
+    m.g.userData.fly = {vx:Math.cos(a)*sp, vz:Math.sin(a)*sp, vy:mega ? 14 + Math.random()*6 : 7 + Math.random()*2, spin:mega ? 8 : 4, t:0};
+  }
+}
+// ---- the WHOOPEE MINE: a cushion hidden in the floor. Power it: PARP, a stink cloud, and everything near hops.
+// MEGA (OR of three plates): every whoopee mine in the yard parps, one after another, in TUNE
+function mineParp(c, f){
+  const p = toyPos(c); if (f) tone(f, .5, 'square', .06, 0, f*.85); else sfx.fart();
+  stinkCloud(new THREE.Vector3(p.x, .3, p.z), 0, 0, 5, false);
+  for (const m of creatures()){ if (!m.userData.fly && Math.hypot(m.position.x - p.x, m.position.z - p.z) < 2) m.userData.hop = 1; }
+  if (inFP() && P.ground && Math.hypot(P.x - p.x, P.z - p.z) < .8){ P.vy = 7; P.ground = false; }
+}
+function mineGo(c, power){
+  if (power < 4){ mineParp(c); return; }
+  const mines = S.grid.filter(q => q && q.t === 'whoopeemine').sort((a, b) => Math.hypot(a.x - c.x, a.y - c.y) - Math.hypot(b.x - c.x, b.y - c.y)).slice(0, 24);
+  const scale = [131, 147, 165, 196, 220, 262, 294, 330, 392, 440, 523, 587];
+  megaJuice(power, null); showToast('THE WHOOPEE SYMPHONY!'); sbAchieveQuiet('symphony');
+  mines.forEach((m, i) => later(i*.22, () => { if (at(m.x, m.y) === m) mineParp(m, scale[i % scale.length]); }));
+  later(mines.length*.22 + .2, () => { [131, 165, 196, 262].forEach(f => tone(f, 1.4, 'square', .05, 0, f*.9)); for (const m of creatures()) if (!m.userData.fly) m.userData.hop = 2; });   // and the big chord at the end
+}
+// ---- the BOUNCY CASTLE: power it and it blows up into a bouncy castle; anything on it bounces. Power off: pfffft.
+// MEGA (a wire 15+ long with a repeater): it blows up as big as the temple
+function makeCastle(){
+  const g = new THREE.Group(), cols = [0xff5a8a, 0xffd84a, 0x4fa3ff, 0x6ad04a];
+  mobBox(g, 1, .14, 1, wm(cols[0]), 0, .07, 0);
+  [[-.45, 0], [.45, 0], [0, -.45], [0, .45]].forEach(([x, z], i) => mobBox(g, x ? .1 : 1, .4, z ? .1 : 1, wm(cols[1 + i % 3]), x, .34, z));
+  [[-.45, -.45], [.45, -.45], [-.45, .45], [.45, .45]].forEach(([x, z], i) => { mobBox(g, .2, .7, .2, wm(cols[i % 4]), x, .35, z); mobBox(g, .26, .12, .26, wm(cols[(i + 1) % 4]), x, .76, z); });
+  return g;
+}
+SBX.castles = [];
+function bouncyGo(c, power){
+  if (SBX.castles.some(q => q.c === c)) return;
+  const mega = power >= 4, p = toyPos(c), g = makeCastle(); g.position.set(p.x, 0, p.z); g.scale.setScalar(.3); fxRoot.add(g); c.away = true; syncVisuals();
+  SBX.castles.push({c, g, k:0, size:mega ? 15 : 3, p}); noise(1, .06, 700, 'lowpass');
+  if (mega){ megaJuice(power, p); showToast('The bouncy castle is as big as the TEMPLE!'); sbAchieveQuiet('castle'); } else showToast('BOUNCY CASTLE! Jump on!');
+}
+function castleFrame(s){
+  for (const K of [...SBX.castles]){
+    const on = at(K.c.x, K.c.y) === K.c && K.c.lit; K.k = on ? Math.min(1, K.k + s) : Math.max(0, K.k - s*1.5);
+    const sc = .3 + (K.size - .3)*K.k; K.g.scale.set(sc, sc*(K.size > 5 ? .6 : 1)*(1 + Math.sin(SBX.t*6)*.03), sc);
+    if (!on && K.k <= 0){ fxRoot.remove(K.g); K.c.away = false; syncVisuals(); SBX.castles = SBX.castles.filter(q => q !== K); noise(.6, .05, 500, 'lowpass'); continue; }
+    if (K.k < .9) continue;
+    const half = sc/2;
+    if (inFP() && P.ground && !S.dead && Math.abs(P.x - K.p.x) < half && Math.abs(P.z - K.p.z) < half){ P.vy = K.size > 5 ? 15 : 9; P.ground = false; tone(300, .15, 'sine', .05, 0, 600); }
+    for (const m of creatures()){ if (m.userData.fly || m.userData.mecha || Math.abs(m.position.x - K.p.x) > half || Math.abs(m.position.z - K.p.z) > half) continue; if (Math.random() < s*2) m.userData.fly = {vx:(Math.random() - .5)*2, vz:(Math.random() - .5)*2, vy:7 + Math.random()*4, spin:5, t:0}; }
+  }
+}
+// ---- the SLIME FOUNTAIN: SPLURT! Slime spurts up and splashes down; standing on it bounces you.
+// MEGA (CLOCK): a slime GEYSER that keeps going while the clock ticks. Stand on it and it carries you up into the sky
+SBX.geysers = [];
+function slimeGo(c, power){
+  const p = toyPos(c); sfx.splash(); sfx.blub();
+  if (power >= 4){ const G2 = SBX.geysers.find(q => q.c === c); if (G2) G2.until = SBX.t + 3; else { SBX.geysers.push({c, p, until:SBX.t + 3}); megaJuice(power, null); showToast('SLIME GEYSER! Stand on it... if you dare!'); } return; }
+  for (let i = 0; i < 24; i++){ const a = Math.random()*6.28, sp = Math.random()*2; poolThrow(TPOOL.slime, new THREE.Vector3(p.x, .5, p.z), Math.cos(a)*sp, 6 + Math.random()*4, Math.sin(a)*sp, 0); }
+  if (inFP() && Math.hypot(P.x - p.x, P.z - p.z) < 1.1 && P.y < 1){ P.vy = 10; P.ground = false; }
+  for (const m of creatures()) if (!m.userData.fly && !m.userData.mecha && Math.hypot(m.position.x - p.x, m.position.z - p.z) < 1.2) m.userData.fly = {vx:(Math.random() - .5)*3, vz:(Math.random() - .5)*3, vy:9, spin:5, t:0};
+}
+function geyserFrame(s){
+  if (P.ground) SBX.geyserDone = false;
+  for (const G2 of [...SBX.geysers]){
+    if (SBX.t > G2.until || at(G2.c.x, G2.c.y) !== G2.c){ SBX.geysers = SBX.geysers.filter(q => q !== G2); continue; }
+    for (let i = 0; i < 4; i++) poolThrow(TPOOL.slime, new THREE.Vector3(G2.p.x + (Math.random() - .5)*.6, .5, G2.p.z + (Math.random() - .5)*.6), (Math.random() - .5)*1.5, 22 + Math.random()*8, (Math.random() - .5)*1.5, 0);
+    if (Math.random() < s*3) sfx.blub();
+    if (inFP() && !S.dead && !SBX.geyserDone && Math.hypot(P.x - G2.p.x, P.z - G2.p.z) < 1 && P.y < 36){ P.vy = 13; P.ground = false; P.airT = 0; if (!G2.rode){ G2.rode = true; sbAchieveQuiet('geyser'); showToast('You\'re riding the SLIME GEYSER! Up, up, UP!'); } }
+    else if (inFP() && !SBX.geyserDone && Math.hypot(P.x - G2.p.x, P.z - G2.p.z) < 1 && P.y >= 36){ SBX.geyserDone = true; const a = Math.random()*6.28; P.kb = {vx:Math.cos(a)*5, vz:Math.sin(a)*5}; P.vy = 4; P.airT = 2.5; }   // at the top: off you slide, and the parachute brings you down
+    for (const m of creatures()) if (!m.userData.fly && !m.userData.mecha && Math.hypot(m.position.x - G2.p.x, m.position.z - G2.p.z) < 1.2) m.userData.fly = {vx:(Math.random() - .5)*4, vz:(Math.random() - .5)*4, vy:20, spin:6, t:0};
+  }
+}
+// ---- TELEPORTER PADS (a pair): stand on one and power it: ZWOOP, you pop out of the other. Creatures too.
+// MEGA (XOR, Act 2): MASS TELEPORT: everything in the yard vanishes at once and rains back down on parachutes
+function telGo(c, power){
+  const pads = S.grid.filter(q => q && q.t === 'teleporter' && q !== c), p = toyPos(c);
+  burst(new THREE.Vector3(p.x, .6, p.z), 0xb05cff, 16); tone(300, .35, 'sine', .07, 0, 1400);
+  if (power >= 4) return massPort(c, power);
+  if (!pads.length){ showToast('A teleporter needs a partner! Put down a second Teleporter Pad.'); return; }
+  const key = q => q.y*NX + q.x, after = pads.filter(q => key(q) > key(c)), to = (after.length ? after : pads).sort((a, b) => key(a) - key(b))[0], q2 = toyPos(to);
+  let moved = false;
+  if (inFP() && !S.dead && Math.hypot(P.x - p.x, P.z - p.z) < .75 && P.y < 1.5){ P.x = q2.x; P.z = q2.z; P.y = .1; P.vy = 2; P.kb = null; moved = true; showToast('ZWOOP!'); }
+  for (const m of creatures()){ if (m.userData.fly || m.userData.mecha) continue; if (Math.hypot(m.position.x - p.x, m.position.z - p.z) < .8){ m.position.x = q2.x; m.position.z = q2.z; const M3 = SBX.mobs.find(k => k.g === m); if (M3){ M3.tx = M3.tz = null; if (M3.kind === 'sheep') sheepCell(M3, to.x, to.y) } moved = true; } }
+  burst(new THREE.Vector3(q2.x, .6, q2.z), 0xb05cff, moved ? 24 : 8);
+  if (!moved && !SBX.telTold){ SBX.telTold = true; showToast('Stand on a pad, then give it power!'); }
+}
+function massPort(c, power){
+  megaJuice(power, null); showToast('MASS TELEPORT! Everything vanished... and here it all comes!'); sbAchieveQuiet('massport'); tone(200, 1.2, 'sine', .08, 0, 2400);
+  const hidden = SBX.mobs.filter(m => m.kind !== 'sheep' && !m.g.userData.fly && m !== SBX.ride);
+  hidden.forEach(m => { m.g.visible = false; burst(m.g.position.clone().setY(.6), 0xb05cff, 4); });
+  const me = inFP() && !S.dead && !P.ride && !SBX.ride;
+  if (me){ const h = $('#hurt'); if (h){ h.style.background = 'rgba(176,92,255,.45)'; h.classList.remove('go'); void h.offsetWidth; h.classList.add('go'); setTimeout(() => { h.style.background = ''; }, 900); } }
+  later(.8, () => {
+    hidden.forEach(m => { if (!m.g.parent) return; const x = 2 + Math.floor(Math.random()*(NX - 4)), y = 2 + Math.floor(Math.random()*(NY - 4)), q = cellPos(x, y); m.g.visible = true; m.g.position.set(q.x, 12 + Math.random()*10, q.z); m.tx = m.tz = null; m.g.userData.fly = {vx:0, vz:0, vy:0, spin:0, t:0}; mobChute(m.g, true); });
+    if (me && inFP()){ const [x, y] = nearFree(2 + Math.floor(Math.random()*(NX - 4)), 2 + Math.floor(Math.random()*(NY - 4))), q = cellPos(x, y); P.x = q.x; P.z = q.z; P.y = 22; P.vy = 0; P.airT = 2.5; P.kb = null; P.ground = false; }
+    tone(2400, .8, 'sine', .06, 0, 300);
+  });
+}
+
+// how the new toys look as blocks (from sbMesh)
+function toyMesh2(c, g, add){
+  const [dx, dz] = DIRS[c.dir || 0], face = Math.atan2(dx, dz), turn = m => { m.rotation.y = face; return m; };
+  switch (c.t){
+    case 'goat': { add(cbox(.94, .12, .94), M.wood, 0, .06, 0); [[-.42, -.42], [.42, -.42], [-.42, .42], [.42, .42]].forEach(([x, z]) => add(cbox(.1, .6, .1), M.wood, x, .3, z)); [-.2, .2].forEach(y => { add(cbox(.94, .07, .05), M.wood, 0, .3 + y + .1, -.44); add(cbox(.05, .07, .94), M.wood, -.44, .3 + y + .1, 0); add(cbox(.05, .07, .94), M.wood, .44, .3 + y + .1, 0); });
+      add(cbox(.5, .3, .4), wm(0xd8b04a), 0, .27, -.15); const h = add(cbox(.28, .26, .3), wm(0xf0ece4), dx*.25, .62, dz*.25); turn(h); [-1, 1].forEach(sd => { const e = add(cbox(.05, .05, .02), wm(0x111111), dx*.4 + dz*sd*.07, .66, dz*.4 - dx*sd*.07); turn(e); }); break; }
+    case 'granny': { add(cbox(.9, .6, .9), wm(0xf4d8e0), 0, .3, 0); const r = add(cbox(1, .3, 1), wm(0xa0522d), 0, .74, 0); r.rotation.y = Math.PI/4; add(cbox(.12, .25, .12), wm(0x8a8a8a), .25, .95, .2);
+      const d = add(cbox(.34, .46, .04), wm(c.lit ? 0x2a1208 : 0x5a8a3a), dx*.46, .23, dz*.46); turn(d); add(cbox(.2, .18, .03), wm(0xbfe6ff), -dz*.28 + dx*.46, .4, dx*.28 + dz*.46); break; }
+    case 'sheepstrike': { add(cbox(.8, .45, .5), wm(0x5a6a3a), 0, .23, 0); add(cbox(.3, .3, .02), wm(0x333333), .15, .25, .26); add(cbox(.14, .14, .05), wm(0xd8261a), -.22, .3, .26); add(cbox(.04, .6, .04), wm(0x888888), -.3, .75, 0); add(cbox(.1, .1, .1), M.hotOn, -.3, 1.05, 0);
+      const a = add(cbox(.18, .08, .4), wm(0xffffff), dx*.2, .55, dz*.2); turn(a); break; }   // a radio, and an arrow the way the plane will fly
+    case 'holybanana': { add(cbox(.5, .5, .5), M.gold, 0, .25, 0); add(cbox(.62, .12, .62), wm(0x8a4fa0), 0, .56, 0); if (!c.away){ const b = makeGoldBanana(); b.scale.setScalar(.9); b.position.y = .78; b.rotation.y = face; g.add(b); } break; }
+    case 'ninjarope': { add(cbox(.3, 1.2, .3), M.wood, 0, .6, 0); for (let i = 0; i < 4; i++) add(cbox(.42, .06, .42), wm(0xc8a060), 0, .3 + i*.12, 0); add(cbox(.2, .14, .2), wm(0x9aa3ad), 0, 1.27, 0); const hk = add(cbox(.08, .08, .36), wm(0x9aa3ad), dx*.15, 1.27, dz*.15); turn(hk); break; }
+    case 'chickencannon': { add(cbox(.8, .2, .8), M.wood, 0, .1, 0); const b = add(cbox(.4, .4, 1), wm(0x4a4a4a), dx*.15, .5, dz*.15); turn(b); const ch = add(cbox(.24, .24, .2), wm(0xf6f6f2), dx*.62, .62, dz*.62); turn(ch); add(cbox(.06, .1, .1), wm(0xd8261a), dx*.62, .78, dz*.62); break; }
+    case 'whoopeemine': { add(cbox(.8, .1, .8), wm(0xe8508a), 0, .05, 0); add(cbox(.6, .04, .6), wm(c.lit ? 0xff8ab8 : 0xd8407a), 0, .11, 0); add(cbox(.04, .4, .04), wm(0xffd84a), .3, .3, .3); add(cbox(.18, .12, .02), wm(0xd8261a), .39, .42, .3); break; }
+    case 'bouncy': { if (c.away){ add(cbox(.3, .2, .3), wm(0x666666), 0, .1, 0); break; } add(cbox(.8, .25, .8), wm(0xff5a8a), 0, .13, 0); [[-.32, -.32], [.32, -.32], [-.32, .32], [.32, .32]].forEach(([x, z], i) => add(cbox(.16, .4, .16), wm([0xffd84a, 0x4fa3ff, 0x6ad04a, 0xffd84a][i]), x, .3, z)); break; }
+    case 'slimefountain': { add(cbox(.9, .3, .9), M.stone, 0, .15, 0); add(cbox(.7, .05, .7), M.slime, 0, .31, 0); add(cbox(.16, .4, .16), M.slime, 0, .45, 0); add(cbox(.24, .1, .24), M.slime, 0, .66, 0); break; }
+    case 'teleporter': { add(cbox(.9, .1, .9), wm(0x3a2a5a), 0, .05, 0); add(cbox(.7, .04, .7), M.tele || (M.tele = new THREE.MeshBasicMaterial({color:0xb05cff})), 0, .12, 0); add(cbox(.4, .05, .4), wm(0xe8c8ff), 0, .15, 0); break; }
+  }
+}
+// ================= wiring it all in =================
+// redstone sets the toys off (from sbToy): the new toys, and the sandbox's own Mega versions of the temple toys
+function toyMega(c){
+  if (!isFree()) return false;
+  const pw = toyPower(c);
+  switch (c.t){
+    case 'goat': goatGo(c, pw); return true;
+    case 'granny': grannyGo(c, pw); return true;
+    case 'sheepstrike': sheepStrike(c, pw); return true;
+    case 'holybanana': holyGo(c, pw); return true;
+    case 'ninjarope': ropeGo(c, pw); return true;
+    case 'chickencannon': chickenGo(c, pw); return true;
+    case 'whoopeemine': mineGo(c, pw); return true;
+    case 'bouncy': bouncyGo(c, pw); return true;
+    case 'slimefountain': slimeGo(c, pw); return true;
+    case 'teleporter': telGo(c, pw); return true;
+    case 'bananacannon': cannonGo(c, pw); return true;
+    case 'launcher': padGo(c, pw); return true;
+    case 'goldfish': if (pw >= 4){ robotMega(c, pw); return true; } return false;
+    case 'monkeys': if (pw >= 4){ congaGo(c, pw); return true; } return false;
+    case 'spacetoilet': if (pw >= 3){ orbitGo(c, pw); return true; } return false;
+  }
+  return false;
+}
+// the goat licks things and drags them about (Goat Simulator): the thing sticks to its tongue while it backs away, then SLURP, let go
+const LICKABLE = new Set(['capuchin', 'chicken', 'ssheep', 'skunk']);
+function goatLick(m, o){
+  const q = SBX.mobs.find(k => k.g === o); if (!q || !LICKABLE.has(q.kind) || o.userData.fly) return false;
+  const t = new THREE.Mesh(cbox(.12, .04, .5), wm(0xff7aa0)); t.position.set(0, .5, .55); t.raycast = () => {}; m.g.add(t);
+  m.lick = {q, t, time:2.5 + Math.random()}; q.tx = q.tz = null; q.wait = 9; tone(700, .25, 'sine', .05, 0, 300); noise(.2, .04, 1800, 'bandpass');
+  sayMob(m, bag('goatLick', ['SLURRRP!', 'Mmm, sticky!', 'Lick! Got you!', 'MEH-HEH! Come with me!']));
+  return true;
+}
+function goatLickFrame(m, s){
+  const L2 = m.lick, g = m.g, o = L2.q.g; L2.time -= s;
+  const done = () => { if (L2.t.parent) g.remove(L2.t); L2.q.wait = .5; m.lick = null; m.charge = 1.5 + Math.random()*2; };
+  if (L2.time <= 0 || !o.parent || o.userData.fly){ if (L2.time <= 0) tone(500, .12, 'sine', .04, 0, 900); done(); return true; }
+  const fx2 = Math.sin(g.rotation.y), fz2 = Math.cos(g.rotation.y), nx = g.position.x - fx2*1.4*s, nz = g.position.z - fz2*1.4*s, [cx, cy] = cellAtWorld(nx - fx2*.5, nz - fz2*.5);
+  if (!yardFree(cx, cy)){ done(); return true; }   // backed into something: let go
+  g.position.x = nx; g.position.z = nz; g.position.y = Math.abs(Math.sin(SBX.t*8))*.05;
+  o.position.x = nx + fx2*.95; o.position.z = nz + fz2*.95; o.position.y = .05;   // dragged along on the end of its tongue
+  return true;
+}
+// tapping a toy in free build (from sbAct): the goat pen gives you a ride
+function toyUse(c, item){
+  if (item === 'pick' || !isFree()) return false;
+  if (c.t === 'goat'){ goatRide(c); return true; }
+  return false;
+}
+// the new creatures' own moves (from toyMobFrame). true: handled this frame; false: they wander about like everyone else
+const MOB2 = {
+  goat(m, s){
+    if (m === SBX.ride) return true;
+    if (m.lick) return goatLickFrame(m, s);
+    m.charge -= s; if (m.charge > 0 && !m.target) return false;
+    if (!m.target){ m.charge = 2 + Math.random()*2;
+      let best = null, bd = 7; if (m.mecha){ for (const t of S.grid) if (t && t.t === 'tnt' && t.fuse > 1){ const q = toyPos(t), d = Math.hypot(q.x - m.g.position.x, q.z - m.g.position.z); if (d < 9 && d < bd + 2){ best = q; bd = d; } } }
+      if (!best) for (const o of creatures()){ if (o === m.g || o.userData.fly || o.userData.mecha) continue; const d = Math.hypot(o.position.x - m.g.position.x, o.position.z - m.g.position.z); if (d < bd){ best = o.position.clone(); bd = d; m.prey = o; } }
+      if (!best) return false; m.target = best; m.chargeT = 2.5; bleat(440, .25); }
+    const g = m.g, dx = m.target.x - g.position.x, dz = m.target.z - g.position.z, d = Math.hypot(dx, dz), sp = 3.6*s; m.chargeT -= s;
+    g.rotation.y = Math.atan2(dx, dz); g.position.y = Math.abs(Math.sin(SBX.t*14))*.12;
+    if (d < .6 && m.prey && Math.random() < .35 && goatLick(m, m.prey)){ m.target = m.prey = null; return true; }   // sometimes a LICK instead of a bonk
+    if (d < .6 || m.chargeT <= 0){ goatButt(m, s); m.target = m.prey = null; return true; }
+    const nx = g.position.x + dx/d*sp, nz = g.position.z + dz/d*sp, [cx, cy] = cellAtWorld(nx, nz);
+    if (yardFree(cx, cy) || (at(cx, cy) && at(cx, cy).t === 'tnt')){ g.position.x = nx; g.position.z = nz; goatButt(m, s); } else m.target = null;
+    return true;
+  },
+  granny(m, s){ return grannyMove(m, s); },
+  conga(m, s){ return congaMove(m, s); },
+  chicken(m, s){ if (Math.random() < s*.3) tone(800 + Math.random()*300, .08, 'square', .02, 0, 1100); return false; },
+  ssheep(m, s){ if (!m.tufted){ m.tufted = true; woolTuft(m.g.position); } return false; },
+  flock(m, s){ const gl = m.g.children.find(o => o.isSprite); if (gl) gl.scale.setScalar(2.4 + Math.sin(SBX.t*6 + m.g.id)*.5); return false; }
+};
+function toyMobFrame2(m, s){
+  const H = MOB2[m.kind]; if (!H) return false;
+  if (m.life !== undefined){ m.life -= s; if (m.life <= 0){ mobHome(m); return true; } }
+  return H(m, s);
+}
+// time to go home: grannies pop home in a puff; everyone else hops over the wall
+function mobHome(m){
+  const g = m.g;
+  if (m.kind === 'granny'){ burst(g.position.clone().setY(.8), 0xffffff, 10); SBX.root.remove(g); SBX.mobs = SBX.mobs.filter(q => q !== m); return; }
+  const half = NX/2 - .5, ax = Math.abs(g.position.x) > Math.abs(g.position.z), side = ax ? Math.sign(g.position.x) || 1 : Math.sign(g.position.z) || 1, dist = half - Math.abs(ax ? g.position.x : g.position.z) + 2.5, T = 1.4, v = dist/T;
+  g.userData.fly = {vx:ax ? side*v : (Math.random() - .5), vz:ax ? (Math.random() - .5) : side*v, vy:16*T/2, spin:0, t:0}; m.home = true; m.life = undefined;
+}
+// a Mega achievement goes into the "MEGA MODE!" card (eggWon) when there is one; this just makes sure it's kept
+function sbAchieveQuiet(id){ progress.sbAch = progress.sbAch || {}; if (!progress.sbAch[id]){ progress.sbAch[id] = Date.now(); saveProgress(); } }
+// everything above, once a frame in free build (from sbFrame)
+function toys2Frame(s){
+  if (SBX.slowT > 0) SBX.slowT -= s/.3;
+  laterFrame(); if ((SBX.sparkT = (SBX.sparkT || 0) - s) <= 0){ SBX.sparkT = 1; sbSparkle(); }
+  juiceFrame(s); barrageFrame(s); padFrame(); robotFrame(s); orbitFrame(s); sheepFrame(); helperFrame(s); goatRideFrame(s); ballFrame(s);
+  marchFrame(s); congaFrame(s); planeFrame(s); megaSheepFrame(s); holyFrame(s); swingFrame(s); castleFrame(s); geyserFrame(s); wonderFrame(s);
+  ipFrame(TPOOL.banana, s, o => poolPhysics(o, s));
+  ipFrame(TPOOL.slime, s, o => poolPhysics(o, s, 18));
+  ipFrame(TPOOL.wool, s, o => { o.stay -= s; o.sc = Math.min(1, o.stay); return o.stay > 0; });
+  ipFrame(TPOOL.gold, s, o => { o.p.addScaledVector(o.v, s); o.ry += s*6; o.sc = (o.sc || 1)*Math.exp(-s*.8); return o.t < 2.5; });
+}
+// leaving (or coming into) the sandbox: put all of it away (from sbClear)
+function toyClear(){
+  if (!TPOOL) return;   // (called before this part of the game has loaded)
+  [...hotbar.children, HB.bag].forEach(b => { if (b) b.classList.remove('sbSpark'); });   // (back in the temple: no sparkles; free build puts them back within a second)
+  Object.values(TPOOL).forEach(q => { q.list = []; q.m.count = 0; if (q.m.parent) fxRoot.remove(q.m); });
+  ['robot', 'orbit', 'megaSheep', 'holyMega'].forEach(k => { const o = SBX[k]; if (!o) return; [o.g, o.beam].forEach(g => { if (g && g.parent) g.parent.remove(g); }); if (o.c) o.c.away = false; if (o.sky){ scene.background.copy(o.sky); scene.fog.color.copy(o.sky); if (o.far) scene.fog.far = o.far; } SBX[k] = null; });
+  [...(SBX.planes || []), ...(SBX.holy || []), ...SBX.balls, ...SBX.castles].forEach(o => { if (o.g && o.g.parent) o.g.parent.remove(o.g); });
+  SBX.eggT = {}; SBX.lastGate = null; SBX.later = []; SBX.planes = []; SBX.holy = []; SBX.balls = []; SBX.castles = []; SBX.geysers = []; SBX.barrage = null; SBX.march = null; SBX.conga = null; SBX.swing = null; SBX.ride = null; SBX.slowT = 0;
+  if (SBX.rope && SBX.rope.parent) fxRoot.remove(SBX.rope); if (SBX.ring && SBX.ring.parent) fxRoot.remove(SBX.ring); if (SBX.planet) SBX.planet.visible = false; [ground, under, under2].forEach(m => { m.visible = true; });
+}
+
+// ================= hints: the hotbar sparkle, Barold wondering aloud, and the Gate Cards' "Mega mode unlocked!" line =================
+// after a few normal goes with a toy, a sparkle sits on its hotbar slot until he opens the page with its Mega mode (the bag)
+function toyUsed(id){
+  if (!TOY_EGGS[id]) return; progress.toyUses = progress.toyUses || {}; progress.toyUses[id] = (progress.toyUses[id] || 0) + 1;
+  if (progress.toyUses[id] === 3) sbSparkle();
+  SBX.lastToyT = SBX.t;
+}
+function sbSparkle(){
+  const uses = progress.toyUses || {}, seen = progress.megaSeen || {}, on = isFree();
+  ITEMS.forEach((it, i) => { const b = hotbar.children[i]; if (b) b.classList.toggle('sbSpark', on && !!TOY_EGGS[it.id] && (uses[it.id] || 0) >= 3 && !seen[it.id]); });
+  const any = on && ITEMS.some((it, i) => hotbar.children[i] && hotbar.children[i].classList.contains('sbSpark'));
+  if (HB.bag) HB.bag.classList.toggle('sbSpark', any);
+}
+{ const st = document.createElement('style'); st.textContent = `.slot.sbSpark,.hbBtn.sbSpark{position:relative;}
+.slot.sbSpark::after,.hbBtn.sbSpark::after{content:"\\2726";position:absolute;top:-6px;right:-4px;font-size:18px;color:#ffe14a;text-shadow:0 0 4px #fff,0 0 8px #ffb000;pointer-events:none;animation:sbTw 1.1s ease-in-out infinite;}
+@keyframes sbTw{0%,100%{transform:scale(.7) rotate(0deg);opacity:.6}50%{transform:scale(1.25) rotate(25deg);opacity:1}}
+@media (prefers-reduced-motion: reduce){.slot.sbSpark::after,.hbBtn.sbSpark::after{animation:none}}
+.invItem{min-width:0;overflow-wrap:anywhere;hyphens:auto;}`; document.head.appendChild(st); }   // (long names like "Holy Hand Banana" wrap in the bag on a phone)
+// Barold, at a calm moment in free build, wonders aloud about a Mega mode he could try (only skills already learned; never one that's done)
+const WONDER = {
+  beacon:'I wonder what that donkey does if BOTH levers have to be ON...', bananacannon:'Hmm. What if EITHER plate could fire the banana cannon?',
+  banana:'What if your helper monkey made a lamp go OFF when he stands on his plate? A night-shift monkey!', sheep:'I wonder what a sheep does if a torch only lights when BOTH levers are ON...',
+  spacetoilet:'Two flush handles... What if the space toilet needed BOTH of them?', launcher:'What if a second Bounce Pad went off JUST as you landed on it?',
+  granny:'What if Granny only came out when BOTH plates were pressed? Just wondering.', whoopeemine:'What if ANY of three plates set the whoopee mines off?',
+  bouncy:'I wonder what a REALLY long wire, with a repeater in it, does to that bouncy castle...', tnt:'What if three piles of TNT went off at EXACTLY the same moment?',
+  goat:'What if the goat came out UNLESS both levers are ON? Funny sort of gate, that.', ninjarope:'What if the rope only fired when NEITHER lever was on?',
+  teleporter:'What if the teleporter only worked when exactly ONE plate was pressed?', holybanana:'One, two, FIVE! ...No. Three. What if a circuit counted to three by itself?',
+  sheepstrike:'What if something set off the sheep strike again and again, all by itself? Tick, tock...', chickencannon:'What if the chicken cannon fired all by itself? Tick, tock...',
+  slimefountain:'What if the slime fountain spurted again and again, all by itself?', madcow:'What if the barn door kept opening all by itself?', skunk:'What if the skunk sprayed again and again, all by itself?',
+  goldfish:'What if the robot REMEMBERED to stay big?', groovitron:'What if the disco ball REMEMBERED to stay on?'
+};
+function wonderFrame(s){
+  if (!isFree() || !inFP()) { SBX.calmT = 0; return; }
+  const busy = DLG.on || !$('#why').hidden || SBX.orbit || SBX.holyMega || SBX.swing || SBX.ride || P.ride || S.dead || SBX.t - (SBX.lastToyT || -99) < 12 || tntLive() && S.grid.some(c => c && c.t === 'tnt' && c.fuse > 0);
+  SBX.calmT = busy ? 0 : (SBX.calmT || 0) + s;
+  if (SBX.calmT < 25 || (SBX.wondered || 0) >= 3 || SBX.t - (SBX.wonderT || -999) < 90) return;
+  const kit = sandboxKit(), done = progress.sbEggs || {}, sv = sbSave();
+  const ids = Object.keys(WONDER).filter(id => kit.has(id) && (TOY_EGGS[id] || []).some(e => megaKnown(e.gate, sv) && !done[id + ':' + e.gate]) && !(SBX.wonderSaid || []).includes(id));
+  if (!ids.length) return;
+  const id = ids[Math.floor(Math.random()*ids.length)]; SBX.wonderSaid = [...(SBX.wonderSaid || []), id]; SBX.wondered = (SBX.wondered || 0) + 1; SBX.wonderT = SBX.t; SBX.calmT = 0;
+  const lines = [[GUIDE, WONDER[id]]]; lines.soft = true; dlgStart(lines); feed('say', WONDER[id]);
+}
+// each Gate Card names a toy it now powers up
+const MEGA_FOR_CARD = {and:'wire an AND gate into the Homing Beacon and see what comes down...', not:'wire your helper monkey\'s plate through a NOT gate to a lamp...', or:'wire an OR gate into the Banana Cannon...',
+  nor:'wire a NOR gate into the Ninja Rope...', nand:'wire a NAND gate into the Goat Pen...', xor:'wire an XOR gate into a Teleporter Pad...', clock:'wire a Clock into the Sheep Strike...', memory:'wire a Memory latch into the MEGA ROBOT...'};
+const gateCardPlain = gateCardHTML;
+gateCardHTML = function(k, quiz){ return gateCardPlain(k, quiz) + (MEGA_FOR_CARD[k] ? `<p class="megaLine" style="clear:both;margin:6px 0 0;font-size:14px"><b>Mega mode unlocked!</b> In Free Build, ${MEGA_FOR_CARD[k]}</p>` : ''); };
 
 /* ================= test hook ================= */
 window.goAct = goAct;
@@ -10461,6 +11320,18 @@ window.__game.opening = {
   pick(){ const [cx, cy] = centre(); world.updateMatrixWorld(); const h = pick(cx, cy); return h ? [h.x, h.y, h.cell ? h.cell.t : null] : null; }
 };
 // test hooks for TNT and the sandbox (test-tnt.js, test-freebuild.js)
+window.__game.toys = {
+  bonuses(){ return TEMPLE_ROOMS.filter(q => q.bonus).map(q => ({id:q.id, reward:q.bonus.reward || null, badge:q.bonus.badge || null, needs:q.bonus.toy || null, why:!!(q.bonus.why || q.bonus.kind === 'dust' || q.bonus.kind === 'pulses'), met:!!q.bonus.reward && TOY_MET[q.bonus.reward] !== undefined && TOY_MET[q.bonus.reward] <= q.id})); },
+  cap:TOY_CAP, eggs:TOY_EGGS, lastGate(){ return SBX.lastGate || null; }, ach(){ return Object.assign({}, progress.sbAch || {}); },
+  pools(){ return Object.fromEntries(Object.entries(TPOOL).map(([k, q]) => [k, q.list.length])); },
+  state(){ return {barrage:!!SBX.barrage, robot:SBX.robot ? +SBX.robot.sc.toFixed(2) : 0, orbit:SBX.orbit ? {t:+SBX.orbit.t.toFixed(2), y:+SBX.orbit.g.position.y.toFixed(1), rider:SBX.orbit.rider} : null, castles:SBX.castles.map(k => ({size:k.size, k:+k.k.toFixed(2)})), geysers:SBX.geysers.length, swing:!!SBX.swing, ride:SBX.ride ? {mecha:!!SBX.ride.mecha} : null, march:!!SBX.march, megaSheep:!!SBX.megaSheep, holyMega:!!SBX.holyMega, holy:(SBX.holy || []).length, planes:(SBX.planes || []).length, balls:SBX.balls.length, slow:SBX.slowT > 0}; },
+  goats(){ return SBX.mobs.filter(m => m.kind === 'goat').map(m => ({mecha:!!m.mecha, cell:cellAtWorld(m.g.position.x, m.g.position.z)})); },
+  lick(){ const m = SBX.mobs.find(q => q.kind === 'goat'), o = SBX.mobs.find(q => q.kind === 'capuchin' && !q.g.userData.fly); if (!m || !o) return null; m.target = null; m.g.rotation.y = Math.atan2(o.g.position.x - m.g.position.x, o.g.position.z - m.g.position.z); const ok = goatLick(m, o.g), d = () => Math.hypot(o.g.position.x - m.g.position.x, o.g.position.z - m.g.position.z); return {ok, from:[o.g.position.x, o.g.position.z], d}; },
+  sparkled(){ return ITEMS.filter((it, i) => hotbar.children[i] && hotbar.children[i].classList.contains('sbSpark')).map(it => it.id); },
+  megaHTML(ids){ return megaHTML(ids); }, known:megaKnown, gateCard(k){ return gateCardHTML(k, true); },
+  wonderSoon(){ SBX.calmT = 999; SBX.wonderT = -999; SBX.lastToyT = -999; }, use(x, y){ const c = at(x, y); return c ? toyUse(c, 'dust') : false; },
+  simSeq(x, y, n){ const c = at(x, y); return eggSim(() => { const q = []; for (let i = 0; i < n; i++){ step(); q.push(c.lit ? 1 : 0); } return q.join(''); }); }, aimFace(yaw){ P.yaw = yaw; stepFP(0); }, walk(yaw, ms){ P.yaw = yaw; keys.w = true; for (let t = 0; t < ms; t += 16){ stepFP(16); sbFrame(16); } keys.w = false; }, frames(ms){ for (let t = 0; t < ms; t += 16){ stepFP(16); runFx(16); sbFrame(16); advFrame(16, t); } }
+};
 window.__game.sbx = {
   tnts:TNTS, live:tntLive, grow:tntGrow, R:TNT_R, MAX:TNT_LIVE_MAX, ach(){ return Object.assign({}, progress.sbAch || {}); },
   me(){ return {x:P.x, y:P.y, z:P.z, cell:cellAtWorld(P.x, P.z), dead:!!S.dead, tumble:!!S.tumble, roll:P.roll || 0, kb:!!P.kb, deadBox:!$('#dead').hidden}; },
@@ -10476,7 +11347,7 @@ window.__game.sbx = {
   stink(x, y){ puff({x, y}); }, size(){ return [NX, NY]; }, wall(x, y){ return wallAt(x, y); },
   up(x, y, z){ const b = upAt(x, y, z); return b ? {t:b.t, fuse:b.fuse || 0} : null; }, upTop, upPut(t, x, y, z){ if (!S.up) return false; upSet(x, y, z, {t, fuse:0}); syncUp(); return true; },
   fling:flingCreature, creatures, bits(){ return BANG.meshes ? BANG.meshes.reduce((n, m) => n + m.count, 0) : 0; },
-  mobs(){ return SBX.mobs.map(m => ({kind:m.kind, x:m.g.position.x, y:m.g.position.y, z:m.g.position.z, cell:cellAtWorld(m.g.position.x, m.g.position.z), fly:!!m.g.userData.fly, chute:!!m.g.userData.chute})); },
+  mobs(){ return SBX.mobs.map(m => ({kind:m.kind, x:m.g.position.x, y:m.g.position.y, z:m.g.position.z, cell:cellAtWorld(m.g.position.x, m.g.position.z), fly:!!m.g.userData.fly, chute:!!m.g.userData.chute, slot:m.slot})); },
   release(x, y){ const c = at(x, y); if (c) releaseMonkeys(c); }, sheep(x, y){ addSheep(x, y); }, banana(x, y){ throwBanana({x, y}); },
   ride(x, y){ const c = at(x, y); if (c) rideToilet(c); }, riding(){ return !!P.ride; }, chute(){ return !!P.chute; }, beacon(x, y){ const c = at(x, y); if (c) beaconGo(c); }, donkey(){ return SBX.donkey ? {t:SBX.donkey.t, y:SBX.donkey.g ? SBX.donkey.g.position.y : null, broke:!!SBX.donkey.broke, power:SBX.donkey.power} : null; }, skunk(x, y, power){ const c = at(x, y); if (c) skunkGo(c, power || 1); },
   act(mode){ const [cx, cy] = centre(); world.updateMatrixWorld(); act(cx, cy, mode || 'use'); }, hb(){ return {page:HB.page, per:HB.per, pages:HB.pages, shown:[...hotbar.children].filter(b => !b.hidden && !b.classList.contains('pgOff')).length, all:hbVisible().length}; }, flip:hbFlip, inventory:openInventory,
