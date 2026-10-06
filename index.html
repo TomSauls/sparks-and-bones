@@ -921,9 +921,17 @@ try { const v = JSON.parse(localStorage.getItem('redstone-academy.volume') || 'n
   else { if (localStorage.getItem('redstone-academy.sound') === 'off') VOL.master = 0; if (localStorage.getItem('redstone-academy.music') === 'off') VOL.music = 0; } } catch (e) {}   // the old on/off buttons carry over
 // iPhone and iPad: play through the silent switch (Safari 16.4+), so the game's own sliders are what turn it down
 function audioSessionPlayback(){ try { if ('audioSession' in navigator && navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch (e) {} }
+// the last step before the speakers: a fast limiter, then a gentle soft-clip, so a pile of TNT (or the rave) can be
+// as bassy as it likes and still never crackles (peaks stay under 0 dBFS)
+function masterOut(a){
+  const lim = a.createDynamicsCompressor(); lim.threshold.value = -5; lim.knee.value = 2; lim.ratio.value = 20; lim.attack.value = .002; lim.release.value = .2;
+  const sc = a.createWaveShaper(), n = 1024, c = new Float32Array(n);
+  for (let i = 0; i < n; i++){ const x = i/(n - 1)*2 - 1, ax = Math.abs(x); c[i] = Math.sign(x)*(ax < .7 ? ax : .7 + .28*Math.tanh((ax - .7)/.28)); }
+  sc.curve = c; lim.connect(sc).connect(a.destination); return lim;
+}
 function ac(){
   if (!soundOn || !userActed || VOL.master <= 0) return null;
-  if (!AC){ try { audioSessionPlayback(); AC = new (window.AudioContext || window.webkitAudioContext)(); const comp = AC.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 4; comp.connect(AC.destination); AC.bus = AC.createGain(); AC.bus.gain.value = .85*VOL.master; AC.bus.connect(comp);
+  if (!AC){ try { audioSessionPlayback(); AC = new (window.AudioContext || window.webkitAudioContext)(); const comp = AC.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 4; comp.connect(masterOut(AC)); AC.bus = AC.createGain(); AC.bus.gain.value = .85*VOL.master; AC.bus.connect(comp);
     AC.cat = {}; ['blocks', 'creatures', 'ambient', 'voice'].forEach(k => { const g = AC.createGain(); g.gain.value = VOL[k]; g.connect(AC.bus); AC.cat[k] = g; }); } catch (e) { return null; } }
   if (AC.state === 'suspended' && !AC.offline){ audioSessionPlayback(); AC.resume(); }
   return AC;
@@ -969,22 +977,22 @@ const once = (key, ms) => { const now = performance.now(); if (now - (sfxLast[ke
 const PENTA = [523, 587, 659, 784, 880, 1047, 1175, 1319];
 const sfx = {
   // Minecraft-style block sounds, by material
-  place(t){ if (!once('place')) return;
-    if (t === 'dust'){ noise(.09, .05, vary(2500), 'bandpass', 0, 1.2); return; }
-    if (t === 'glass'){ tone(vary(1900), .07, 'sine', .04); noise(.05, .03, 5000, 'highpass'); return; }
-    if (['lever','button','plate','repeater','torch'].includes(t)){ noise(.05, .09, vary(1800), 'lowpass'); tone(vary(320), .05, 'triangle', .05); if (t === 'torch') noise(.25, .025, 6000, 'highpass', .03); return; }
-    if (['water','confetti','firework','gong','goldfish','spacetoilet','fart','airhorn','bananacannon','launcher','lamp'].includes(t)){ noise(.07, .1, vary(1100)); tone(vary(200), .07, 'triangle', .07); return; }
-    noise(.08, vary(.16), vary(900)); tone(vary(140), .08, 'sine', .1, 0, 90); },
-  brk(t){ if (!once('brk')) return;   // (there used to be a second brk() further down that silently replaced this one)
-    if (t === 'glass'){ [0, .03, .07].forEach(w => tone(vary(2400, .2), .08, 'sine', .035, w)); noise(.18, .06, 4500, 'highpass'); return; }
-    if (t === 'dust'){ noise(.1, .06, 2000, 'bandpass', 0, 1); return; }
-    [0, .045, .09].forEach((w, i) => noise(.07, .14 - i*.03, vary(1400, .2), 'lowpass', w)); tone(vary(150), .09, 'triangle', .06, 0, 90); },
-  step(kind){ if (kind === 'gold') noise(.05, .028, vary(2600), 'bandpass', 0, 2); else if (kind === 'sand') noise(.09, .03, vary(700)); else noise(.07, .026, vary(1100), 'bandpass', 0, .8); },
+  place(t){ if (!once('place')) return;   // a short gritty crunch with a low "thock" under it, by material
+    if (t === 'dust'){ noise(.07, .2, vary(2700), 'bandpass', 0, 1.4); noise(.05, .14, vary(1700), 'bandpass', .028, 1.4); tone(vary(240), .045, 'sine', .12, 0, 150); return; }
+    if (t === 'glass'){ tone(vary(2100), .09, 'sine', .08); tone(vary(3300), .05, 'sine', .035, .005); noise(.04, .1, 4800, 'bandpass', 0, 2); tone(vary(170), .06, 'sine', .2, 0, 100); return; }
+    if (['lever','button','plate','repeater','torch'].includes(t)){ noise(.045, .26, vary(2000), 'bandpass', 0, 1.3); tone(vary(330), .05, 'triangle', .12, 0, 210); tone(vary(150), .07, 'sine', .26, 0, 90); if (t === 'torch') noise(.25, .04, 6000, 'highpass', .03); return; }
+    if (['water','confetti','firework','gong','goldfish','spacetoilet','fart','airhorn','bananacannon','launcher','lamp'].includes(t)){ noise(.07, .24, vary(1200), 'bandpass', 0, 1); tone(vary(210), .08, 'triangle', .14, 0, 130); tone(vary(115), .08, 'sine', .26, 0, 70); return; }
+    [0, .022, .05].forEach((w, i) => noise(.06 - i*.012, .28 - i*.07, vary(1600 - i*330, .15), 'bandpass', w, 1.1)); tone(vary(165), .09, 'sine', .28, 0, 80); },
+  brk(t){ if (!once('brk')) return;   // a bigger crunch than placing: four grains of grit, a thud, a little dust settling
+    if (t === 'glass'){ [0, .025, .06, .1].forEach(w => tone(vary(2500, .25), .09, 'sine', .055, w)); noise(.22, .2, 3800, 'bandpass', 0, .8); noise(.08, .16, 1600, 'bandpass', 0, 1); return; }
+    if (t === 'dust'){ noise(.09, .2, 2200, 'bandpass', 0, 1); tone(vary(220), .05, 'sine', .1, 0, 140); return; }
+    [0, .03, .065, .1].forEach((w, i) => noise(.07, .36 - i*.07, vary(1500 - i*200, .2), 'bandpass', w, .9)); tone(vary(150), .1, 'sine', .3, 0, 70); noise(.14, .1, 500, 'lowpass', .05); },
+  step(kind){ if (kind === 'gold') noise(.05, .05, vary(2600), 'bandpass', 0, 2); else if (kind === 'sand') noise(.09, .06, vary(700)); else { noise(.07, .05, vary(1100), 'bandpass', 0, .8); tone(vary(95), .05, 'sine', .04, 0, 70); } },
   // a chunky lever: the handle's knock, a wooden thump, then the snap into place (ON a touch higher than OFF)
-  lever(on){ const up = on === false ? .85 : 1; noise(.04, .3, vary(1700), 'lowpass', 0, 1.5); tone(vary(170*up), .08, 'sine', .3, 0, 90*up); noise(.03, .22, vary(3000), 'bandpass', .045, 2); tone(vary(620*up), .03, 'square', .04, .045); },
-  button(){ noise(.035, .42, vary(2600)); tone(vary(700), .03, 'square', .05); tone(vary(240), .05, 'sine', .4, 0, 150); noise(.03, .12, vary(2000), 'lowpass', .09); },
-  plate(){ noise(.06, .16, vary(900)); tone(vary(170), .07, 'sine', .16, 0, 100); },
-  xp(){ const f = PENTA[Math.floor(Math.random()*PENTA.length)]*2; tone(f, .18, 'sine', .05); tone(f*2.01, .08, 'sine', .015); tone(PENTA[Math.floor(Math.random()*PENTA.length)]*2, .14, 'sine', .03, vary(.06, .3)); },
+  lever(on){ const up = on === false ? .85 : 1; noise(.04, .3, vary(1700), 'lowpass', 0, 1.5); tone(vary(170*up), .08, 'sine', .3, 0, 90*up); noise(.03, .22, vary(3000), 'bandpass', .045, 2); tone(vary(620*up), .035, 'triangle', .07, .045); },
+  button(){ noise(.035, .36, vary(2600), 'bandpass', 0, 1.2); tone(vary(700), .035, 'triangle', .08); tone(vary(240), .05, 'sine', .4, 0, 150); noise(.03, .12, vary(2000), 'lowpass', .09); tone(vary(200), .04, 'sine', .14, .09, 140); },
+  plate(){ noise(.05, .26, vary(900), 'lowpass', 0, 1.2); tone(vary(190), .08, 'sine', .3, 0, 105); tone(vary(520), .03, 'triangle', .06); },
+  xp(){ const f = PENTA[Math.floor(Math.random()*PENTA.length)]*2; tone(f, .2, 'sine', .11); tone(f*2.01, .08, 'sine', .03); tone(PENTA[Math.floor(Math.random()*PENTA.length)]*2, .16, 'sine', .07, vary(.06, .3)); },
   // a heavy stone slab grinding up: gritty rumble that judders, then a deep THUD as it locks
   door(){ const a = ac(); if (!a) return; const t0 = a.currentTime, dur = vary(1.1, .1);
     const s = a.createBufferSource(), lp = a.createBiquadFilter(), g = a.createGain(), jit = new Float32Array(24); s.buffer = noiseBuf(a); s.loop = true;
@@ -1010,77 +1018,66 @@ const sfx = {
       bp.type = 'bandpass'; bp.Q.value = 3; bp.frequency.setValueAtTime(f*1.6, t0); bp.frequency.linearRampToValueAtTime(f*2.4, t0 + d*.4); bp.frequency.linearRampToValueAtTime(f*1.4, t0 + d);   // "oo" opening to "ook"
       g.gain.setValueAtTime(.0001, t0); g.gain.linearRampToValueAtTime(.32, t0 + .015); g.gain.linearRampToValueAtTime(.0001, t0 + d);
       o.connect(bp).connect(g).connect(sfxOut(a)); o.start(t0); o.stop(t0 + d + .03); o.onended = () => [o, bp, g].forEach(x => x.disconnect()); } },
-  piston(){ noise(.12, .14, vary(600)); tone(vary(90), .14, 'square', .05, 0, 60); },
+  piston(){ noise(.1, .3, vary(700), 'lowpass', 0, 1.5); tone(vary(110), .12, 'sine', .32, 0, 60); noise(.05, .14, vary(2400), 'bandpass', .08, 2); },   // a pneumatic CHUNK
   bird(){ const f = 2400 + Math.random()*1600; tone(f, .07, 'sine', .012, 0, f*1.25); tone(f*1.1, .06, 'sine', .01, .12, f*.85); },
   // a soft wooden tick for menus and dialogue (it plays a LOT, so no harsh square wave)
-  click(){ if (!once('click', 30)) return; tone(vary(1250, .05), .03, 'triangle', .045); tone(vary(620, .05), .045, 'sine', .04, .008); },
+  click(){ if (!once('click', 30)) return; tone(vary(1250, .05), .03, 'triangle', .06); tone(vary(620, .05), .045, 'sine', .06, .008); },
   pop(){ tone(vary(420), .09, 'sine', .12, 0, vary(900)); },
   nope(){ tone(vary(220, .03), .12, 'triangle', .13); tone(vary(180, .03), .14, 'triangle', .13, .1); },
-  row(){ tone(988, .09, 'triangle', .08); tone(1319, .14, 'triangle', .08, .08); },
-  chime(){ [523,659,784,1047,1319].forEach((f,i)=>tone(f, .35, 'triangle', .09, i*.11)); tone(1568, .6, 'sine', .06, .55); },
+  row(){ tone(988, .1, 'triangle', .1); tone(1319, .16, 'triangle', .1, .08); tone(659, .2, 'sine', .07, .08); },
+  chime(){ [523,659,784,1047,1319].forEach((f,i)=>tone(f, .35, 'triangle', .11, i*.11)); tone(1568, .6, 'sine', .08, .55); tone(262, .9, 'sine', .1, .44); tone(392, .8, 'sine', .06, .5); },
   blink(){ tone(vary(1760, .03), .05, 'sine', .04); },
-  // TNT: a sharp crack, a big filtered blast, a chest-thump, LOADS of bass, and a long rumbling tail.
-  // n = how many went off in the same bang: the more, the deeper, longer and bassier (one sound per bang, never one per block)
-  boom(n){ const a = ac(); if (!a) return; const t0 = a.currentTime, k = Math.min(1, Math.log2(Math.max(1, n || 1))/6);   // 0 for one TNT, 1 for 64
-    noise(.05, .35, 3500 - k*1500, 'highpass');
-    const s = a.createBufferSource(), lp = a.createBiquadFilter(), g = a.createGain(); s.buffer = noiseBuf(a); s.loop = true;
-    lp.type = 'lowpass'; lp.Q.value = 1; lp.frequency.setValueAtTime(vary(1400 - k*500), t0); lp.frequency.exponentialRampToValueAtTime(110 - k*50, t0 + 1.6 + k*1.4);
-    g.gain.setValueAtTime(1, t0); g.gain.setTargetAtTime(.0001, t0 + .05, .5 + k*.7);
-    s.connect(lp).connect(g).connect(sfxOut(a)); sfxChain(a, s, [lp, g], t0 + 2.8 + k*2.5);
-    tone(vary(85), .8, 'sine', .7, 0, 32);
-    sfx.thump(n);
-    noise(2.4 + k*2.5, .25 + k*.12, vary(130 - k*50), 'lowpass', .25, 2); },
-  // the bass you feel in your chest: deep sine drops (sub-bass), plus a low buzzy one that small speakers can play too
-  thump(n){ const k = Math.min(1, Math.log2(Math.max(1, n || 1))/6);
-    tone(vary(64, .05), 1.1 + k*1.6, 'sine', .55 + k*.35, 0, 24);
-    tone(vary(42, .04), 1.5 + k*2, 'sine', .4 + k*.45, .04, 19);
-    tone(vary(58, .05), .5 + k*.9, 'triangle', .16 + k*.16, 0, 30);
-    if (n > 2) tone(vary(110), .3 + k*.4, 'sawtooth', .05 + k*.06, .02, 45); },
   hiss(){ noise(.08, .04, vary(4000)); },
   fizz(){ noise(.45, .07, vary(5200), 'highpass'); tone(vary(900), .35, 'sine', .03, 0, 260); noise(.2, .05, 900, 'lowpass', .3); },
-  // a proper whoopee-cushion PARP: a buzzy pulse wave (the rubber lips) flapping 15-35 times a second, through a low
-  // rubbery filter, its pitch sagging or rising with a wobble, plus a bit of breath. Five characters, never the same twice running.
-  fart(){
+  // a real PARP (the old one sounded like a spring): the sound is written sample by sample as a train of rough little
+  // puffs of air (the lips flapping 35-300 times a second, every puff a different length and loudness, some missing:
+  // that's the flutter and the sputter), then a resonant low-pass makes it fleshy. Seven kinds; never the same kind twice running.
+  fart(kind){
     const a = ac(); if (!a) return;
-    const R = Math.random, rr = r => r[0] + R()*(r[1] - r[0]), t0 = a.currentTime + .01;
-    const KINDS = {   // how long, starting pitch (Hz), where the pitch ends up (times the start), lip flutter (Hz), pulse width, filter, breath, gaps
-      parp:  {dur:[.16, .34], base:[110, 150], end:[.85, 1.1], flut:[24, 32], duty:.22, lp:1300, breath:.25, gaps:0},
-      pfrrt: {dur:[.9, 1.5], base:[115, 150], end:[1.5, 2], flut:[28, 35], duty:.14, lp:1700, breath:.35, gaps:.05, pff:.22},
-      brap:  {dur:[.35, .6], base:[62, 88], end:[.7, .95], flut:[15, 22], duty:.32, lp:650, breath:.6, gaps:.25},
-      tuba:  {dur:[.7, 1.1], base:[60, 80], end:[.6, .8], flut:[17, 24], duty:.28, lp:560, breath:.3, gaps:.08},
-      squeak:{dur:[.25, .45], base:[140, 160], end:[1.3, 1.6], flut:[30, 35], duty:.12, lp:2000, breath:.2, gaps:0}
+    const R = Math.random, rr = r => r[0] + R()*(r[1] - r[0]), t0 = a.currentTime + .01, sr = a.sampleRate;
+    const KINDS = {   // how long (s), puffs a second, where that ends up (times the start), wobble per puff, missing puffs, airiness, puff width, filter (Hz), resonance
+      short:  {dur:[.13, .28], f:[70, 100], drift:[.85, 1.05], jit:.12, skip:.03, air:.3, open:.3, lp:[620, 820], q:[5, 8]},
+      long:   {dur:[.9, 1.5], f:[62, 88], drift:[.6, .8], jit:.15, skip:.05, air:.3, open:.3, lp:[560, 760], q:[5, 8], tail:true},
+      squeaky:{dur:[.3, .6], f:[190, 290], drift:[.82, 1.2], jit:.05, skip:.02, air:.15, open:.6, lp:[800, 1100], q:[7, 10]},
+      rumbly: {dur:[.7, 1.2], f:[34, 48], drift:[.8, 1], jit:.2, skip:.05, air:.4, open:.25, lp:[330, 440], q:[4, 6]},
+      wet:    {dur:[.4, .75], f:[48, 72], drift:[.7, 1], jit:.3, skip:.16, air:.75, open:.35, lp:[560, 760], q:[3, 5], bubbles:true},
+      trumpet:{dur:[.6, .95], f:[105, 140], drift:[.8, .92], jit:.04, skip:0, air:.12, open:.3, lp:[950, 1300], q:[3, 5], toot:true},
+      stutter:{dur:[.5, .8], f:[65, 95], drift:[.8, 1], jit:.12, skip:.04, air:.35, open:.3, lp:[600, 800], q:[5, 8], pops:3 + Math.floor(R()*3)}
     };
-    const names = Object.keys(KINDS); let kind; do kind = names[Math.floor(R()*names.length)]; while (kind === sfx.lastFartKind);
-    const K = KINDS[kind], dur = rr(K.dur), base = rr(K.base), endF = base*rr(K.end), flut = rr(K.flut), pff = K.pff ? K.pff*(.7 + R()*.6) : 0, buzz = dur - pff;
-    a.fartWaves = a.fartWaves || {};
-    const duty = Math.round((K.duty + (R() - .5)*.04)*50)/50;   // narrow pulses buzz and rasp; a few cached widths
-    if (!a.fartWaves[duty]){ const re = new Float32Array(40), im = new Float32Array(40); for (let n = 1; n < 40; n++) re[n] = 2/(n*Math.PI)*Math.sin(n*Math.PI*duty); a.fartWaves[duty] = a.createPeriodicWave(re, im); }
-    const out = a.createGain(); out.gain.value = .32; out.connect(sfxOut(a));
-    const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 3 + R()*4; lp.frequency.setValueAtTime(K.lp*(.8 + R()*.4), t0); lp.frequency.linearRampToValueAtTime(K.lp*.6, t0 + dur);
-    const body = a.createBiquadFilter(); body.type = 'peaking'; body.frequency.value = 260 + R()*240; body.Q.value = 2; body.gain.value = 8;   // the rubber's honk
-    const env = a.createGain(), flap = a.createGain(), o = a.createOscillator();
-    env.gain.value = 0; flap.gain.value = .55; o.setPeriodicWave(a.fartWaves[duty]);
-    o.connect(flap).connect(env).connect(body).connect(lp).connect(out);
-    // the pitch: from where it starts to where it ends, wandering about on the way
-    const pc = new Float32Array(24); let w = 0;
-    for (let k = 0; k < pc.length; k++){ const p = k/(pc.length - 1); w = w*.8 + (R() - .5)*.1; pc[k] = Math.max(30, (base + (endF - base)*Math.pow(p, endF > base ? 2 : .7))*(1 + w)); }
-    o.frequency.setValueCurveAtTime(pc, t0 + pff, buzz);
-    // lip flutter: the loudness flaps 15-35 times a second (and the pitch with it), the flapping speed wobbles too
-    const lfo = a.createOscillator(), lfoG = a.createGain(), pg = a.createGain(), fl = new Float32Array(8);
-    lfo.type = 'triangle'; for (let k = 0; k < fl.length; k++) fl[k] = flut*(.85 + R()*.3); lfo.frequency.setValueCurveAtTime(fl, t0, dur);
-    lfoG.gain.value = .45; pg.gain.value = base*.06; lfo.connect(lfoG).connect(flap.gain); lfo.connect(pg).connect(o.frequency);
-    // loudness: a quick start, a sputtery middle (the wet ones have little gaps), a tail-off
-    const steps = Math.max(6, Math.floor(buzz/.03)), e = new Float32Array(steps + 1);
-    for (let k = 0; k <= steps; k++){ const p = k/steps; e[k] = Math.max(.0001, Math.min(1, p*12)*(1 - Math.pow(p, 4))*(.7 + R()*.3)*(R() < K.gaps ? .1 : 1)); }
-    e[steps] = .0001; env.gain.setValueCurveAtTime(e, t0 + pff, buzz);
-    // breath: a "pfff" up front for the long ones, a puff of air under the rest
-    const len = Math.floor(a.sampleRate*dur), buf = a.createBuffer(1, len, a.sampleRate), d = buf.getChannelData(0);
-    for (let k = 0; k < len; k++){ const tp = k/a.sampleRate, p = k/len; d[k] = (R()*2 - 1)*(tp < pff ? .9*Math.min(1, tp/.04)*Math.min(1, (pff - tp)/.03 + .3) : K.breath*(.6 + .4*Math.sin(tp*flut*Math.PI*2))*(1 - p)); }
-    const ns = a.createBufferSource(), nf = a.createBiquadFilter(), ng = a.createGain(); ns.buffer = buf; nf.type = 'bandpass'; nf.frequency.value = pff ? 1000 : 380 + R()*300; nf.Q.value = .9; ng.gain.value = .3;
-    ns.connect(nf).connect(ng).connect(lp);
-    [o, lfo, ns].forEach(x => { x.start(t0); x.stop(t0 + dur + .05); });
-    const nodes = [out, lp, body, env, flap, o, lfo, lfoG, pg, ns, nf, ng]; o.onended = () => nodes.forEach(n => { try { n.disconnect(); } catch (e2) {} });
-    sfx.lastFartKind = kind; (sfx.farts = sfx.farts || []).push({kind, dur:+dur.toFixed(3), base:+base.toFixed(1), end:+endF.toFixed(1), flut:+flut.toFixed(1)}); if (sfx.farts.length > 20) sfx.farts.shift();
+    const names = Object.keys(KINDS);
+    if (!KINDS[kind]) do kind = names[Math.floor(R()*names.length)]; while (kind === sfx.lastFartKind);
+    const K = KINDS[kind], dur = rr(K.dur), f0 = rr(K.f), f1 = f0*rr(K.drift), lpF = rr(K.lp), q = rr(K.q), shim = 3 + R()*5, shimPh = R()*6;
+    const env = p => { const tt = p*dur; let e = Math.min(1, tt/.012)*Math.min(1, (dur - tt)/(K.tail ? dur*.4 : .05));
+      if (K.toot) e *= p < .15 ? 1 : p < .2 ? .15 : 1;   // "pa... PAAARP"
+      if (K.pops){ const sg = p*K.pops % 1; e *= sg < .6 ? Math.pow(Math.sin(Math.PI*sg/.6), .4) : 0; }
+      return e*(.82 + .18*Math.sin(tt*shim*6.283 + shimPh)); };
+    const len = Math.ceil(sr*(dur + .03)), buf = a.createBuffer(1, len, sr), d = buf.getChannelData(0);
+    let i = 0, wander = 0, puffs = 0;
+    while (i < len){
+      const p = i/sr/dur; if (p >= 1) break;
+      wander = wander*.92 + (R() - .5)*.06;   // the pitch wanders a little, it never sweeps like a spring
+      const f = (f0 + (f1 - f0)*p)*(1 + wander)*(1 + (R()*2 - 1)*K.jit)*(K.toot && p >= .15 ? 1.19 : 1);
+      const per = Math.max(6, Math.round(sr/f)), op = Math.max(3, Math.round(per*K.open*(.85 + R()*.3)));
+      const skip = K.skip + (K.tail && p > .6 ? .5*(p - .6)/.4 : 0), amp = R() < skip ? 0 : env(p)*(.6 + R()*.4);
+      for (let k = 0; k < per && i < len; k++, i++){
+        const n = R()*2 - 1;
+        d[i] = amp*(k < op ? Math.sin(Math.PI*k/op)*(1 - K.air + K.air*n) : -.3*Math.exp(-(k - op)/(per*.18)) + K.air*.1*n);   // a puff, then the lips slap shut
+      }
+      puffs++;
+    }
+    if (K.bubbles) for (let b = 0, nb = 3 + Math.floor(R()*4); b < nb; b++){   // wet: little bubbly bloops
+      const s0 = Math.floor(R()*dur*.85*sr), bl = Math.floor(sr*(.02 + R()*.03)), fb = 220 + R()*380;
+      for (let k = 0; k < bl && s0 + k < len; k++) d[s0 + k] += .5*Math.sin(6.283*fb*(1 - .4*k/bl)*k/sr)*Math.sin(Math.PI*k/bl);
+    }
+    let pk = 0; for (let k = 0; k < len; k++) pk = Math.max(pk, Math.abs(d[k])); if (pk > 0) for (let k = 0; k < len; k++) d[k] /= pk;
+    const s = a.createBufferSource(), lp = a.createBiquadFilter(), hp = a.createBiquadFilter(), out = a.createGain(); s.buffer = buf;
+    lp.type = 'lowpass'; lp.Q.value = q; const lc = new Float32Array(12);   // the filter flutters a little and gets darker as it runs out of puff
+    for (let k = 0; k < lc.length; k++) lc[k] = lpF*(1.12 - .35*k/(lc.length - 1))*(.9 + R()*.2);
+    lp.frequency.setValueCurveAtTime(lc, t0, dur + .02);
+    hp.type = 'highpass'; hp.frequency.value = 28; out.gain.value = kind === 'squeaky' ? .3 : kind === 'trumpet' ? .34 : kind === 'rumbly' ? .55 : .42;
+    s.connect(lp).connect(hp).connect(out).connect(sfxOut(a));
+    s.start(t0); s.stop(t0 + dur + .05); s.onended = () => [s, lp, hp, out].forEach(x => { try { x.disconnect(); } catch (e) {} });
+    sfx.lastFartKind = kind; (sfx.farts = sfx.farts || []).push({kind, dur:+dur.toFixed(3), base:+f0.toFixed(1), end:+f1.toFixed(1), lp:Math.round(lpF), puffs}); if (sfx.farts.length > 20) sfx.farts.shift();
   },
   buzz(){   // a little fly, come to see what the smell is
     const a = ac(); if (!a) return; const t0 = a.currentTime, o = a.createOscillator(), l = a.createOscillator(), lg = a.createGain(), lp = a.createBiquadFilter(), g = a.createGain();
@@ -1109,7 +1106,7 @@ const sfx = {
     l.frequency.value = vary(14, .15); lg.gain.setValueAtTime(f*.5, t0); lg.gain.exponentialRampToValueAtTime(1, t0 + d);
     g.gain.setValueAtTime(.0001, t0); g.gain.linearRampToValueAtTime(.3, t0 + .01); g.gain.exponentialRampToValueAtTime(.0001, t0 + d);
     l.connect(lg).connect(o.frequency); o.connect(g).connect(sfxOut(a)); l.start(t0); l.stop(t0 + d + .05); sfxChain(a, o, [l, lg, g], t0 + d + .05); },
-  creak(){ const a = ac(); if (!a) return; creakAt(a, 0, vary(.55), .16, vary(600, .15)); noise(.1, .16, 500, 'lowpass', .5); },
+  creak(){ const a = ac(); if (!a) return; creakAt(a, 0, vary(.55), .34, vary(600, .15)); noise(.1, .26, 500, 'lowpass', .5); tone(vary(120), .1, 'sine', .2, .5, 70); },
   airhorn(){ const k = vary(1, .04); [233, 294, 349].forEach(f => tone(f*k, .9, 'sawtooth', .075)); tone(116*k, .9, 'square', .05); },
   // the space toilet: a whooshing swirl, then a gurgle of bubbles going glug-glug down the pipe
   flush(){
@@ -1123,6 +1120,35 @@ const sfx = {
   }
 };
 
+// TNT and boom blocks with LOADS of bass (these replace the boom above; the free-build TNT calls them the same way).
+// n = how many went off in one bang (stacked boom blocks, a TNT chain): the bigger n, the deeper, longer and bassier,
+// one sound per bang, never one per block. The master limiter (masterOut) keeps even 64 at once from crackling.
+const boomK = n => Math.min(1, Math.log2(Math.max(1, n || 1))/6);   // 0 for one, 1 for 64
+sfx.boom = function(n){ const a = ac(); if (!a) return; const k = boomK(n), t0 = a.currentTime;
+  noise(.05, .32 - k*.1, 3200 - k*1400, 'highpass');   // the crack
+  const s = a.createBufferSource(), lp = a.createBiquadFilter(), g = a.createGain(); s.buffer = noiseBuf(a); s.loop = true;   // the blast
+  lp.type = 'lowpass'; lp.Q.value = 1; lp.frequency.setValueAtTime(vary(1300 - k*450), t0); lp.frequency.exponentialRampToValueAtTime(100 - k*45, t0 + 1.6 + k*1.4);
+  g.gain.setValueAtTime(.85, t0); g.gain.setTargetAtTime(.0001, t0 + .05, .45 + k*.7);
+  s.connect(lp).connect(g).connect(sfxOut(a)); sfxChain(a, s, [lp, g], t0 + 2.8 + k*2.5);
+  noise(2.4 + k*2.5, .26 + k*.12, vary(130 - k*50), 'lowpass', .25, 2);   // the rumbling tail
+  if (k > .3) for (let i = 0, m = 3 + Math.round(k*6); i < m; i++) noise(.04, .08, vary(2600, .3), 'bandpass', .25 + Math.random()*(.6 + k), 1.2);   // bits landing
+  sfx.thump(n); };
+// the bass you feel in your chest: two sine drops (sub-bass) plus a growly copy an octave up that an iPad's little
+// speakers can still play. More boom blocks: louder, longer, and a second (and third) WHUMP rolling in after the first.
+sfx.thump = function(n){ const a = ac(); if (!a) return; const k = boomK(n), t0 = a.currentTime + .005, out = sfxOut(a);
+  const drop = (when, f0, f1, len, vol, type) => { const o = a.createOscillator(), g = a.createGain(); o.type = type || 'sine';
+    o.frequency.setValueAtTime(f0, t0 + when); o.frequency.exponentialRampToValueAtTime(f1, t0 + when + len*.8);
+    g.gain.setValueAtTime(.0001, t0 + when); g.gain.exponentialRampToValueAtTime(vol, t0 + when + .012); g.gain.setTargetAtTime(.0001, t0 + when + .05, len*.32);
+    o.connect(g); o.start(t0 + when); o.stop(t0 + when + len + .1); o.onended = () => { o.disconnect(); g.disconnect(); }; return g; };
+  const subs = [[0, 1]].concat(k > .25 ? [[.11 + Math.random()*.05, .7]] : [], k > .6 ? [[.3 + Math.random()*.1, .55]] : []);
+  subs.forEach(([w, m]) => {
+    drop(w, vary(70, .05), 27, 1 + k*1.6, (.4 + k*.45)*m).connect(out);
+    drop(w + .015, vary(46, .05), 21, 1.3 + k*2, (.26 + k*.45)*m).connect(out);
+    const lp = a.createBiquadFilter(), sh = a.createWaveShaper(); lp.type = 'lowpass'; lp.frequency.value = 380; sh.curve = thumpCurve();
+    const hg = drop(w, vary(130, .05), 52, .5 + k*.9, (.22 + k*.12)*m, 'triangle'); hg.connect(sh).connect(lp).connect(out);
+    setTimeout(() => { try { sh.disconnect(); lp.disconnect(); } catch (e) {} }, (w + 2 + k*2)*1000 + 200); }); };
+let THUMP_CURVE = null;
+function thumpCurve(){ if (!THUMP_CURVE){ THUMP_CURVE = new Float32Array(256); for (let i = 0; i < 256; i++){ const x = i/127.5 - 1; THUMP_CURVE[i] = Math.tanh(2.5*x)/Math.tanh(2.5); } } return THUMP_CURVE; }
 const SFX_CAT = {ook:'creatures', buzz:'creatures', aww:'creatures', bird:'ambient', blub:'ambient', click:'voice', nope:'voice', row:'voice', chime:'voice'};   // everything else is Blocks
 Object.keys(sfx).forEach(k => { const f = sfx[k]; if (typeof f !== 'function') return; sfx[k] = function(...args){ const was = sfxCat; sfxCat = SFX_CAT[k] || 'blocks'; try { return f.apply(sfx, args); } finally { sfxCat = was; } }; });
 
@@ -2637,6 +2663,7 @@ function puffAt(pos){ const a = Math.random()*Math.PI*2; stinkCloud(new THREE.Ve
 function act(cx, cy, mode){
   if (!L) return;
   if (DLG.on && !dlgSoft()){ dlgAdvance(); return; }
+  if (mode === 'use' && $('#why').hidden && partyDialTap(cx, cy)) return;   // room 12's PARTY POWER button
   if (mode === 'use' && pokeMonkey()) return;
   if (!$('#why').hidden && locked){ if (cardQuiz()){ try { document.exitPointerLock(); } catch (_) {} return; } closeCard(); return; }
   const h = pick(cx, cy); if (!h) return;
@@ -5386,8 +5413,10 @@ function animTroop(m, s, moving, dancing){
     // a smooth, slow dance on the groove's beat (it used to jitter): bob once every two beats, sway, wave the arms; no spinning
     const b = DISCO.beat + (u.phase % 1)*.25, w = Math.PI*b, k = u.dk*u.dk*(3 - 2*u.dk);   // a little out of step with each other, like real dancers
     if (reduceMotion){ u.arms[0].rotation.z = Math.PI*.7*k; u.arms[1].rotation.z = -Math.PI*.7*k; u.arms[0].rotation.x = u.arms[1].rotation.x = 0; m.position.y = fl; m.rotation.z = 0; }
-    else { u.arms[0].rotation.z = (Math.PI*.72 + Math.sin(w)*.28)*k; u.arms[1].rotation.z = (-Math.PI*.72 + Math.sin(w)*.28)*k; u.arms[0].rotation.x = -sw*(1 - k); u.arms[1].rotation.x = sw*(1 - k);
-      m.position.y = fl + (1 - Math.cos(w))*.06*k; m.rotation.z = Math.sin(w*.5)*.12*k; u.head.rotation.x = Math.sin(w)*.12*k; }
+    else { const PL = PARTY.lvl - 1, w2 = PL === 1 ? w*.5 : w, am = [1, 1.4, 1.8][PL];   // PARTY POWER: wilder at every step, still smooth (it all follows the beat); 2 is a big slow half-time skank
+      u.arms[0].rotation.z = (Math.PI*.72 + Math.sin(w2)*.28*am)*k; u.arms[1].rotation.z = (-Math.PI*.72 + Math.sin(w2)*.28*am)*k; u.arms[0].rotation.x = -sw*(1 - k); u.arms[1].rotation.x = sw*(1 - k);
+      m.position.y = fl + (1 - Math.cos(w2))*[.06, .08, .14][PL]*k; m.rotation.z = Math.sin(w2*.5)*[.12, .18, .22][PL]*k; u.head.rotation.x = Math.sin(w2)*[.12, .22, .3][PL]*k;
+      if (PL){ u.legs[0].rotation.x = Math.max(0, Math.sin(w2))*.55*k; u.legs[1].rotation.x = Math.max(0, -Math.sin(w2))*.55*k; } }
     if (dancing && !moving && TROOP.room && TROOP.room.troop.danceAt){ const c = cellPos(...TROOP.room.troop.danceAt), want = Math.atan2(c.x - m.position.x, c.z - m.position.z); m.rotation.y += Math.atan2(Math.sin(want - m.rotation.y), Math.cos(want - m.rotation.y))*Math.min(1, s*3); }
   }
   else { u.arms[0].rotation.x = -sw; u.arms[1].rotation.x = sw; u.arms[0].rotation.z = 0; u.arms[1].rotation.z = 0; m.position.y = fl; m.rotation.z = 0; u.head.rotation.x = 0; }
@@ -5418,24 +5447,29 @@ function discoBuild(r){
   DISCO.ball = ball; DISCO.ballMesh = bm; DISCO.sparkle = sparkle;
   g.visible = false; decorRoot.add(g); DISCO.g = g; DISCO.n = 0; DISCO.lit = false; DISCO.drop = 0;
 }
-function discoDrop(){ if (DISCO.g){ decorRoot.remove(DISCO.g); DISCO.g.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); }); DISCO.g = null; } DISCO.lit = false; }
+function discoDrop(){ partyDialDrop(); if (DISCO.g){ decorRoot.remove(DISCO.g); DISCO.g.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); }); DISCO.g = null; } DISCO.lit = false; }
 function discoFrame(r, s, on){
   if (!DISCO.g) discoBuild(r);
   const n = on ? discoLayer(r) : 0, rm = reduceMotion;
   DISCO.n = n;
   DISCO.lit = on; DISCO.g.visible = n >= 1;
+  const PL = PARTY.lvl, inRoom = !!(A.rt && A.rt.room === r); DISCO.bpm = PARTY_BPM[PL - 1];   // PARTY POWER: faster music, faster lights
   DISCO.beat += s*DISCO.bpm/60 * (n >= 2 ? 1 : .5);
   if (n >= 1){
-    const tt = DISCO.beat*.25;   // the spots drift round slowly (a lap every 16 beats)
+    const tt = DISCO.beat*.25*(PL === 3 ? 1.25 : 1), pul = PL === 1 ? Math.PI*2*DISCO.beat : Math.PI*DISCO.beat;   // the spots drift round (a lap every 16 beats); never flashing faster than every other beat at 2 and 3
     DISCO.spots.forEach((sp, i) => { const a = sp.userData.ph + (rm ? 0 : tt*Math.PI*2*(i % 2 ? 1 : -.8)); sp.position.x = Math.cos(a)*sp.userData.rad; sp.position.z = Math.sin(a)*sp.userData.rad*.8;
-      sp.material.opacity = .3 + (n >= 2 && !rm ? (1 - Math.cos(Math.PI*2*DISCO.beat))*.05 : 0);
+      sp.material.opacity = .3 + (n >= 2 && !rm ? (1 - Math.cos(pul))*[.05, .07, .09][PL - 1] : 0);
+      if (!sp.userData.col0) sp.userData.col0 = sp.material.color.clone();
+      if (PL === 3 && !rm){ sp.material.color.setHSL((i/5 + DISCO.beat/32) % 1, 1, .6); DISCO.beams[i].material.color.copy(sp.material.color); }   // at 3 the colours roll round the rainbow
+      else if (!sp.material.color.equals(sp.userData.col0)){ sp.material.color.copy(sp.userData.col0); DISCO.beams[i].material.color.copy(sp.userData.col0); }
       const b = DISCO.beams[i]; b.position.x = sp.position.x/2; b.position.z = sp.position.z/2; b.lookAt(b.position.x*2 + DISCO.g.position.x, DISCO.g.position.y, b.position.z*2 + DISCO.g.position.z); b.rotateX(Math.PI/2); });
   }
   // the mirror ball comes down for layer 3, and goes back up when the party stops
   const want = n >= 3 ? 3.6 : 7.5; DISCO.ball.position.y += (want - DISCO.ball.position.y)*Math.min(1, s*(rm ? 6 : 1.8)); DISCO.ball.visible = n >= 3 || DISCO.ball.position.y < 7.2;
-  if (!rm){ DISCO.ballMesh.rotation.y += s*.6; DISCO.sparkle.rotation.y += s*.25; }
-  // the beat: one bar at a time, scheduled a little ahead on the audio clock
-  if (n >= 2) discoGroove(n);
+  if (!rm){ DISCO.ballMesh.rotation.y += s*[.6, .9, 1.5][PL - 1]; DISCO.sparkle.rotation.y += s*[.25, .4, .7][PL - 1]; }
+  // the beat: one bar at a time, scheduled a little ahead on the audio clock (only while you're in the room)
+  if (n >= 2 && inRoom) discoGroove(n); else partyStop();
+  partyFrame(r, s, n, inRoom);
   // dancers + confetti: a pop of confetti every couple of bars
   if (n >= 4){ DISCO.conT -= s; if (DISCO.conT <= 0){ DISCO.conT = 3.4; if (!rm) confetti3D(cellPos(...r.troop.danceAt).add(new THREE.Vector3(0, 1.5, 0))); } } else DISCO.conT = .4;
 }
@@ -5443,7 +5477,7 @@ function discoGroove(n){
   const a = mbus(); if (!a) return;
   const bar = 4*60/DISCO.bpm;
   if (DISCO.next < a.currentTime) DISCO.next = a.currentTime + .06;
-  if (DISCO.next - a.currentTime < .35){ musicCue('disco', n); DISCO.next += bar; }
+  if (DISCO.next - a.currentTime < .35){ musicCue('disco', n, PARTY.lvl); DISCO.next += bar; }
 }
 // a noise burst for the drums (one shared buffer)
 function discoNoise(a, t, dur, vol, hp){
@@ -5451,6 +5485,246 @@ function discoNoise(a, t, dur, vol, hp){
   const src = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain(); src.buffer = a.discoBuf; f.type = 'highpass'; f.frequency.value = hp;
   g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur); src.connect(f).connect(g).connect(a.mbus); src.start(t); src.stop(t + dur + .02); mdone([src, f, g], src);
 }
+/* ---- room 12's PARTY POWER dial (Tom: funny as intensity, not a style menu). A big red button on the wall turns it up
+   1 -> 2 -> 3 -> back to 1: 1 DISCO, 2 DUBSTEP (half-time, wobble bass), 3 BELGIAN HOOVER RAVE (fast and hard).
+   Every level still builds layer by layer with the plates (2 drums, 3 bass, 4 the lead and the silly extras).
+   All of it is synthesised here (our own riffs; only the style is borrowed), one node chain per instrument per bar,
+   so a bar is about 20-35 nodes; it all stops the moment you leave the room. Remembered per device, like the volume. ---- */
+const PARTY = {lvl:1, room:null, dial:null, ptr:null, btn:null, tex:null, ang:0, press:0, srcs:new Set(), bus:null, bar:0, live:0, made:0,
+  bitsT:0, bits:null, headBack:false, shook:0, playing:false};
+const PARTY_NAME = ['DISCO', 'DUBSTEP', 'HOOVER RAVE'], PARTY_BPM = [122, 140, 172], PARTY_ANG = [150, 90, 30];
+try { const v = +localStorage.getItem('redstone-academy.partyPower'); if (v >= 1 && v <= 3) PARTY.lvl = v; } catch (e) {}
+// the sign: pixel art flat on the wall. A dial with 1, 2, 3 round the top, a picture under each, a red button in the middle.
+const PARTY_ICONS = {
+  ball:{pal:{s:'#9aa3ad', w:'#f4f8ff', g:'#c9d2dc', k:'#5b6470', y:'#fff27a'}, px:[
+    '      k       ', '      k     y ', '    sgwgs  yyy', '   gwgwgwg  y ', '  swgwgwgws   ', '  gwgwgwgwg   ', '  swgwgwgws   ',
+    '  gwgwgwgwg   ', '  swgwgwgws   ', '   gwgwgwg    ', '    sgwgs   y ', '           yyy', '            y ']},
+  foot:{pal:{w:'#ffffff', r:'#e8322a', d:'#a51d18', k:'#2a2a2a', y:'#ffe14a'}, px:[
+    '   ww         ', '   ww     y   ', '   ww    y    ', '   ww   y   y ', '   ww      y  ', '   wrrr       ', '   rrrrrr   yy',
+    '   rrrrrrrr   ', '   rrrrrrrrr  ', '   dddddddddd ', '   kkkkkkkkkk ', '              ', '              ']},
+  hoover:{pal:{k:'#2b2b33', s:'#9aa3ad', b:'#3f7fe0', l:'#7fb0ff', r:'#e8322a', w:'#ffffff'}, px:[
+    '     kkkk     ', '     k  k     ', '      ss      ', '      ss      ', '     bbbb     ', '    blbbbb    ', '    blbbbb    ',
+    '    blbbbb    ', '    bbbbbb    ', '     bbbb     ', '      ss      ', '   rrrrrrrr   ', '   k      k   ']}
+};
+function partyDialCanvas(lvl){
+  const S = 4, W = 80, H = 64, cv = document.createElement('canvas'); cv.width = W*S; cv.height = H*S; const g = cv.getContext('2d');
+  const px = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x*S, y*S, w*S, h*S); };
+  px(0, 0, W, H, '#f2c14e'); px(1, 1, W - 2, H - 2, '#2a1745'); px(2, 2, W - 4, H - 4, '#3a2160');   // a gold frame round a purple board
+  const segs = [['#3bb4ff', '#1d4f73'], ['#c05cff', '#55296f'], ['#ff3b3b', '#6e1d1d']];
+  for (let y = 10; y < 42; y++) for (let x = 8; x < 72; x++){ const dx = x + .5 - 40, dy = 40 - (y + .5), r = Math.hypot(dx, dy); if (r < 17 || r > 28 || dy < .5) continue;
+    const ang = Math.atan2(dy, dx)*180/Math.PI, seg = ang > 120 ? 0 : ang > 60 ? 1 : 2, edge = Math.abs(ang - 120) < 2.2 || Math.abs(ang - 60) < 2.2;
+    px(x, y, 1, 1, edge ? '#170c28' : segs[seg][seg + 1 === lvl ? 0 : 1]); }
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = 'bold ' + 7*S + 'px "Pixelify Sans", monospace'; g.fillStyle = '#ffe14a'; g.fillText('PARTY POWER', W*S/2, 6*S);
+  g.font = 'bold ' + 9*S + 'px "Pixelify Sans", monospace';
+  PARTY_ANG.forEach((a, i) => { const x = 40 + Math.cos(a*Math.PI/180)*22.5, y = 40 - Math.sin(a*Math.PI/180)*22.5;
+    g.lineWidth = S*1.5; g.strokeStyle = '#170c28'; g.strokeText(String(i + 1), x*S, (y + .5)*S); g.fillStyle = i + 1 === lvl ? '#ffffff' : '#c8bcd8'; g.fillText(String(i + 1), x*S, (y + .5)*S); });
+  ['ball', 'foot', 'hoover'].forEach((k, i) => { const ic = PARTY_ICONS[k], x0 = [13, 33, 53][i], y0 = 47;
+    if (i + 1 === lvl) px(x0 - 1, y0 - 1, 16, 15, segs[i][1]);
+    ic.px.forEach((row, y) => [...row].forEach((ch, x) => { if (ic.pal[ch]) px(x0 + x, y0 + y, 1, 1, ic.pal[ch]); })); });
+  return cv;
+}
+function partyDialBuild(r){
+  partyDialDrop();
+  const mir = r.mirror, ix = r.box.x0 + 1 + (mir ? 0 : 10), wy = r.box.y0 + 1 + 4, c = cellPos(ix, wy);   // the wall across from the way in
+  const g = new THREE.Group(); g.position.set(c.x + (mir ? -.48 : .48), c.y + 1.8, c.z); g.rotation.y = mir ? Math.PI/2 : -Math.PI/2;
+  PARTY.tex = new THREE.CanvasTexture(partyDialCanvas(PARTY.lvl)); PARTY.tex.magFilter = THREE.NearestFilter; PARTY.tex.minFilter = THREE.LinearFilter;
+  const board = new THREE.Mesh(new THREE.PlaneGeometry(2, 1.6), new THREE.MeshBasicMaterial({map:PARTY.tex})); g.add(board);
+  const hub = new THREE.Vector3(0, .8 - 40/64*1.6, .02);
+  const ptr = new THREE.Group(); ptr.position.copy(hub); g.add(ptr);
+  const pg = new THREE.BoxGeometry(.07, .44, .03); pg.translate(0, .22, 0); ptr.add(new THREE.Mesh(pg, new THREE.MeshBasicMaterial({color:0xfff6c8})));
+  const tg = new THREE.BoxGeometry(.11, .1, .035); tg.translate(0, .42, 0); ptr.add(new THREE.Mesh(tg, new THREE.MeshBasicMaterial({color:0xff9f1c})));
+  const btn = new THREE.Mesh(new THREE.CylinderGeometry(.13, .15, .1, 16), [new THREE.MeshLambertMaterial({color:0xb81d1d}), new THREE.MeshLambertMaterial({color:0xff4a3a, emissive:0x5a0c08}), new THREE.MeshLambertMaterial({color:0xb81d1d})]);
+  btn.rotation.x = Math.PI/2; btn.position.set(hub.x, hub.y, .06); g.add(btn);
+  PARTY.ang = PARTY_ANG[PARTY.lvl - 1]; ptr.rotation.z = (PARTY.ang - 90)*Math.PI/180;
+  decorRoot.add(g); PARTY.dial = g; PARTY.ptr = ptr; PARTY.btn = btn; PARTY.room = r;
+}
+function partyDialDrop(){
+  if (PARTY.dial){ decorRoot.remove(PARTY.dial); PARTY.dial.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) [].concat(o.material).forEach(m => m.dispose()); }); if (PARTY.tex) PARTY.tex.dispose(); }
+  PARTY.dial = PARTY.ptr = PARTY.btn = PARTY.tex = null; PARTY.room = null;
+  partyBitsDrop(); partyStop(); PARTY.playing = false;
+}
+// a tap, click or controller press on the dial (or its button) turns it up. Blocks right in front of it still win.
+function partyDialTap(cx, cy){
+  const d = PARTY.dial; if (!d || !A.on || !A.rt || A.rt.room !== PARTY.room) return false;
+  d.updateMatrixWorld(true); const rc = canvas.getBoundingClientRect(); ndc.set(((cx - rc.left)/rc.width)*2 - 1, -((cy - rc.top)/rc.height)*2 + 1); ray.setFromCamera(ndc, camera);
+  const h = ray.intersectObject(d, true)[0]; if (!h || (inFP() && h.distance > REACH)) return false;
+  const b = pick(cx, cy); if (b && b.point && b.point.distanceTo(camera.position) < h.distance - .05) return false;
+  partyTurn(); return true;
+}
+function partyTurn(){
+  const was = PARTY.lvl; PARTY.lvl = was % 3 + 1; try { localStorage.setItem('redstone-academy.partyPower', PARTY.lvl); } catch (e) {}
+  PARTY.press = 1; PARTY.bar = 0; if (PARTY.tex){ PARTY.tex.image = partyDialCanvas(PARTY.lvl); PARTY.tex.needsUpdate = true; }
+  sfx.button(); partyWhoosh(PARTY.lvl > was);
+  partyStop(.06); DISCO.next = 0;   // the new music starts right away
+  const beat = DISCO.n >= 2, L = PARTY.lvl;
+  showToast(`PARTY POWER ${L}: ${PARTY_NAME[L - 1]}!` + (beat ? '' : ' (Get two plates working to hear it.)'));
+  if (A.monkey && beat) setTimeout(() => { if (A.on && PARTY.lvl === L) monkeySay(bag('party' + L, [
+    ['Ahh, DISCO. Nice and groovy.', 'Back to disco. My knees say thank you.', 'Disco! Everybody do the Barold!'],
+    ['DUBSTEP! Wub wub WUB!', 'The floor is wobbling. Is the floor meant to wobble?', 'Wub wub... I\'ve got wubs in my ears!'],
+    ['HOOVER RAVE! Who let a VACUUM CLEANER in?!', 'This is the FASTEST music in the jungle!', 'TOO MUCH POWER! I LOVE IT!']][L - 1]), 3500); }, 450);
+  if (L !== 3) partyHeadBack();
+}
+// what turning it does to your ears: up = a rising whoosh, back to 1 = a record slowing to a stop
+function partyWhoosh(up){ const a = ac(); if (!a) return; const t0 = a.currentTime, o = a.createOscillator(), g = a.createGain(), f = a.createBiquadFilter();
+  o.type = 'sawtooth'; f.type = 'lowpass'; f.Q.value = 6; o.frequency.setValueAtTime(up ? 90 : 220, t0); o.frequency.exponentialRampToValueAtTime(up ? 420 : 40, t0 + .45);
+  f.frequency.setValueAtTime(up ? 400 : 2400, t0); f.frequency.exponentialRampToValueAtTime(up ? 3200 : 200, t0 + .45);
+  g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(.12, t0 + .05); g.gain.exponentialRampToValueAtTime(.0001, t0 + .5);
+  o.connect(f).connect(g).connect(a.cat ? a.cat.blocks : a.bus); o.start(t0); o.stop(t0 + .55); o.onended = () => [o, f, g].forEach(n => n.disconnect()); }
+
+/* the party's own instruments: every one is ONE chain per bar, its notes and hits drawn as automation on that chain */
+function partyOut(a){
+  if (!PARTY.bus || PARTY.bus.context !== a){ PARTY.bus = a.createGain(); PARTY.bus.gain.value = .32; PARTY.bus.connect(a.mbus);
+    PARTY.drive = a.createWaveShaper(); const c = new Float32Array(512); for (let i = 0; i < 512; i++){ const x = i/255.5 - 1; c[i] = Math.tanh(2.2*x)/Math.tanh(2.2); } PARTY.drive.curve = c; PARTY.drive.connect(PARTY.bus);
+    PARTY.growlCurve = c; }
+  return PARTY.bus;
+}
+function pdone(nodes, src){ PARTY.live += nodes.length; PARTY.made += nodes.length; PARTY.srcs.add(src);
+  src.onended = () => { PARTY.srcs.delete(src); nodes.forEach(n => { try { n.disconnect(); } catch (e) {} }); PARTY.live -= nodes.length; }; }
+function partyStop(fade){
+  if (!PARTY.srcs.size) return; const a = PARTY.bus && PARTY.bus.context; if (!a) return; const now = a.currentTime, f = fade || .08;
+  const old = PARTY.bus, drv = PARTY.drive; old.gain.cancelScheduledValues(now); old.gain.setValueAtTime(old.gain.value, now); old.gain.linearRampToValueAtTime(0, now + f);
+  PARTY.srcs.forEach(s => { try { s.stop(now + f + .01); } catch (e) {} });
+  PARTY.bus = null; setTimeout(() => { try { old.disconnect(); drv.disconnect(); } catch (e) {} }, (f + .3)*1000);   // the next bar gets a fresh bus
+}
+const PHZ = s => 55*Math.pow(2, s/12);   // semitones from a low A
+// drums that thump: one oscillator, every kick a pitch drop on it
+function pKick(a, out, hits, f0, f1, dec, end){
+  const o = a.createOscillator(), g = a.createGain(); o.type = 'sine'; g.gain.value = 0;
+  hits.forEach(([t, v]) => { o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + .09); g.gain.setValueAtTime(v, t); g.gain.setTargetAtTime(0, t + .01, dec); });
+  o.connect(g).connect(out); o.start(hits[0][0]); o.stop(end); pdone([o, g], o);
+}
+// noise drums (snares, claps, hats): one noise source and filter, every hit a jump in loudness
+function pNoise(a, out, hits, type, freq, q, end, ftrack){
+  const s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain(); s.buffer = noiseBuf(a); s.loop = true;
+  f.type = type; f.frequency.value = freq; f.Q.value = q || 1; g.gain.value = 0;
+  hits.forEach(([t, v, d, ff]) => { g.gain.setValueAtTime(v, t); g.gain.setTargetAtTime(0, t + .004, d); if (ff) f.frequency.setValueAtTime(ff, t); });
+  s.connect(f).connect(g).connect(out); s.start(hits[0][0], Math.random()*2); s.stop(end); pdone([s, f, g], s);
+}
+// a pitched voice: one oscillator (or a few, detuned), notes as steps in its pitch, a gate on its loudness
+function pVoice(a, out, notes, o){
+  const oscs = (o.detune || [0]).map(dt => { const x = a.createOscillator(); x.type = o.type || 'sawtooth'; x.detune.value = dt; return x; });
+  if (o.sq){ const x = a.createOscillator(); x.type = 'square'; x.detune.value = -1200; oscs.push(x); }
+  const f = a.createBiquadFilter(), g = a.createGain(), nodes = [...oscs, f, g]; f.type = o.filter || 'lowpass'; f.frequency.value = o.lp || 2000; f.Q.value = o.q || 1; g.gain.value = 0;
+  notes.forEach(([t, hz, d, v, x]) => { x = x || {};
+    oscs.forEach(os => { if (x.from){ os.frequency.setValueAtTime(x.from, t); os.frequency.exponentialRampToValueAtTime(hz, t + (x.glide || .08)); } else os.frequency.setValueAtTime(hz, t);
+      if (x.to) os.frequency.exponentialRampToValueAtTime(x.to, t + d); });
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + (o.att || .005)); if (o.pluck) g.gain.setTargetAtTime(0, t + .01, o.pluck); else { g.gain.setValueAtTime(v, t + d*.85); g.gain.linearRampToValueAtTime(0, t + d); }
+    if (o.fenv){ f.frequency.setValueAtTime(o.fenv[0], t); f.frequency.setTargetAtTime(o.fenv[1], t + .005, o.fenv[2]); } });
+  oscs.forEach(os => os.connect(f)); f.connect(g).connect(o.to || out);
+  const t0 = notes[0][0], end = Math.max(...notes.map(n => n[0] + n[2])) + .1; oscs.forEach(os => { os.start(t0); os.stop(end); }); pdone(nodes, oscs[0]); return {f, g, oscs};
+}
+// one bar of the party at intensity L with n layers (2 drums, 3 + bass, 4 + lead and extras), starting at t0
+function partyBar(a, n, L, t0){
+  const out = partyOut(a), bpm = PARTY_BPM[L - 1], b = 60/bpm, end = t0 + 4*b + .02, ph = PARTY.bar++ % 4, at = x => t0 + x*b;
+  if (L === 1){   // DISCO: four on the floor, claps, open hats on the off-beat, an octave bass, string stabs
+    const root = [0, 0, 5, 7][ph], chord = ph === 3 ? [0, 4, 7, 11] : ph === 2 ? [0, 4, 7, 10] : [0, 3, 7, 10];
+    pKick(a, out, [0, 1, 2, 3].map(k => [at(k), .9]), 140, 48, .09, end + .4);
+    pNoise(a, out, [[at(1), .5, .07], [at(3), .5, .07]].flatMap(([t, v, d]) => [[t, v, d], [t + .012, v*.8, d], [t + .024, v, d*1.6]]), 'bandpass', 1400, 1.2, end + .3);
+    pNoise(a, out, [0, 1, 2, 3].flatMap(k => [[at(k + .5), .22, .09], [at(k + .25), .07, .02], [at(k + .75), .07, .02]]), 'highpass', 7500, .7, end + .2);
+    if (n >= 3) pVoice(a, out, Array.from({length:8}, (_, i) => [at(i/2), PHZ(root + (i % 2 ? 12 : 0)), b*.45, .55]), {type:'sawtooth', lp:850, q:3, pluck:.09, fenv:[1600, 500, .06]});
+    if (n >= 4){ chord.forEach(c => pVoice(a, out, [[at(1.5), PHZ(36 + root + c), b*.35, .12], [at(3.5), PHZ(36 + root + c), b*.35, .12]], {type:'sawtooth', detune:[-7, 7], lp:2600, q:.7, att:.01}));
+      if (ph === 3) pVoice(a, out, [[at(2), PHZ(36), b*2, .09, {from:PHZ(24), glide:b*1.6}]], {type:'sawtooth', detune:[-10, 10], lp:3000, att:.3}); }
+  } else if (L === 2){   // DUBSTEP: half-time (big snare on beat 3), a wobble bass whose wobble speeds up and slows down, a sub drop
+    const root = [-4, -4, -8, -6][ph];
+    pKick(a, out, [[at(0), 1]].concat(ph % 2 ? [[at(1.75), .7]] : [], ph === 3 ? [[at(3.5), .6]] : []), 150, 42, .13, end + .4);
+    pNoise(a, out, [[at(2), .9, .13]], 'bandpass', 1800, .8, end + .5); pVoice(a, out, [[at(2), 190, .2, .5, {to:120}]], {type:'triangle', lp:1200, pluck:.06});
+    pNoise(a, out, (ph === 3 ? [0, .5, 1, 1.5, 2, 2.5, 3, 3.33, 3.67] : [0, .5, 1, 1.5, 2, 2.5, 3, 3.5]).map(k => [at(k + (k % 1 === .5 ? .03 : 0)), k % 1 ? .12 : .18, .03]), 'highpass', 8000, .7, end + .2);
+    if (n >= 3){ const w = pVoice(a, out, [[at(0), PHZ(root + 12), b*2.9, .26], [at(3), PHZ(root + 19), b*.95, .26]], {type:'sawtooth', detune:[0, 9], sq:true, lp:300, q:9});
+      const lfo = a.createOscillator(), lg = a.createGain(); lfo.type = 'sine'; lg.gain.value = 1100; lfo.connect(lg).connect(w.f.frequency);
+      const rates = [[1, 1, 2, 2], [3, 3, 2, 4], [1, 2, 1, 3], [4, 4, 6, 8]][ph]; rates.forEach((r, k) => lfo.frequency.setValueAtTime(r*bpm/60*.5, at(k)));
+      lfo.start(t0); lfo.stop(end); pdone([lfo, lg], lfo);
+      pVoice(a, out, [[at(0), PHZ(root), b*2.9, .4], [at(3), PHZ(root + 7), b*.95, .36]], {type:'sine', lp:200}); }
+    if (n >= 4){ const mel = [[[0, 15], [.75, 12], [1.5, 10], [2.5, 7]], [[0, 12], [1, 15], [1.5, 17], [3, 15]], [[0, 15], [.75, 12], [1.5, 10], [2.5, 19]], [[0, 22], [.5, 19], [1, 17], [1.5, 15]]][ph];
+      pVoice(a, out, mel.map(([k, s]) => [at(k), PHZ(36 + root + s), b*.6, .11]), {type:'square', lp:2400, q:2, pluck:.12});
+      if (ph === 0) pVoice(a, out, [[at(0), 120, b*1.5, .55, {to:30}]], {type:'sine', lp:400});   // the sub drop
+      if (ph === 3){ const s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain(); s.buffer = noiseBuf(a); s.loop = true; f.type = 'bandpass'; f.Q.value = 3;   // a whooshing riser into the drop
+        f.frequency.setValueAtTime(300, t0); f.frequency.exponentialRampToValueAtTime(7000, end); g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(.16, end - .02); g.gain.linearRampToValueAtTime(0, end);
+        s.connect(f).connect(g).connect(out); s.start(t0, Math.random()*2); s.stop(end); pdone([s, f, g], s); } }
+  } else {   // HOOVER RAVE (~172): a pounding driven kick, rolling chopped breaks, a growling talking bass, the hoover, stabs and a siren
+    const root = [-2, -2, 1, -4][ph], drv = PARTY.drive;
+    pKick(a, drv, [0, 1, 2, 3].map(k => [at(k), .95]), 170, 44, .1, end + .3);
+    const brk = ph === 3 ? '....S..s.S.sSsSS' : ph % 2 ? '....S..s..s.S.ss' : '....S..s.s..S..s';
+    const sn = []; [...brk].forEach((ch, i) => { if (ch === 'S') sn.push([at(i/4), .75, .06]); else if (ch === 's') sn.push([at(i/4), .28, .03]); });
+    if (ph === 3) for (let i = 0; i < 8; i++) sn.push([at(2 + i/4 + .125), .18 + i*.06, .025]);   // the roll into the next bar: a build
+    sn.sort((x, y) => x[0] - y[0]); pNoise(a, drv, sn, 'bandpass', 2300, .9, end + .3);
+    pVoice(a, drv, sn.map(([t, v]) => [t, 200 + (ph === 3 ? (t - t0)*90 : 0), .06, v*.5, {to:150}]), {type:'triangle', lp:1500, pluck:.03});
+    pNoise(a, out, Array.from({length:16}, (_, i) => [at(i/4), i % 2 ? .16 : .07, .02]), 'highpass', 8500, .7, end + .1);
+    if (n >= 3){   // the growl: saws, driven, through two moving formant filters ("yow", "wee", "oh"...), gated in a funky rhythm
+      const pat = 'x.xx.x.xx.x.xxx.', vow = [[700, 1150], [400, 800], [300, 2200], [600, 1000], [500, 1700]];
+      const sh = a.createWaveShaper(); sh.curve = PARTY.growlCurve; const f1 = a.createBiquadFilter(), f2 = a.createBiquadFilter(), mix = a.createGain(); [f1, f2].forEach(f => { f.type = 'bandpass'; f.Q.value = 7; }); mix.gain.value = 1.6;
+      pVoice(a, sh, [...pat].map((ch, i) => ch === 'x' ? [at(i/4), PHZ(root + 12 + (i === 14 ? 12 : 0)), b*.24, .6] : null).filter(Boolean), {type:'sawtooth', detune:[0, 14], lp:5000, q:.5});
+      [...pat].forEach((ch, i) => { if (ch !== 'x') return; const [p, q] = vow[(i*3 + ph) % vow.length]; f1.frequency.setValueAtTime(p*.7, at(i/4)); f1.frequency.linearRampToValueAtTime(p, at(i/4 + .2)); f2.frequency.setValueAtTime(q*.6, at(i/4)); f2.frequency.linearRampToValueAtTime(q, at(i/4 + .2)); });
+      sh.connect(f1).connect(mix); sh.connect(f2).connect(mix); mix.connect(out); setTimeout(() => [sh, f1, f2, mix].forEach(x => { try { x.disconnect(); } catch (e) {} }), (end - a.currentTime + .5)*1000);
+      pVoice(a, out, [...pat].map((ch, i) => ch === 'x' ? [at(i/4), PHZ(root), b*.24, .55] : null).filter(Boolean), {type:'sine', lp:180}); }
+    if (n >= 4){   // THE HOOVER: a stack of detuned saws and a square underneath; every note dives in from above, and bar 4 ends in a huge swoop down
+      const riff = ph % 2 ? [[0, 0, 1.25], [1.5, -2, .5], [2, 3, 1], [3, 5, .9]] : [[0, 0, 1.25], [1.5, 3, .5], [2, 0, .75], [3, 7, .5], [3.5, 5, .45]];
+      const notes = riff.map(([k, s, d]) => [at(k), PHZ(24 + root + s), d*b, .2, {from:PHZ(24 + root + s + 7), glide:.09}]);
+      if (ph === 3){ const last = notes[notes.length - 1]; last[2] = .5*b; last[4].to = PHZ(root); }
+      pVoice(a, out, notes, {type:'sawtooth', detune:[-24, -9, 9, 24], sq:true, lp:2600, q:1.6, att:.01});
+      if (ph === 1) [0, 3, 7, 12].forEach(c => pVoice(a, out, [1, 1.5, 2.5, 3.5].map(k => [at(k), PHZ(36 + root + c), b*.2, .045]), {type:'square', lp:3000, q:1, pluck:.05}));   // rave stabs
+      if (ph === 2) pVoice(a, out, Array.from({length:16}, (_, i) => [at(i/4), PHZ(24 + root + [0, 12, 0, 3, 0, 15, 12, 0, 7, 0, 10, 12, 0, 3, 5, 7][i]), b*.2, .07]), {type:'square', lp:900, q:12, pluck:.06, fenv:[2800, 500, .05]});   // a squelchy acid riff
+      if (ph === 3){ const s = pVoice(a, out, [[at(0), 640, 4*b, .05]], {type:'triangle', lp:4000}); const l = a.createOscillator(), lg = a.createGain(); l.frequency.value = bpm/60/2; lg.gain.value = 260; l.connect(lg); s.oscs.forEach(o => lg.connect(o.frequency)); l.start(t0); l.stop(end); pdone([l, lg], l); }   // the siren
+    }
+  }
+}
+// the dial, the room shake, and Barold, every frame while room 12's troop is about
+function partyFrame(r, s, n, inRoom){
+  if (!PARTY.dial || PARTY.room !== r) partyDialBuild(r);
+  const want = PARTY_ANG[PARTY.lvl - 1]; PARTY.ang += (want - PARTY.ang)*(reduceMotion ? 1 : Math.min(1, s*7)); PARTY.ptr.rotation.z = (PARTY.ang - 90)*Math.PI/180;
+  PARTY.press = Math.max(0, PARTY.press - s*5); PARTY.btn.position.z = .06 - .045*Math.sin(Math.PI*Math.min(1, PARTY.press*1.2));
+  PARTY.playing = n >= 2 && inRoom && MUSIC.on;
+  // level 3: the floor thumps with every kick (a quick dip of the view, not a random judder)
+  if (PARTY.lvl === 3 && PARTY.playing && inFP() && !reduceMotion){ const fr = DISCO.beat % 1; PARTY.shook = .028*Math.exp(-fr*9); camera.position.y -= PARTY.shook; } else PARTY.shook = 0;
+  partyBarold(s, n >= 4 && inRoom && !!(A.monkey && A.monkey.parent));
+}
+function partyBarold(s, on){
+  const m = A.monkey; if (!m) return; const u = m.userData; if (!u.arms || !u.skeleton) return;
+  if (PARTY.bits){ partyBitsFrame(s); return; }
+  if (u.inBits) return;
+  if (!on && u.headBack) partyHeadBack();
+  u.pdk = Math.max(0, Math.min(1, (u.pdk || 0) + (on ? 1 : -1)*s*2));
+  if (!u.pdk){ if (u.pdkOn){ u.pdkOn = false; u.arms[0].rotation.z = -.1; u.arms[1].rotation.z = .1; m.rotation.z = 0; u.head.rotation.x = 0; } PARTY.bitsT = 0; return; }
+  u.pdkOn = true; const k = u.pdk*u.pdk*(3 - 2*u.pdk), L = PARTY.lvl, amp = [.6, .9, 1.25][L - 1], w = Math.PI*DISCO.beat*(L === 2 ? .5 : 1);
+  if (reduceMotion){ u.arms[0].rotation.z = -.1 - 2.3*k; u.arms[1].rotation.z = .1 + 2.3*k; return; }
+  u.arms[0].rotation.z = -.1 - (2.2 + Math.sin(w)*.4*amp)*k; u.arms[1].rotation.z = .1 + (2.2 + Math.sin(w + 1.2)*.4*amp)*k;
+  m.rotation.z = Math.sin(w*.5)*.1*amp*k; u.head.rotation.x = Math.sin(w)*.16*amp*k; m.position.y += (1 - Math.cos(w))*.045*amp*k;
+  if (L === 3){ u.legs[0].rotation.x = Math.max(0, Math.sin(w))*.7*k; u.legs[1].rotation.x = Math.max(0, -Math.sin(w))*.7*k;
+    PARTY.bitsT += s; if (PARTY.bitsT > 5 && !u.headBack) partyBits(m); }   // he dances SO hard...
+  else PARTY.bitsT = 0;
+}
+// ...that he falls to bits. They land on the floor, lie there a moment, then fly back together, head on backwards.
+function partyBits(m){
+  const u = m.userData, base = m.position.clone(), fl = floorAtWorld(base.x, base.z), parts = [];
+  const shapes = [[.44, .4, .42, 1.45], [.38, .32, .2, 1.0], [.3, .1, .16, .66], [.09, .55, .09, 1.0], [.09, .55, .09, 1.0], [.1, .6, .1, .35], [.1, .6, .1, .35], [.07, .58, .24, 1.0]];
+  shapes.forEach(([w, h, d, y], i) => { const g = new THREE.Mesh(cbox(w, h, d), i === 7 ? TR.teal : BONE); g.raycast = () => {}; fxRoot.add(g);
+    const ang = i/shapes.length*Math.PI*2 + Math.random()*.5, dist = .7 + Math.random()*.7, from = new THREE.Vector3(base.x, base.y + y, base.z);
+    const land = new THREE.Vector3(base.x + Math.cos(ang)*dist, fl + Math.min(w, h, d)/2, base.z + Math.sin(ang)*dist); g.position.copy(from);
+    parts.push({g, from, land, spin:new THREE.Vector3(Math.random() - .5, Math.random() - .5, Math.random() - .5).multiplyScalar(5)}); });
+  m.visible = false; u.inBits = true; PARTY.bits = {m, parts, t:0, back:false}; partyClatter(8, .45);
+}
+function partyBitsFrame(s){
+  const B = PARTY.bits; B.t += s; const T = B.t;
+  B.parts.forEach(p => { let k, from = p.from, to = p.land, lift;
+    if (T < .7){ k = T/.7; lift = 1.2; } else if (T < 1.9){ k = 1; lift = 0; } else { k = Math.min(1, (T - 1.9)/.6); from = p.land; to = p.from; lift = .9; k = k*k*(3 - 2*k); }
+    p.g.position.lerpVectors(from, to, k); p.g.position.y += Math.sin(Math.PI*k)*lift;
+    const spin = T < .7 ? k : T < 1.9 ? 1 : 1 - k; p.g.rotation.set(p.spin.x*spin, p.spin.y*spin, p.spin.z*spin); });
+  if (T >= 1.9 && !B.back){ B.back = true; partyClatter(6, .3, true); }
+  if (T >= 2.5) partyBitsDrop(true);
+}
+function partyBitsDrop(done){
+  const B = PARTY.bits; if (!B) return; B.parts.forEach(p => fxRoot.remove(p.g)); PARTY.bits = null;
+  const m = B.m, u = m.userData; m.visible = true; u.inBits = false;
+  if (done){ u.head.rotation.y = Math.PI; u.headBack = true; u.hop = 1; sfx.pop();
+    monkeySay(bag('partyBits', ['WHOA! I danced myself to BITS! ...Why is everything behind me now?', 'I\'m fine! Totally fine! Is my head on backwards? It FEELS backwards.', 'Too much HOOVER! Hang on... where did the disco ball go? Oh. It\'s behind me.']), 4500); }
+}
+function partyHeadBack(){ const m = A.monkey; if (!m || !m.userData.headBack) return; const u = m.userData; u.headBack = false; PARTY.bitsT = 0;
+  setTimeout(() => { if (!u.head) return; u.head.rotation.y = 0; sfx.click(); if (A.on) monkeySay('*click* Ahh. That\'s MUCH better.', 2500); }, 600); }
+// bones clattering down (or zipping back together): little woody clacks
+function partyClatter(k, len, up){ for (let i = 0; i < k; i++){ const w = up ? i/k*len : Math.pow(Math.random(), .7)*len, f = up ? 700 + i*120 : 600 + Math.random()*900; tone(f, .05, 'triangle', .12, w, f*.7); noise(.03, .08, f*2, 'bandpass', w, 2); } }
+// test hooks (test-sounds.js)
+function partyTest(L, n, secs){ const a = mbus(); if (!a) return; a.mbus.gain.value = MUSIC.on ? MVOL*VOL.music : 0; PARTY.bus = null; PARTY.bar = 0;
+  const bar = 4*60/PARTY_BPM[L - 1], t0 = a.currentTime + .05; for (let k = 0; k*bar < (secs || 4) - .1; k++){ DISCO.next = t0 + k*bar; musicCue('disco', n, L); } DISCO.next = 0; }
 function troopCheer(){ TROOP.list.forEach(m => { m.userData.hop = 1 + Math.random()*.4; }); }
 
 const ROOM_SPECIES = ['capuchin','macaque','lemur','baboon','howler','tamarin','proboscis','spider','mandrill','snow','capuchin','lemur','snow','proboscis','spider','mandrill','baboon','howler','orangutan','gibbon','gorilla','orangutan','gibbon','gorilla','gorilla'];
@@ -6299,22 +6573,9 @@ function musicSet(key){
   a.mcomp.gain.cancelScheduledValues(now); a.mcomp.gain.setValueAtTime(a.mcomp.gain.value, now); a.mcomp.gain.linearRampToValueAtTime(.0001, now + 2.5);
   MUSIC.phase = 'fade'; MUSIC.fadeEnd = now + 2.6; MUSIC.q = []; MUSIC.qi = 0; MUSIC.at = M ? Math.min(MUSIC.at, now + (MUSIC.seen.has(key) && M.fam !== 'tense' ? mrange([8, 20]) : mrange([3, 6]))) : MUSIC.at;
 }
-function musicCue(kind, n){
+function musicCue(kind, n, level){
   const a = mbus(); if (!a || !MUSIC.on) return; const t = a.currentTime + .05;
-  if (kind === 'disco'){   // one bar at DISCO.bpm, scheduled at DISCO.next: 2 = kick, clap and hats; 3 = + a wobbly bass; 4 = + a bouncy lead and a sub drop
-    const t0 = Math.max(t, DISCO.next || 0), b = 60/DISCO.bpm, L = n || 2;
-    [0, 2.5].forEach(k => voice(150, t0 + k*b, .28, 'sine', .55, {slide:42}));
-    discoNoise(a, t0 + 2*b, .22, .32, 900);
-    for (let k = 0; k < 8; k++) discoNoise(a, t0 + k*b/2, .04, k % 2 ? .07 : .12, 7000);
-    if (L >= 3){ const o = a.createOscillator(), f = a.createBiquadFilter(), g = a.createGain(), lfo = a.createOscillator(), lg = a.createGain();
-      o.type = 'sawtooth'; o.frequency.setValueAtTime(N(-26), t0); o.frequency.setValueAtTime(N(-29), t0 + 2*b);
-      f.type = 'lowpass'; f.Q.value = 8; f.frequency.value = 420; lfo.type = 'sine'; lfo.frequency.setValueAtTime(2*DISCO.bpm/60, t0); lfo.frequency.setValueAtTime(3*DISCO.bpm/60, t0 + 2*b); lg.gain.value = 360;
-      lfo.connect(lg).connect(f.frequency); g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(.16, t0 + .02); g.gain.setValueAtTime(.16, t0 + 4*b - .06); g.gain.exponentialRampToValueAtTime(.0001, t0 + 4*b);
-      o.connect(f).connect(g).connect(a.mbus); o.start(t0); lfo.start(t0); o.stop(t0 + 4*b + .02); lfo.stop(t0 + 4*b + .02); mdone([o, f, g, lfo, lg], o); }
-    if (L >= 4){ [12, 15, 19, 15, 22, 19, 15, 12].forEach((s2, k) => voice(N(s2 - 12), t0 + k*b/2, b*.4, 'square', .03, {lp:2600}));
-      voice(N(-36), t0, 4*b, 'sine', .12); }
-    return;
-  }
+  if (kind === 'disco'){ partyBar(a, n || 2, level || PARTY.lvl, Math.max(t, DISCO.next || 0)); return; }   // one bar of room 12's party (PARTY POWER sets the style)
   if (kind === 'reveal') [[0,4,7,12]].forEach(ch => ch.forEach((n, i) => { voice(N(n - 12), t + i*.12, 3.2, 'sawtooth', .04, {lp:1200, att:.4}); }));
   if (kind === 'fanfare') [0, 4, 7, 12, 7, 12, 16].forEach((n, i) => voice(N(n), t + i*.14, .5, 'square', .035, {lp:2400}));
 }
@@ -6323,7 +6584,7 @@ function musicFrame(){
   if (!A.on) return;
   let key = 'jungle';
   if (A.openCine) key = null;   // the opening scene has its own sting; let it breathe
-  else if (DISCO.lit && DISCO.n >= 2) key = null;   // room 12's disco has its own groove
+  else if (PARTY.playing) key = null;   // room 12's disco has its own groove (while you're in there)
   else if (A.act === 2) key = A.solved.has(FUN_LAST) && !A.funDone ? 'escape' : A.room && A.room.zone === 'fun' ? 'ride' : 'fun';
   else if (A.launching) key = 'cine';
   else if (A.launched) key = 'sky';
@@ -10155,17 +10416,33 @@ window.__game.audio = {
   useCtx(ctx){ const old = AC; AC = ctx; if (ctx){ soundOn = true; userActed = true; } return old; },
   phrase(key, k){ const P = mPiece(key); P.k = k || 0; return {P, ev:mPhrase(P, .05)}; },
   // render a sound into an offline context the way the speakers get it (bus and compressor) and measure it
-  async offline(fn, secs){
-    const sr = 22050, oc = new OfflineAudioContext(1, Math.ceil(sr*(secs || 3)), sr), keep = [AC, soundOn, userActed];
-    const comp = oc.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 4; comp.connect(oc.destination); oc.bus = oc.createGain(); oc.bus.gain.value = .85; oc.bus.connect(comp); oc.offline = true;
-    AC = oc; soundOn = true; userActed = true; try { fn(oc); } finally { [AC, soundOn, userActed] = keep; }
-    const d = (await oc.startRendering()).getChannelData(0), w = Math.floor(sr*.05); let pk = 0, loud = 0;
+  async offline(fn, secs){   // (render() below starts the sound once the compressor is awake; at time 0 it came out far too quiet)
+    const d = await window.__game.audio.render(fn, secs), sr = 22050, w = Math.floor(sr*.05); let pk = 0, loud = 0;
     for (let i = 0; i < d.length; i += w){ let ss = 0; for (let j = i; j < Math.min(d.length, i + w); j++){ ss += d[j]*d[j]; pk = Math.max(pk, Math.abs(d[j])); } loud = Math.max(loud, Math.sqrt(ss/w)); }
     return {peak:+pk.toFixed(3), rms:+loud.toFixed(3)};   // rms: the loudest 50 ms
   },
   playPhrase(oc, key, k){ const a = mbus(); a.mbus.gain.value = MVOL; const P = mPiece(key); P.k = k == null ? 1 : k; mPhrase(P, .05).forEach(e => INST[e.i](a, a.mcomp, e.f, e.t, e.d, e.v, P.M.pad)); }
 };
 
+// render a sound offline (bus, compressor, limiter, like the speakers get it) and hand back the samples (test-sounds.js)
+window.__game.audio.render = async function(fn, secs, sr){
+  sr = sr || 22050; const oc = new OfflineAudioContext(1, Math.ceil(sr*((secs || 3) + .4)), sr), keep = [AC, soundOn, userActed];
+  const comp = oc.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 4; comp.connect(masterOut(oc)); oc.bus = oc.createGain(); oc.bus.gain.value = .85; oc.bus.connect(comp); oc.offline = true;
+  oc.cat = {}; ['blocks', 'creatures', 'ambient', 'voice'].forEach(k => { const g = oc.createGain(); g.gain.value = VOL[k]; g.connect(oc.bus); oc.cat[k] = g; });
+  // the compressor needs a moment to wake up (anything at time 0 comes out far too quiet), so the sound starts 0.3 s in
+  const W = Math.ceil(.3*sr/128)*128/sr;   // ~0.3 s, on a render-quantum boundary
+  oc.suspend(W).then(() => { AC = oc; soundOn = true; userActed = true; try { fn(oc); } finally { [AC, soundOn, userActed] = keep; } oc.resume(); });
+  return Array.from((await oc.startRendering()).getChannelData(0).subarray(Math.round(W*sr)));
+};
+window.__game.audio.party = {
+  level(){ return PARTY.lvl; }, set(l){ PARTY.lvl = l; }, turn:partyTurn, test:partyTest,
+  info(){ const m = A.monkey, u = m && m.userData; return {lvl:PARTY.lvl, dial:!!PARTY.dial, ang:Math.round(PARTY.ang), live:PARTY.live, made:PARTY.made, srcs:PARTY.srcs.size, playing:PARTY.playing, bpm:DISCO.bpm,
+    shook:PARTY.shook, bits:!!PARTY.bits, headBack:!!(u && u.headBack), baroldVisible:!!(m && m.visible), saved:(() => { try { return localStorage.getItem('redstone-academy.partyPower'); } catch (e) { return null; } })()}; },
+  aim(){ const d = PARTY.dial; if (!d) return false; const p = new THREE.Vector3(); d.updateMatrixWorld(true); PARTY.btn.getWorldPosition(p); const dx = p.x - P.x, dz = p.z - P.z; P.yaw = Math.atan2(-dx, -dz); P.pitch = Math.atan2(p.y - (P.y + EYE), Math.hypot(dx, dz)); stepFP(0); return true; },
+  spot(){ const d = PARTY.dial; if (!d || !PARTY.room) return null; const p = new THREE.Vector3(); d.getWorldPosition(p);   // the dance plate nearest the dial (you press it while the party's on)
+    return PARTY.room.inputs.slice().sort((u, v) => cellPos(...u).distanceTo(p) - cellPos(...v).distanceTo(p))[0]; },
+  bitsNow(){ if (A.monkey && !PARTY.bits) partyBits(A.monkey); }, barold:partyBarold
+};
 // test hooks for the opening, the side door, the camera stick and Barold running ahead (test-opening.js, test-barold.js)
 window.__game.opening = {
   heli(){ return A.crash ? {y:A.crash.position.y, sinking:!!A.heliSink, sunk:!!A.heliSunk, cell:cellAtWorld(A.crash.position.x, A.crash.position.z)} : null; },
