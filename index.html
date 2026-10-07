@@ -4265,12 +4265,12 @@ SECRETS.forEach(s => { const g = slotGeom(s.slot), from = ROOMS.find(r => r.id =
 const FUN_ROOMS = [
   // ---------------- the pier: the gates you know, mixed (review) ----------------
   { id:301, name:'Hook-a-Duck', give:['dust','stone','torch'], check:'table', inputs:[[1,2],[1,6]], out:[[8,3]], fn:(a, b) => a && !b,
-    fixed:[K('lever',1,2),K('lever',1,6),K('stone',3,2),K('torch',4,2,{attach:3}),K('stone',7,4),K('torch',7,3,{attach:2}),K('lamp',8,3)],
+    fixed:[K('lever',1,2,{tag:'DUCK'}),K('lever',1,6,{tag:'CAPTAIN'}),K('stone',3,2),K('torch',4,2,{attach:3}),K('stone',7,4),K('torch',7,3,{attach:2}),K('lamp',8,3)], inHead:'<th>duck</th><th>Captain</th>',
     loose:[D(2,2),D(2,6),...col(5,2,6),D(6,4)],
-    goal:'Hook-a-Duck! Top lever ON: you hooked a duck. Bottom lever ON: the Captain is looking. The prize lamp needs a duck AND the Captain NOT looking.',
+    goal:'Hook-a-Duck! The DUCK lever ON: you hooked a duck. The CAPTAIN lever ON: the Captain is looking. The prize lamp needs a duck AND the Captain NOT looking.',
     hello:'Arr— I mean, ROLL UP! Hook a duck, win a prize! As long as I\'m not looking. I mean, as long as it\'s all FAIR.',
-    hint:'It\'s an AND machine, but the bottom lever has to count the other way round. Every grumpy torch flips things. Two flips cancel out. Does the bottom side NEED a torch?',
-    win:'Duck AND NOT Captain! The bottom lever skips the grumpy torch, so it counts the other way round. Mixing gates says exactly what you mean.',
+    hint:'It\'s an AND machine, but the CAPTAIN lever must work backwards: ON should STOP the prize. A grumpy torch flips ON and OFF. Two flips cancel out. Does the Captain\'s side NEED a torch?',
+    win:'Duck AND NOT Captain! The Captain\'s lever skips the grumpy torch, so it works backwards. Mixing gates says exactly what you mean.',
     mc:'Mix gates in Minecraft: an AND gate with one input flipped lets one lever unlock and another lock.',
     naive:[K('stone',3,6),K('torch',4,6,{attach:3})],
     sol:[D(3,6),D(4,6)] },
@@ -4533,6 +4533,7 @@ function buildFunfair(save){
   // on the pier: a few stalls (never on the way to the rides)
   FUN_STALLS.forEach(([x, y, w, h, kind]) => { for (let dx = 0; dx < w; dx++) for (let dy = 0; dy < h; dy++) setWall(x + dx, y + dy, 3, kind); });
   setupRoomCells(save, r => r.zone === 'ghost' ? FUN_WALL.timber : FUN_WALL.crate);
+  ROOMS.forEach(r => r.fixed.forEach(f => { if (!f.tag) return; const sp = labelSprite(f.tag, true), c = cellPos(f.x, f.y); sp.position.set(c.x, c.y + 1.35, c.z); sp.userData.tag = f.tag; labelRoot.add(sp); }));   // (playtest sweep 2: naming levers by where they sit meant nothing with both on the floor)
   // the ghost train hall's south gate to the last ride: shut until you've had a ride
   { const fin = ROOMS.find(r => r.id === FUN_LAST); A.gtGate = doorSpan([fin.entry[0], GHOST.y1], GHOST); A.gtGate.forEach(([x, y]) => { const d = makeCell('door', x, y, {locked:true, dir:0}); d.latched = !!A.gRode; setCell(x, y, d); }); }
   ZONE_TITLES.fun = ['The Seaside Funfair', 'Rides, lights and logic. At NIGHT.']; ZONE_TITLES.ghost = ['The Ghost Train', 'Fix it. Then RIDE it.'];
@@ -5030,6 +5031,7 @@ function gtRideFrame(dt){
   if (A.gtCart){ A.gtCart.position.set(w.x, GT.e, w.z); A.gtCart.rotation.y = Math.atan2(p.dx, p.dy); }
   rideItems(R, dt, now); rideMoments(R, now);
   if (R.msgT > 0){ R.msgT -= dt; if (R.msgT <= 0) rideMsg(''); }
+  if (R.sayT > 0){ R.sayT -= dt; if (R.sayT <= 0) rideSay(null, ''); }
   R.scareCd = Math.max(0, R.scareCd - dt);
   rideHudUpdate(R);
   if (done && !R.endT) R.endT = now + 900;
@@ -5074,7 +5076,7 @@ function rideMesh(it){
   m.position.copy(it.pos); m.traverse(o => o.raycast = () => {}); decorRoot.add(m); return m;
 }
 function rideDrop(it){ if (it.mesh && it.mesh.parent) it.mesh.parent.remove(it.mesh); it.mesh = null; it.state = 'gone'; }
-function rideScore(R, n, text){ R.score = Math.max(0, R.score + n); rideMsg(text); feed('ride', text); }
+function rideScore(R, n, text){ const was = R.score; R.score = Math.max(0, R.score + n); const md = GRIDE_MEDALS.find(([, m]) => was < m && R.score >= m); if (md){ text += ' ' + md[0] + '!'; sfx.chime(); } rideMsg(text); feed('ride', text); }
 // the fork targets (and the secret skull): visible on the way into each fork; hit one and the points flip
 function rideTargets(R){
   const out = [], cur = R.route[R.segI]; if (!cur) return out;
@@ -5103,7 +5105,7 @@ function rideMoments(R, now){
 }
 // a tap during the ride: the nearest target, coin or wisp under your finger (or the crosshair) gets hit; generous, for small fingers
 function rideTap(cx, cy){
-  const R = A.gRide; if (!R || (A.clock || 0) < R.start) return false;
+  const R = A.gRide; if (!R) return false; if ((A.clock || 0) < R.start){ rideMsg('Wait for it... 3, 2, 1!'); return true; }
   const rect = renderer.domElement.getBoundingClientRect(), v = new THREE.Vector3(), cands = [];
   const scr = p => { v.copy(p).project(camera); if (v.z > 1) return null; return [rect.left + (v.x + 1)/2*rect.width, rect.top + (1 - v.y)/2*rect.height]; };
   rideTargets(R).forEach(T => { const s = scr(T.pos); if (s) cands.push({s, T, r:T.secret ? 55 : 90}); });
@@ -5135,7 +5137,7 @@ function rideEnd(){
   if (medal) confetti(); sfx.chime();
   const txt = `${medal ? '<b>' + medal + '!</b> ' : ''}You scored <b>${R.score}</b>.${newBest ? ' <b>NEW BEST!</b>' : ' Best: ' + A.ghostBest + '.'}<br>Bronze 60 · Silver 130 · Gold 200.${A.snuggles && !A.funBeats.has('snugSaid') ? '' : ''}<br><small>Ride again any time: walk onto the cart at the station.</small>`;
   showCard('Ghost train: ' + R.score + ' points', txt); feed('ride', 'ride over: ' + R.score + ' ' + (medal || 'no medal') + (newBest ? ' NEW BEST' : ''));
-  if (first) A.funDue.push({at:(A.clock || 0) + 1500, fn:() => funTwist()});
+  if (first){ const t0 = A.clock || 0, tw = () => { if (!$('#why').hidden && (A.clock || 0) - t0 < 20000) return void A.funDue.push({at:(A.clock || 0) + 400, fn:tw}); funTwist(); }; A.funDue.push({at:(A.clock || 0) + 1500, fn:tw}); }   // (your score and medal first: the twist waits till you've closed the card, 20 s at most)
   else if (A.snuggles && funBeat('snugFound')) A.funDue.push({at:(A.clock || 0) + 1500, fn:() => baroldTell('You found a teddy in a pirate hat! Keep it safe. I bet somebody misses it.')});
 }
 // the twist: the funfair was bait. The ship they want is YOURS
@@ -5160,7 +5162,7 @@ function rideHudUpdate(R){
   const bt = next ? `${next[0]} at ${next[1]} · best ${A.ghostBest || 0}` : `GOLD! · best ${Math.max(A.ghostBest || 0, R.score)}`; if (b.textContent !== bt) b.textContent = bt;
 }
 function rideMsg(t){ const R = A.gRide, m = $('#rideMsg'); if (m) m.textContent = t || ''; if (R && t) R.msgT = 1400; }
-function rideSay(who, t){ const m = $('#rideSay'); if (m) m.textContent = t ? (who ? (who === GUIDE ? GUIDE : who) + ': ' : '') + t : ''; if (t) feed('say', (who || '') + ': ' + t); }
+function rideSay(who, t){ const m = $('#rideSay'); if (m) m.textContent = t ? (who ? (who === GUIDE ? GUIDE : who) + ': ' : '') + t : ''; if (t) feed('say', (who || '') + ': ' + t); if (A.gRide) A.gRide.sayT = t ? 6000 : 0; }
 // ---- the great escape: every ride goes off in order (the big wheel rolls into the sea), the pirates gawp, the ship fills up with sparks and FLIES ----
 const FUN_ESCAPE = () => [[0, null, 'The big wheel spins faster... and faster... and rolls right off into the SEA!'], [3, 'Pirates', 'Ooooooooh.'], [4.6, null, 'The carousel whizzes round. The bell rings: ding... ding... DING! The ghost train goes BOO!'],
   [7.4, GUIDE, 'NOW! Sparks into the ship! RUN!'], [9.4, null, 'The temple-ship drinks up the pier\'s sparks... and FLIES!'], [12, 'Captain', '...WAIT. WHERE ARE THEY GOING?!']];
@@ -9339,6 +9341,11 @@ function climbTo(next){
   const [x, y] = next.entry, b = next.box, c = x === b.x0 ? [x - 1, y] : x === b.x1 ? [x + 1, y] : y === b.y0 ? [x, y - 1] : [x, y + 1];
   return inb(...c) && S.ladder[c[1]*NX + c[0]] ? c : null;
 }
+// the beam's look per act: Acts 1-2 as built; the pier at night: no fog on it; the daylight acts: solid orange (a pale glow vanished on the sky)
+function beaconLook(g, act){ g.userData.later = act; const cols = g.children.filter(o => o.isMesh); if (!g.userData.mat0) g.userData.mat0 = cols[0] && cols[0].material;
+  const day = act === MAYA_ACT || act === UNI_ACT, night = act === FUN_ACT;
+  const m = !day && !night ? g.userData.mat0 : (g.userData[day ? 'matDay' : 'matNight'] || (g.userData[day ? 'matDay' : 'matNight'] = day ? new THREE.MeshBasicMaterial({color:0xff8a1a, transparent:true, opacity:.55, depthWrite:false, fog:false}) : new THREE.MeshBasicMaterial({color:0xffc63a, transparent:true, opacity:.5, depthWrite:false, blending:THREE.AdditiveBlending, fog:false})));
+  cols.forEach(o => { if (m) o.material = m; }); }
 // the hint button, once a room is done: show the way on (the glowing trail, now)
 function forceTrail(c){ if (!c) return; const W = A.wf || (A.wf = {key:'', best:1e9, t:0, crumbs:[], age:0}); W.key = c.join(); W.best = 1e9; W.forced = true; W.age = 0; }
 function objectiveFrame(dt){
@@ -9348,7 +9355,7 @@ function objectiveFrame(dt){
   if (!c){ if (A.beacon.parent) decorRoot.remove(A.beacon); if (el) el.hidden = true; if (A.wf && A.wf.crumbs.length){ A.wf.crumbs.forEach(m => decorRoot.remove(m)); A.wf.crumbs = []; A.wf.t = 0; } return; }
   if (!A.beacon.parent) decorRoot.add(A.beacon);
   const p = cellPos(...c); A.beacon.position.set(p.x, p.y, p.z); A.beacon.rotation.y += dt*.001;
-  { const wide = A.act === 1 && !A.metBarold ? 1.8 : 1; A.beacon.scale.set(wide, 1, wide); }   // fatter in the jungle, so it shows between the trees
+  { const later = A.act >= FUN_ACT, wide = A.act === 1 && !A.metBarold ? 1.8 : later ? 1.5 : 1; A.beacon.scale.set(wide, 1, wide); if (A.beacon.userData.later !== A.act) beaconLook(A.beacon, A.act); }   // fatter in the jungle, so it shows between the trees
   beamTurnFrame(dt, c, p);
   if (Math.hypot(p.x - P.x, p.z - P.z) < 3){ A.beacon.visible = false; if (el) el.hidden = true; return; }
   A.beacon.visible = true;
@@ -10949,14 +10956,17 @@ function advStart(given){
 function stopAdventure(){ dlgCancel(true); document.body.classList.remove("emptyHands"); if (A.openCine){ A.openCine = false; cineEnd(); }
   A.freeze = false; A.endSeq = null; A.countdown = null; $('#mapCard').hidden = true; despawnTroop(); musicSet(null); const ml = $('#mline'); if (ml) ml.hidden = true;
   if (tut) { if (tut.marker) decorRoot.remove(tut.marker); tut = null; $('#tut').hidden = true; } if (A.on){ advSaveNow(); A.on = false; } $('#crystals').hidden = true; if (space.floor) setSpaceLevel(0); shake = 0; }
+// Acts 3-5, between rooms: the hint lights the glowing trail to the beam, and says so (as Act 1's hint does)
+function laterTrail(text, met){ const c = met ? objectiveCell() : null; if (!c || !/beam/.test(text)) return text; forceTrail(c);
+  return text.replace(/Follow the (tall )?beam of light to ([^.!]*)[.!]/, 'Follow the glowing trail on the ground to $2. It ends at the tall beam of light.').replace('(follow the beam)', '(follow the glowing trail)'); }
 function advHint(){
   plogEvent('hint');
   let r = A.rt && A.rt.room;
   if (!r && A.rt && A.rt.heart) r = HEART;
-  if (!r && A.act === MAYA_ACT){ showCard('Hint', mayaHint()); return; }
-  if (!r && A.act === UNI_ACT){ showCard('Hint', uniHint()); return; }
+  if (!r && A.act === MAYA_ACT){ showCard('Hint', laterTrail(mayaHint(), A.mayaMet)); return; }
+  if (!r && A.act === UNI_ACT){ showCard('Hint', laterTrail(uniHint(), A.uniMet)); return; }
   if (!r && A.act === APE_ACT){ showCard('Hint', !A.apeMet ? 'Go and say hello to the orange ape in the white coat. That\'s Dr Zest.' : 'Follow the tall beam of light to the next test. Every test is a logic machine.'); return; }
-  if (!r && A.act === FUN_ACT){ showCard('Hint', !A.funMet ? 'Go and talk to the man in the big hat. (He says the eye patch is for the MOON.)' : A.solved.has(GT_LAST) && !A.gRode ? 'Walk onto the ghost train\'s cart at the station (follow the beam). On the ride: tap the TARGETS to switch the points, tap coins and wisps, and hit SCARE when a ghost glows!' : A.gRode && !A.solved.has(FUN_LAST) ? 'Go through the gate by the ghost train\'s station. Barold has a plan.' : 'Follow the tall beam of light to the next ride. Every ride is a logic machine to fix.'); return; }
+  if (!r && A.act === FUN_ACT){ showCard('Hint', laterTrail(!A.funMet ? 'Go and talk to the man in the big hat. (He says the eye patch is for the MOON.)' : A.solved.has(GT_LAST) && !A.gRode ? 'Walk onto the ghost train\'s cart at the station (follow the beam). On the ride: tap the TARGETS to switch the points, tap coins and wisps, and hit SCARE when a ghost glows!' : A.gRode && !A.solved.has(FUN_LAST) ? 'Go through the gate by the ghost train\'s station. Barold has a plan.' : 'Follow the tall beam of light to the next ride. Every ride is a logic machine to fix.', A.funMet)); return; }
   if (!r && A.trapMet && !A.doorTrapOff && !A.solved.size){
     const both = gearOn() && trapOn(); A.trapHint = (A.trapHint || 0) + 1;
     const glowAt = ([wx, wy]) => { while (ghostRoot.children.length) ghostRoot.remove(ghostRoot.children[0]); const m = new THREE.Mesh(cbox(1.05, .5, 1.05), new THREE.MeshBasicMaterial({color:0xffe14a, transparent:true, opacity:.45})); m.position.copy(cellPos(wx, wy)); m.position.y += .25; ghostRoot.add(m); };
@@ -11039,6 +11049,7 @@ function hintNudgeTick(dt){
 // a room that's done: no hint ladder, just the way on
 function hintDone(r){
   const c = objectiveCell(), word = A.act === FUN_ACT ? 'ride' : 'room';
+  if (A.act === UNI_ACT && r.check === 'secret' && r.doorAtW && at(...r.doorAtW)){ showCard('All done here!', 'You\'ve finished this classroom! The way on is BEHIND your secret door. Flip the BOOK lever ON to open it, then walk through.'); return; }   // (playtest sweep 2: shut, it walls you in, and the trail can't get through)
   if (!c){ showCard('All done here!', `You've finished this ${word}! Well done.`); return; }
   forceTrail(c);
   const vines = A.act === 1 && S.ladder[c[1]*NX + c[0]];
@@ -14711,7 +14722,8 @@ function uniMesh(c, add, g, ghost){
 function uniKey(c){ return 'U' + c.t + (c.dir || 0) + (c.on ? 1 : 0) + (c.lit ? 1 : 0) + (c.out ? 1 : 0) + (c.delay || 0) + (c.tall ? 't' : '') + (c.hidden ? 'h' : '') + (c.att || 0) + (c.age || 0) + (c.sticky ? 's' : '') + (c.hit ? 'x' : '') + (c.t === 'dust' || c.t === 'lever' || c.t === 'torch' ? (c.pw || 0) + '' + c.ptsMask + effAttach(c) : ''); }
 // ---- tapping: tune a note block, read the picture book, try an iron door ----
 function uniInteract(c){
-  if (c.t === 'note'){ c.delay = (c.delay || 1) % 25 + 1; uniPlay(c); showToast(`Note ${c.delay} of 25${c.delay === 25 ? ' (the highest!)' : c.delay === 1 ? ' (back to the lowest)' : ''}`); syncVisuals(); saveBuildSoon(); if (c.locked) uniPitchKeep(c); return true; }
+  if (c.t === 'note'){ c.delay = (c.delay || 1) % 25 + 1; { const was = c.playedAt; uniPlay(c); c.playedAt = was; }   // (a tap plays it, but only POWER counts for the doorbell: tapping a note just before or after the bell is no DONK)
+    showToast(`Note ${c.delay} of 25${c.delay === 25 ? ' (the highest!)' : c.delay === 1 ? ' (back to the lowest)' : ''}`); syncVisuals(); saveBuildSoon(); if (c.locked) uniPitchKeep(c); return true; }
   if (c.t === 'lectern'){ sfx.click(); uniBookAsk(c.book); return true; }
   if (c.t === 'idoor'){ sfx.nope(); showToast(c.lit ? 'The power is holding it open.' : 'It\'s an IRON door. Hands can\'t open it. Only power can!'); return true; }
   if (c.t === 'stone' && c.tall && c.hidden){ sfx.click(); showToast('Just a wall. Definitely just a wall. ...Or is it?'); return true; }
@@ -14983,7 +14995,7 @@ const UNI_ROOMS = [
     hint:'The piston shuts the gap when it HAS power. So the lever must take the power AWAY. A grumpy torch flips it.',
     openMsg:'The door is OPEN with the lever OFF! A secret door has to stay SHUT until you flip the secret lever.',
     stuckMsg:'Lever ON, and the door is still shut! The lever has to OPEN it.',
-    win:'Shut, open, shut! The grumpy torch keeps the piston pushing, until the secret lever switches it off. A real hidden door!',
+    win:'Shut, open, shut! The grumpy torch keeps the piston pushing, until the secret lever switches it off. A real hidden door! The way on is through it: flip the book lever ON and walk through.',
     mc:'Real Minecraft: make it two blocks tall, with two sticky pistons. The torch powers the block on top of it, and that block powers the top piston.',
     naive:[D(9, 6), D(9, 5), D(9, 4), D(9, 3), K('spiston', 9, 2, {dir:3})],
     sol:[D(9, 6), D(9, 5), K('stone', 9, 4), K('torch', 9, 3, {attach:2}), K('spiston', 9, 2, {dir:3})] },
@@ -15829,8 +15841,8 @@ function uniBookEl(){
 #uniBook .ubIndex li{margin:8px 0;list-style:none}
 #uniBook .ubIndex button{font-size:17px;padding:8px 12px;width:100%;text-align:left}
 #uniBook .ubAsk{text-align:center;padding:30px 10px}
-@media (max-width:480px){#uniBook h1{font-size:20px}#uniBook .ubWrap{padding:8px 10px 30px}}
-@media print{body>*:not(#uniBook){display:none!important}#uniBook{position:static;overflow:visible;background:#fff}#uniBook .ubBar,#uniBook .ubNote{display:none}#uniBook .ubPage{border:none;box-shadow:none;page-break-after:always;background:#fff}#uniBook .ubCanvas{max-width:100%}}`;
+@media (max-width:480px){#uniBook h1{font-size:20px}#uniBook .ubWrap{padding:8px 10px 30px}#uniBook .ubBar{gap:6px;padding:6px;flex-wrap:nowrap}#uniBook .ubBar .btn{font-size:14px;padding:5px 8px;min-width:0;white-space:nowrap}}
+@media print{html,body{background:#fff!important}body>*:not(#uniBook){display:none!important}#uniBook{position:static;overflow:visible;background:#fff}#uniBook h2{break-after:avoid;page-break-after:avoid}#uniBook .ubBar,#uniBook .ubNote{display:none}#uniBook .ubPage{border:none;box-shadow:none;page-break-after:always;background:#fff}#uniBook .ubCanvas{max-width:100%}}`;
   document.head.appendChild(st);
   el = document.createElement('div'); el.id = 'uniBook'; el.hidden = true; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Picture book'); document.body.appendChild(el);
   el.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; e.stopPropagation(); const a = b.dataset.ub;
@@ -16065,7 +16077,8 @@ window.__game = {
 window.__game.fun = {
   met(){ return !!A.funMet; }, done(){ return !!A.funDone; }, cine(){ return !!A.funCine; }, beats(){ return [...(A.funBeats || [])]; }, back(){ return !!A.baroldBack; }, due(){ return (A.funDue || []).length; },
   captainCell(){ return A.captain ? cellAtWorld(A.captain.position.x, A.captain.position.z) : null; }, pier(){ return PIER; }, ghost(){ return GHOST; }, station(){ return GT.station; },
-  signs(){ return ROOMS.map(r => [r.id, !!r.signFit]); }, boards(){ return FUN_BOARDS.map(b => [b.k, !!b.fit]); }, render(){ world.updateMatrixWorld(); renderer.render(scene, camera); const i = renderer.info; return {calls:i.render.calls, tris:i.render.triangles}; },
+  signs(){ return ROOMS.map(r => [r.id, !!r.signFit]); }, boards(){ return FUN_BOARDS.map(b => [b.k, !!b.fit]); },
+  tags(){ return labelRoot.children.filter(sp => sp.userData.tag).map(sp => sp.userData.tag); }, beacon(){ const m = A.beacon && A.beacon.children.find(o => o.isMesh); return m ? {fog:m.material.fog, add:m.material.blending === THREE.AdditiveBlending, color:m.material.color.getHex(), opacity:m.material.opacity, w:A.beacon.scale.x} : null; },   /* (playtest sweep 2: test-playtest2.js) */ render(){ world.updateMatrixWorld(); renderer.render(scene, camera); const i = renderer.info; return {calls:i.render.calls, tris:i.render.triangles}; },
   parts(){ return ROOMS.filter(r => r.part !== undefined).map(r => [r.part, A.solved.has(r.id)]); }, cut(){ return !!A.gtCut; }, end(){ return !!A.funEnd; }, gate(){ return (A.gtGate || []).every(([x, y]) => { const d = at(x, y); return !!d && !!d.latched; }); },
   speaker(){ return guideNow(); }, baroldShown(){ return !!(A.monkey && A.monkey.parent && A.monkey.visible); }, hat(){ return !!(A.monkey && A.monkey.userData.hat); },
   ride(){ const R = A.gRide; return R ? {on:true, d:R.d, score:R.score, route:R.route.map(q => q.k), started:(A.clock || 0) >= R.start, flip:R.flip.slice()} : {on:false, rode:!!A.gRode, best:A.ghostBest || 0, medal:A.ghostMedal || '', last:A.gLast || 0, secret:!!A.gSecret, snuggles:!!A.snuggles}; },
