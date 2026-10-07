@@ -158,6 +158,11 @@ body.emptyHands #hotbarWrap,body.emptyHands #hand{display:none!important;}
 #dlg{position:absolute;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(640px,calc(100vw - 24px));padding:12px 16px 14px;font-size:21px;line-height:1.3;z-index:30;cursor:pointer;pointer-events:auto;}
 #dlgWho{display:block;color:#7a120a;font-size:16px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:2px;}
 #dlgMore{float:right;color:#c8281c;font-size:15px;font-weight:700;animation:objp .7s ease-in-out infinite alternate;margin-left:8px;}
+#beatArrow{position:fixed;top:42%;z-index:31;pointer-events:none;font:700 22px "Atkinson Hyperlegible","Trebuchet MS",sans-serif;color:#3a2410;background:#f6e7c1;border:3px solid #6b4423;box-shadow:0 0 0 3px #2b1a0c,4px 4px 0 3px rgba(0,0,0,.35);padding:6px 12px;animation:beatNudge .6s ease-in-out infinite alternate;}
+#beatArrow.left{left:14px;} #beatArrow.right{right:14px;}
+@keyframes beatNudge{from{transform:translateX(0);}to{transform:translateX(6px);}}
+#beatArrow.left{animation-direction:alternate-reverse;}
+@media (prefers-reduced-motion: reduce){ #beatArrow{animation:none;} }
 body.dlgOn #tip{display:none;}
 #toast{position:absolute;left:50%;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);max-width:min(560px,calc(100vw - 32px));padding:12px 18px;font-size:22px;font-weight:600;text-align:center;opacity:0;transition:opacity .25s;pointer-events:none;}
 #toast.show{opacity:1;}
@@ -439,6 +444,54 @@ body:has(#touchPad:not([hidden])) #dlg{bottom:calc(252px + env(safe-area-inset-b
 body:has(#touchPad:not([hidden])) #toast{bottom:calc(252px + env(safe-area-inset-bottom,0px));}
 body.dlgOn #hud > #toast{bottom:auto;top:44%;}   /* a toast never lands on top of somebody talking */
 @media (max-width:600px){ body.tutOn #tut{top:calc(60px + env(safe-area-inset-top,0px));} }   /* straight under the button row, not floating halfway down */
+
+/* ==== STORYBOOK HUD (HANDOFF backlog 5, Tom: the grey goal panel was "ugly as sin... very MS-DOS"): Minecraft-meets-storybook.
+   Warm parchment in a pixel-art wooden frame (a 9-slice: dark outline with notched corners, a lit and a shaded side, an inner line),
+   the pixel font for headings, Atkinson Hyperlegible for everything you read. Same look in every act. Ink on parchment is about 12:1;
+   nothing relies on colour alone (ticks, crosses and arrows carry the meaning). The layout, the folding and the phone rules are unchanged. ==== */
+:root{ --sb-ink:#3a2410; --sb-head:#7a2e10; --sb-name:#1a6a63; --sb-paper:#f6e7c1; --sb-tan:#e6cf9c; --sb-frame:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Cpath fill='%232b1a0c' d='M1 0h6v1h1v6h-1v1H1v-1H0V1h1z'/%3E%3Cpath fill='%23c58b4a' d='M1 1h6v6H1z'/%3E%3Cpath fill='%237a4a20' d='M6 1h1v6H1v-1h5z'/%3E%3Cpath fill='%235a3416' d='M2 2h4v4H2z'/%3E%3Cpath fill='%23f6e7c1' d='M3 3h2v2H3z'/%3E%3C/svg%3E"); --sb-gold:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Cpath fill='%232b1a0c' d='M1 0h6v1h1v6h-1v1H1v-1H0V1h1z'/%3E%3Cpath fill='%23f0c24a' d='M1 1h6v6H1z'/%3E%3Cpath fill='%23a8761a' d='M6 1h1v6H1v-1h5z'/%3E%3Cpath fill='%237a5410' d='M2 2h4v4H2z'/%3E%3Cpath fill='%23fff1b8' d='M3 3h2v2H3z'/%3E%3C/svg%3E"); --sb-note:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Cpath fill='%232b1a0c' d='M1 0h6v1h1v6h-1v1H1v-1H0V1h1z'/%3E%3Cpath fill='%23c58b4a' d='M1 1h6v6H1z'/%3E%3Cpath fill='%237a4a20' d='M6 1h1v6H1v-1h5z'/%3E%3Cpath fill='%235a3416' d='M2 2h4v4H2z'/%3E%3Cpath fill='%23fbf3dc' d='M3 3h2v2H3z'/%3E%3C/svg%3E"); --sb-bw:9px; }
+#goalBox, #card, #hintStrip, #toast, #dlg, #tut, #why, #mapCard, #crystals, #itemCard, #beatArrow, #offLine{
+  background:none; color:var(--sb-ink); border-style:solid; border-width:var(--sb-bw); border-color:transparent; border-image:var(--sb-frame) 3 fill / var(--sb-bw) / 0 stretch; border-radius:0;
+  box-shadow:none; filter:drop-shadow(0 4px 0 rgba(30,16,4,.35)); image-rendering:pixelated; }
+#hintStrip, #toast.warn{ border-image-source:var(--sb-gold); }
+#why, #mapCard{ border-image-source:var(--sb-note); }
+#goalBox{ padding:5px 9px; } #card{ padding:3px 5px; } #tut{ padding:5px 9px; } #dlg{ padding:6px 10px 8px; } #why{ padding:8px 10px; } #mapCard{ padding:5px 7px; } #crystals{ padding:2px 6px; } #toast{ padding:6px 12px; } #hintStrip{ padding:2px 6px; }
+#lessonName, #card h3, #whyHead, #mapCard .mcHead, #dlgWho, #itemCard .icName, #tut .tStep{ font-family:var(--f-display); }
+#lessonName{ color:var(--sb-ink); } #lessonName small{ color:var(--sb-head); }
+#goalText, #mline, #card th, #card .step, #card .note, #tut button.skip, #why .gskip, .gskip{ color:var(--sb-ink); }
+#mline b{ color:var(--sb-name); } #mline{ border-top-color:rgba(58,36,16,.3); }
+#card h3{ color:var(--sb-head); letter-spacing:.04em; } #card h3::after{ color:var(--sb-head); }
+#card td{ background:var(--sb-tan); } #card tr.now td{ background:#fff1b8; box-shadow:inset 0 0 0 2px #c99a2e; }
+#card td.chk{ color:#2a7a26; } #card .step.on{ color:#2a7a26; } #card td.chk.bad{ color:#b01e12; }
+#goalBox:not(.open) #goalText.more::after, #goalBox.brief:not(.open) #lessonTitle::after{ background:#7a4a20; border-radius:0; box-shadow:0 0 0 2px #2b1a0c; }
+#hintStrip{ color:var(--sb-ink); }
+#tut .tStep{ color:var(--sb-head); letter-spacing:.04em; } #tut .tTxt{ color:var(--sb-ink); }
+#dlgWho{ color:var(--sb-name); font-weight:700; } #dlgTxt{ color:var(--sb-ink); }
+#why #whyHead{ color:var(--sb-head); } #whyText{ color:var(--sb-ink); }
+#crystals{ color:var(--sb-ink); }
+/* buttons in the HUD: wood (top row), grass green (a card's Got it!) */
+#topBtns .btn{ --btn:#8a5a2b; --btn-hi:#c58b4a; --btn-lo:#4a2a10; } #topBtns .btn:hover{ background:#9c6a36; }
+#why .btn, #mapCard .btn, #itemCard .btn{ --btn:#4f8a2a; --btn-hi:#8cc455; --btn-lo:#2c5212; } #why .btn:hover, #mapCard .btn:hover{ background:#5c9a32; }
+#why, #mapCard{ box-sizing:border-box; }   /* (its width is the whole box: a phone-wide card used to poke past both edges) */
+/* the dialogue box's "next": a little pixel arrow that bounces (it was a red ▶ tap) */
+#dlgMore{ color:var(--sb-ink); animation:none; display:inline-flex; align-items:flex-end; gap:4px; font-size:13px; font-weight:700; float:right; margin:6px 0 0 8px; line-height:1; }
+#dlgMore svg{ width:27px; height:18px; image-rendering:pixelated; animation:sbBounce .55s ease-in-out infinite alternate; }
+#dlgMore[hidden]{ display:none; }
+@keyframes sbBounce{ from{ transform:translateY(-3px); } to{ transform:translateY(3px); } }
+@media (prefers-reduced-motion: reduce){ #dlgMore svg{ animation:none; } }
+/* a tapped hotbar item: what it does, in a mini card above the hotbar (the bag shows the same words) */
+#itemCard{ position:absolute; left:50%; transform:translateX(-50%); bottom:calc(150px + env(safe-area-inset-bottom,0px)); width:min(360px,calc(100vw - 32px)); box-sizing:border-box; padding:6px 10px 8px; display:flex; gap:10px; align-items:flex-start; z-index:29; pointer-events:auto; cursor:pointer; }
+#itemCard img{ width:44px; height:44px; flex:none; image-rendering:pixelated; margin-top:2px; }
+#itemCard .icName{ font-size:20px; font-weight:700; color:var(--sb-head); line-height:1.1; }
+#itemCard .icHow{ font-size:16px; line-height:1.3; margin-top:3px; color:var(--sb-ink); overflow-wrap:anywhere; }
+#itemCard .icMore{ font-size:13px; margin-top:4px; color:#7a4a20; }
+body.dlgOn #itemCard, body.cardUp #itemCard{ display:none; }
+#offLine{ position:absolute; left:50%; transform:translateX(-50%); bottom:calc(112px + env(safe-area-inset-bottom,0px)); width:max-content; max-width:min(560px,calc(100vw - 32px)); box-sizing:border-box; padding:3px 10px 4px; font-size:17px; line-height:1.3; pointer-events:none; z-index:28; }
+#offLine b{ color:var(--sb-name); font-family:var(--f-display); } #offLine i{ font-style:normal; color:#7a4a20; margin-right:6px; font-weight:700; }
+body:has(#touchPad:not([hidden])) #offLine{ bottom:calc(252px + env(safe-area-inset-bottom,0px)); }
+body.cardUp #offLine{ display:none; }
+@media (max-width:600px){ :root{ --sb-bw:6px; } #itemCard{ bottom:calc(132px + env(safe-area-inset-bottom,0px)); } #itemCard .icHow{ font-size:15px; } }
+body:has(#touchPad:not([hidden])) #itemCard{ bottom:calc(252px + env(safe-area-inset-bottom,0px)); }
 </style>
 
 <canvas id="view" aria-label="Redstone build area"></canvas>
@@ -468,7 +521,7 @@ body.dlgOn #hud > #toast{bottom:auto;top:44%;}   /* a toast never lands on top o
   </div>
   <div id="toast" class="panel" role="status" aria-live="polite"></div>
   <div id="hintPoint" hidden aria-hidden="true"><b>&#9650;</b><span></span></div>
-  <div id="dlg" class="panel" hidden role="dialog" aria-live="polite"><b id="dlgWho"></b><span id="dlgTxt"></span><span id="dlgMore" hidden>&#9654; tap</span></div>
+  <div id="dlg" class="panel" hidden role="dialog" aria-live="polite"><b id="dlgWho"></b><span id="dlgTxt"></span><span id="dlgMore" hidden aria-label="next"><svg viewBox="0 0 9 6" shape-rendering="crispEdges" aria-hidden="true"><path fill="#2b1a0c" d="M0 0h9v2H8v1H7v1H6v1H5v1H4V5H3V4H2V3H1V2H0z"/><path fill="#ffd84a" d="M1 1h7v1H7v1H6v1H5v1H4V4H3V3H2V2H1z"/><path fill="#fff6c0" d="M1 1h3v1H2v1H1z"/></svg></span></div>
   <div id="zoneTitle" aria-live="polite"></div>
   <div id="letterbox" aria-hidden="true"><i></i><i></i></div><div id="subtitle" aria-live="polite"></div><button id="cineSkip" class="btn">Skip &#9654;&#9654;</button>
   <div id="tut" class="panel" hidden><div class="tBody"><div class="tStep" id="tutStep"></div><div class="tTxt" id="tutTxt"></div></div><button class="skip" id="tutSkip">skip</button></div>
@@ -2327,6 +2380,7 @@ function renderCard(){
     if (r && A.solved.has(r.id) && r.mc){ card.hidden = false; card.innerHTML = `<h3>Try it in real Minecraft</h3><div class="note" style="font-size:14px">${r.mc}</div>`; return; }
     card.hidden = !r || r.check === 'lit' || r.check === 'boom' || A.solved.has(r.id);
     if (card.hidden){ card.innerHTML = ''; return; }
+    if (r.playBeat && !(rt.pb && rt.pb.done) && !(rt.coop && rt.coop.youOver)){ card.innerHTML = playBeatHTML(r, rt); return; }   // play first: what does the test machine do?
     if (r.check === 'coop'){ card.innerHTML = coopCardHTML(r, rt); return; }
     if (r.check === 'pen'){ const nT = TROOP.room === r && TROOP.list.length ? TROOP.list.length : r.troop.n; card.innerHTML = `<h3>Tamarins in the pen</h3><div class="note"><b style="font-size:22px">${rt.inPen || 0} / ${nT}</b>${nT < r.troop.n ? '<br>(just one, to start with)' : ''}</div>`; return; }
     if (r.check === 'launch'){ card.innerHTML = `<h3>Monkey launches</h3><div class="note"><b style="font-size:22px">${Math.min(rt.launches || 0, r.launches)} / ${r.launches}</b><br>(they have to do it themselves!)</div>`; return; }
@@ -2381,7 +2435,7 @@ ITEMS.forEach((it, i) => {
   const b = document.createElement('button');
   b.className = 'slot'; b.setAttribute('aria-label', it.name); b.title = it.name;
   b.innerHTML = `<span class="n">${i<10?(i+1)%10:''}</span><img class="px" alt="" src="${ICONS[it.id]}"><span class="lock" hidden>?</span>`;
-  b.addEventListener('click', () => select(i));
+  b.addEventListener('click', () => { select(i); if (sel === i) itemCard(i); });   // a tap or click on a picture also says how it works
   hotbar.appendChild(b);
 });
 let nameT = 0;
@@ -2395,6 +2449,34 @@ function refreshHotbar(){
 const visibleSlots = () => ITEMS.map((_, i) => i).filter(i => !hotbar.children[i].hidden && !hotbar.children[i].classList.contains('locked'));
 function selectFirstVisible(){ const v = visibleSlots(); if (v.length) select(v[0]); else { sel = 0; const hd = $('#hand'); if (hd) hd.src = ICONS.pick; } }
 function cycle(d){ const v = visibleSlots(); if (!v.length) return; const k = v.indexOf(sel); select(v[(k + d + v.length) % v.length]); }
+// how each part works, in a sentence or two (Java rules, a 7-year-old's words). Tapping a hotbar picture shows it in a mini card; the bag shows the same words.
+const ITEM_HOW = {
+  pick:'HOLD it on a block to break it. You get the block back, so you can use it again.',
+  dust:'A wire. Power runs along it, a bit weaker on every dust: after 15 it has run out. The end of a wire points INTO the thing it powers.',
+  lever:'Tap it: ON. Tap it again: OFF. It stays how you left it. Stick it on a block, or on the floor.',
+  button:'Tap it: ON for a moment, then OFF all by itself. A quick blip of power: a PULSE.',
+  lamp:'Lights up when power goes INTO it. A wire just running past it does nothing.',
+  stone:'A plain block. Torches, levers and buttons stick to its sides. Power can go into it and wake up what is stuck to it.',
+  torch:'ON all by itself, until the block it is stuck to gets power. Then it turns OFF. It flips ON to OFF: a NOT gate!',
+  repeater:'Power goes in at the back and comes out of the front, fresh and strong (15 again). It faces the way you look when you put it down. Tap it to make it wait longer.',
+  rblock:'Always ON. It powers the wires and things right next to it. It never switches off.',
+  tnt:'Give it power: it fizzes for a few seconds... then BOOM! It breaks the blocks near it.',
+  plate:'Stand on it: power ON. Step off: OFF. Monkeys and mobs can stand on it too.',
+  glass:'See-through. Power can\'t get into glass, and a torch won\'t stick to its sides.',
+  launcher:'A slime launcher. Give it power: SPROING! Whatever is standing on it goes flying.'
+};
+const itemHow = it => ITEM_HOW[it.id] || it.tip;
+function itemCard(i){   // a tapped hotbar picture: what it is and how it works (tap the card, or wait, and it goes)
+  let c = $('#itemCard'); const it = ITEMS[i]; if (!it || $('#hud').hidden) return;
+  if (!c){ c = document.createElement('div'); c.id = 'itemCard'; c.className = 'panel'; c.setAttribute('role', 'status'); c.setAttribute('aria-live', 'polite'); $('#hud').appendChild(c);
+    c.addEventListener('pointerdown', e => { e.stopPropagation(); itemCardHide(); }); }
+  if (!c.hidden && c.dataset.i === String(i)){ itemCardHide(); return; }   // tapped again: away it goes
+  c.dataset.i = i; c.innerHTML = `<img src="${ICONS[it.id]}" alt=""><div><div class="icName"></div><div class="icHow"></div></div>`;
+  c.querySelector('.icName').textContent = it.name; c.querySelector('.icHow').textContent = itemHow(it);
+  c.hidden = false; feed('item', it.name + ': ' + itemHow(it)); $('#itemName').classList.remove('show');
+  clearTimeout(itemCard.t); itemCard.t = setTimeout(itemCardHide, 3500 + itemHow(it).split(' ').length*350);
+}
+function itemCardHide(){ const c = $('#itemCard'); if (c) c.hidden = true; clearTimeout(itemCard.t); }
 function select(i){
   if (bannedHere(ITEMS[i].id)){ sfx.nope(); showToast(`No ${ITEMS[i].name} in this room. ${GUIDE} says it would be too easy!`); return; }
   sel = i;
@@ -2531,6 +2613,7 @@ function stepFP(dt){
   if (keys.w || keys.arrowup) f += 1; if (keys.s || keys.arrowdown) f -= 1;
   if (keys.d || keys.arrowright) r += 1; if (keys.a || keys.arrowleft) r -= 1;
   if (A.freeze && S.mode === 'adventure'){ f = 0; r = 0; }   // a short story moment right in front of you (the map coming back)
+  if (S.mode === 'adventure' && A.thiefGrabbing && A.thiefGrabbing()){ f *= .25; r *= .25; }   // the map grab (playtest A8): you slow right down at the flag, so it happens in front of you
   const m = Math.hypot(f, r); if (m > 1){ f /= m; r /= m; }
   if (S.mode === 'adventure'){ quicksandFrame(s); if (P.y < -3 && !S.dead){ S.fell = true; die('TOO HOT! Lava is NOT a bath. A monkey with a bucket fished you out.'); } }
   const wading = S.mode === 'adventure' && S.swamp && (() => { const [wx, wy] = cellAtWorld(P.x, P.z); return inb(wx, wy) && S.swamp[wy*NX + wx] && P.y < .3; })();
@@ -3048,7 +3131,7 @@ function padPrompts(){
   document.body.classList.toggle('pad', padMode);
   const b = {btnHint:PB.hint, btnAsk:PB.right, btnSnail:PB.down, btnView:PB.up, btnReset:PB.left, btnMenu:PB.start};
   for (const k in b){ const el = $('#' + k); if (el) el.dataset.pad = PN(b[k]); }
-  const m = $('#dlgMore'); if (m) m.innerHTML = '&#9654; ' + (padMode ? PN(padOK()) : 'tap');
+  const m = $('#dlgMore'); if (m){ m.innerHTML = (padMode ? '<span>' + PN(padOK()) + '</span>' : '') + dlgArrow(); m.setAttribute('aria-label', 'next'); }
   const cs = $('#cineSkip'); if (cs) cs.innerHTML = 'Skip &#9654;&#9654;' + (padMode ? ' (' + PN(PB.start) + ')' : '');
   updateTip();
 }
@@ -4123,10 +4206,15 @@ const TEMPLE_ROOMS = [
   // You cope by wiring the far side's lever in too: his plate OR your lever holds the bridge. Solved when he's across. (coop*, below)
   { id:18, ch:2, name:'Quicksand!', ban:['rblock','lever','button','plate','torch','stone','glass','repeater'], want:'Barold\'s plate and the lever have to hold the bridge up', give:['dust'], check:'coop', out:[[4,4]],
     quick:[[4,1,6,7]], bridge:[[4,4],[5,4],[6,4]],
-    fixed:[K('plate',2,2),K('lever',8,6)],
+    fixed:[K('plate',2,2),K('lever',8,6),
+      // PLAY first (HANDOFF backlog 1: a "see what each mix does" beat before the first OR): Barold's test machine, two levers and one lamp,
+      // in a glass case so it can't be wired to the bridge (in Java, power can't get into glass and a lamp doesn't pass it on)
+      K('lever',0,7),K('lever',1,6),K('dust',1,7),K('dust',2,7),K('lamp',3,7),K('glass',0,6),K('glass',0,8),K('glass',1,5),K('glass',1,8),K('glass',2,6),K('glass',2,8)],
+    playBeat:{inputs:[[0,7],[1,6]], out:[3,7], fn:(a, b) => a || b, head:'Test machine',
+      done:['This one, that one, or BOTH: EITHER lever lights it! That\'s called OR.', 'Now the bridge. I\'ll stand on my plate. You wire it to the bridge!']},
     coop:{kind:'bridge', plate:[2,2], foot:[3,4], far:[8,3]}, crystalAt:[8,2],
-    goal:'QUICKSAND! Get yourself over it. Then get Barold over too!',
-    hello:'QUICKSAND! The bridge only comes up with power. I\'ll stand on that plate for you. You wire it to the bridge!',
+    goal:'QUICKSAND! Get yourself over it. Then get Barold over too! (First, play with the test machine in the glass case.)',
+    hello:'QUICKSAND! But first, my TEST MACHINE, in the glass case. Try every mix of its two levers!',
     nudge:'Barold can only stand on ONE thing at a time. What else could hold the bridge up while he walks?',
     hint:'Wire the lever on the far side to the bridge as well. Flip it ON. Then the plate OR the lever keeps the bridge up.',
     win:'We BOTH made it! My plate OR your lever: EITHER one holds the bridge up. That\'s an OR gate!',
@@ -4239,6 +4327,7 @@ function placeCanon(r, slot){
   if (r.doorOut) r.out = [r.exit.slice()];   // the thing you want to happen IS the circuit's output: power the door itself
   r.fixed = (r.fixed || []).map(C); r.loose = (r.loose || []).map(C); r.sol = (r.sol || []).map(C); r.naive = (r.naive || []).map(C);
   if (!r.doorOut) r.out = (r.out || []).map(P2); if (r.inputs) r.inputs = r.inputs.map(P2);
+  if (r.playBeat) r.playBeat = Object.assign({}, r.playBeat, {inputs:r.playBeat.inputs.map(P2), out:P2(r.playBeat.out)});
   r.walls = (r.walls || []).map(P2); r.bridge = (r.bridge || []).map(P2);
   if (r.tntAt) r.tntAt = P2(r.tntAt);
   r.quick = (r.quick || []).map(([x0, y0, x1, y1]) => [Math.min(X(x0), X(x1)), Y(y0), Math.max(X(x0), X(x1)), Y(y1)]);
@@ -4843,15 +4932,15 @@ function baroldBack(){
   if (!m.parent) decorRoot.add(m); m.visible = true; m.position.copy(cellPos(...(spot || cellAtWorld(P.x, P.z)))); m.userData.path = null; m.userData.hop = 2;
   burst(new THREE.Vector3(m.position.x, m.position.y + 1, m.position.z), 0xd9d4c2, 24); sfx.boing();
   P.yaw = Math.atan2(-(m.position.x - P.x), -(m.position.z - P.z)); P.pitch = -.1;
-  dlgStart([[GUIDE, 'Ahoy, shipmate! It is I... Captain BONES. A pirate.'], [GUIDE, '...It\'s me! Barold! The teleporter spat me out in the bin behind the chip shop.'],
+  beatTalk('hat', [[GUIDE, 'Ahoy, shipmate! It is I... Captain BONES. A pirate.'], [GUIDE, '...It\'s me! Barold! The teleporter spat me out in the bin behind the chip shop.'],
     [GUIDE, 'Don\'t worry. Nobody will EVER know I\'m a skeleton. I\'ve got a HAT.'], ['Parrot', 'SKELETON!'], [GUIDE, 'Who said that?! I\'m a PIRATE. Look: HAT.'],
-    ['Captain', 'Arr, a fellow pir— a fellow CUSTOMER. Lovely hat.'], [GUIDE, 'I\'m SO glad we\'re best friends again. Greg was nice. But Greg was a LOT.']], () => { renderCard(); });
+    ['Captain', 'Arr, a fellow pir— a fellow CUSTOMER. Lovely hat.'], [GUIDE, 'I\'m SO glad we\'re best friends again. Greg was nice. But Greg was a LOT.']], () => { renderCard(); }, (i, who) => who === 'Parrot' ? A.monkey : undefined);
 }
 // the map thief is back: it pinches one of Barold's chips and runs off to the ghost train, where it leaves the chip by a secret
 function funChips(){
   const m = A.monkey, cap = makeWild('capuchin', 1.1); cap.position.copy(m ? m.position : cellPos(...cellAtWorld(P.x, P.z))); cap.position.x += .8; decorRoot.add(cap); A.funCap = {m:cap, t:0};
-  dlgStart([[GUIDE, 'Chips! I bought chips. I can\'t EAT them. Skeleton. Er, PIRATE. But they smell lovely.'], [null, 'A small furry hand grabs a chip!'],
-    [GUIDE, 'HEY! It\'s that monkey! The one who pinched your map! Come back with my chip!'], [GUIDE, 'It ran off towards the GHOST TRAIN. Typical.']].map(l => [l[0] || 'Chip shop', l[1]]), () => { if (A.funCap){ A.funCap.go = true; } });
+  beatTalk('chips', [[GUIDE, 'Chips! I bought chips. I can\'t EAT them. Skeleton. Er, PIRATE. But they smell lovely.'], [null, 'A small furry hand grabs a chip!'],
+    [GUIDE, 'HEY! It\'s that monkey! The one who pinched your map! Come back with my chip!'], [GUIDE, 'It ran off towards the GHOST TRAIN. Typical.']].map(l => [l[0] || 'Chip shop', l[1]]), () => { if (A.funCap){ A.funCap.go = true; } }, i => i === 1 || i === 2 ? (A.funCap && A.funCap.m) : undefined);
 }
 function ghostIdle(dt, now){
   // the capuchin's dash to the ghost train door (it never needs a path: it's gone round the stalls by the time you look)
@@ -5142,7 +5231,7 @@ function rideEnd(){
 }
 // the twist: the funfair was bait. The ship they want is YOURS
 function funTwist(){
-  dlgStart([['Captain', 'Arr, what a ride! Thank ye kindly for fixing EVERYTHING.'], ['Captain', 'Now... hand over that lovely SHIP. The one in the sea. The funfair was BAIT, see. Arr. Not that we\'re pirates.'], ['Parrot', 'TREASURE!'],
+  beatTalk('twist', [['Captain', 'Arr, what a ride! Thank ye kindly for fixing EVERYTHING.'], ['Captain', 'Now... hand over that lovely SHIP. The one in the sea. The funfair was BAIT, see. Arr. Not that we\'re pirates.'], ['Parrot', 'TREASURE!'],
     ...(A.snuggles ? [[GUIDE, 'And you found a teddy on the secret way! Keep hold of it.']] : []),
     [GUIDE, '(whispering) Psst! The gate by the station is open now. Through there. I have a PLAN.']], () => { renderCard(); funHostTo(); });
 }
@@ -5714,9 +5803,9 @@ function apeBeatsFrame(){
   if (here && !A.solved.has(here.id)) return;   // never in the middle of a test: story happens between them
   // the museum, on the way to test 6: Barold finds out he's a skeleton (slow dawning, panic, then weirdly proud)
   if (A.solved.has(205) && A.museum && !A.apeBeats.has('museum')){ const m = MUSEUM().cell; if (Math.hypot(px - m[0], py - m[1]) < 3.5 && beat('museum')){ P.yaw = Math.atan2(-(A.museum.position.x - P.x), -(A.museum.position.z - P.z)); P.pitch = -.1;
-    dlgStart([[GUIDE, 'Ooh, a museum! "The Hall of Very Old Things."'], ['Greg', 'This one\'s my favourite. "HAIRLESS CREATURE. Habitat: puddles. Diet: unknown (possibly crisps)." That\'s YOU!'],
+    beatTalk('museum', [[GUIDE, 'Ooh, a museum! "The Hall of Very Old Things."'], ['Greg', 'This one\'s my favourite. "HAIRLESS CREATURE. Habitat: puddles. Diet: unknown (possibly crisps)." That\'s YOU!'],
       [GUIDE, 'Ha! Look at this poor old skeleton. "VERY OLD." ...Why has it got MY sash?'], [GUIDE, '...and my torch. ...and my CRACKED HEAD.'], [GUIDE, '...'],
-      [GUIDE, 'I\'m a SKELETON?! But I\'m YOUNG! And HANDSOME! ...Ish.'], [GUIDE, 'Hang on. That explains the draught. And the rattling.'], [GUIDE, 'I\'m in a MUSEUM. I\'m FAMOUS! Nobody touch me. I\'m an exhibit now.']]); return; } }
+      [GUIDE, 'I\'m a SKELETON?! But I\'m YOUNG! And HANDSOME! ...Ish.'], [GUIDE, 'Hang on. That explains the draught. And the rattling.'], [GUIDE, 'I\'m in a MUSEUM. I\'m FAMOUS! Nobody touch me. I\'m an exhibit now.']], undefined, i => i >= 1 && i <= 4 ? A.museum : undefined); return; } }
   // Sir Reginald stays on the ship ("the air disagrees with me"), and radios his warnings just too late
   const calm = (A.clock || 0) - (A.apeSolvedAt || 0) > 9000;   // a while after the last test was passed
   if (A.solved.has(201) && calm && beat('greg')){ dlgStart([['Greg', 'Take me to your— oh! Sorry. Habit. Hello! I\'m Greg. I\'m an ALIEN. A real one!'], ['Greg', 'I do the mopping.']]); return; }
@@ -5846,7 +5935,7 @@ function apeCliffhanger(){
     [null, '*FIZZ* ... *BEEP* ... *POOF!*', () => { const c = cellPos(...EXPRESS.tele); burst(new THREE.Vector3(c.x, c.y + 1.2, c.z), 0xd9d4c2, 40); sfx.brk(); if (A.monkey) A.monkey.visible = false; }],
     ['Greg', '...Was he supposed to come out the OTHER side?'],
     ['Dr Zest', 'Fascinating. Your turn, hairless creature. Step right in.']];
-  dlgStart(lines.map(l => [l[0] || 'Teleporter', l[1], l[2]]), () => { A.teleT = 1; });
+  beatTalk('cliffhanger', lines.map(l => [l[0] || 'Teleporter', l[1], l[2]]), () => { A.teleT = 1; }, i => i >= 4 && i <= 6 ? (A.teleporter || EXPRESS.tele) : undefined);
 }
 function apeTeleFrame(dt){
   if (A.teleporter && A.teleporter.userData.ring && !reduceMotion) A.teleporter.userData.ring.rotation.y += dt*.003;
@@ -6498,7 +6587,7 @@ function guideLead(dt, m, u, d, mx, my, px, py){
   if (!u.fetch && !A.loreCur && u.idleT > LEAD_STORY_WAIT && !midPuzzle && loreDue()) u.fetch = true;
   if (u.fetch || A.loreCur){ u.idleT = 0; u.leadFor = null; u.runOn = false; return false; }
   u.hold = true;
-  if (u.runOn && u.leadFor === T.id && !u.bubble && !DLG.on){ u.runOn = false; monkeySay(bag('runOn', RUN_ON), 1600); }   // the cheery word, once the room-done line has had its time
+  if (u.runOn && u.leadFor === T.id && !u.bubble && !DLG.on){ u.runOn = false; flavourSay(bag('runOn', RUN_ON), 1600); }   // the cheery word, once the room-done line has had its time
   if (mx !== spot[0] || my !== spot[1]){
     if (u.leadFor !== T.id){   // off to a new room: he finishes saying it (the words are out), then he runs; the cheery word comes once that line has had its time
       u.path = null; if (stillTalking(m) || (DLG.on && !dlgSoft())) return true;
@@ -6522,6 +6611,9 @@ function guideLead(dt, m, u, d, mx, my, px, py){
    arc. The sand and the hole never hurt you in these rooms: they spit you back out on the side you came from. */
 const coopRoom = () => { const r = A.on && A.rt && A.rt.room; return r && r.coop ? r : null; };
 // which side of the sand or hole a cell is on: 0 = the side you came in by, 1 = the far side, -1 = in it
+// what you've built, plus which way the room's own levers are set: flipping the far lever ON after a failed go is "something changed" too
+// (the build signature skips the room's own parts, so a kid who did exactly the right thing was left waiting; the test machine's levers don't count)
+function coopSig(r){ const pb = r.playBeat; return buildSig(r) + '|' + (r.fixed || []).filter(f => f.t === 'lever' && !(pb && pb.inputs.some(([x, y]) => x === f.x && y === f.y))).map(f => { const c = at(f.x, f.y); return c && c.on ? 1 : 0; }).join(''); }
 function coopSide(r, x, y){ const b = (r.quick && r.quick[0]) || (r.chasm && r.chasm[0]); if (!b) return 0; if (x >= b[0] && x <= b[2]) return -1; const e = entryOf(r); return (x < b[0]) === (e[0] < b[0]) ? 0 : 1; }
 // Barold's feet press plates, but only in the co-op rooms (anywhere else he'd set off your circuits by accident)
 function baroldOnCell(x, y){ const m = A.monkey; if (!m || !A.on || !m.visible || m.userData.fly) return false; const [cx, cy] = cellAtWorld(m.position.x, m.position.z); if (cx !== x || cy !== y) return false; const r = roomOf(x, y); return !!(r && r.coop); }
@@ -6605,7 +6697,7 @@ function coopBarold(dt, m, u, r, mx, my){
       coopFace(m, u);
       if (pSide !== 1){ if (C.ph === 'hold') C.t = 0; return; }
       if (C.ph === 'hold' && C.t > 900){ monkeySay('My turn! Here I come!', 2500); set('try'); }
-      else if (C.ph === 'wait' && C.t > 2500 && buildSig(r) !== C.sig){ monkeySay('Ooh, something changed! I\'ll try again...', 3000); set('try'); }
+      else if (C.ph === 'wait' && C.t > 2500 && coopSig(r) !== C.sig){ monkeySay('Ooh, something changed! I\'ll try again...', 3000); set('try'); }
       else if (C.ph === 'wait' && C.t > 40000) say('ask', 'Is there something on YOUR side that could hold the bridge up?', 7000);
     }
     else if (C.ph === 'try'){
@@ -6614,7 +6706,7 @@ function coopBarold(dt, m, u, r, mx, my){
       coopFace(m, u);
       if (C.t > 1600){
         if (coopBridgeUp(r)){ set('cross'); monkeySay('Here I come! Teamwork!', 2500); }
-        else { C.sig = buildSig(r); C.fails = (C.fails || 0) + 1; plogEvent('wrong'); monkeySay(C.fails === 1 ? 'Oh no! The bridge only stays up while I\'m ON the plate!' : 'Still sinking! It needs power when I\'m NOT on my plate.', 6000); set('back'); }
+        else { C.sig = coopSig(r); C.fails = (C.fails || 0) + 1; plogEvent('wrong'); monkeySay(C.fails === 1 ? 'Oh no! The bridge only stays up while I\'m ON the plate!' : 'Still sinking! It needs power when I\'m NOT on my plate.', 6000); set('back'); }
       }
     }
     else if (C.ph === 'back'){ if (coopGo(m, u, mx, my, K.plate, dt)){ set('wait'); say('without', 'I\'ll hold it for now. Can you keep it up WITHOUT me on the plate?', 7000); } }
@@ -7784,7 +7876,7 @@ function dropFrame(D, t){
 function startThief(){
   if (A.thief || A.metBarold || A.thiefDone) return;
   const TP = trailPath(), D = dropMonkey(landSpot(TP)), hand = makeMapProp(); hand.scale.setScalar(.5); decorRoot.add(hand); mapInHand(hand, 0);
-  A.thief = Object.assign(D, {TP, hand, phase:'drop', t:0, s:0, pace:0, pt:0, said:0, stuck:0, prog:0, progS:0});
+  A.thief = Object.assign(D, {TP, hand, phase:'drop', t:0, s:0, pace:0, pt:0, said:0, stuck:0, prog:0, progS:0}); beatStart('grab', D.m);
   if (tut) $('#tutTxt').textContent = 'You get out your map. Now, which way is the temple...? Hang on. What\'s that, up in the tree?';
 }
 function thiefRedrop(T){
@@ -7845,7 +7937,7 @@ function thiefFrame(dt){
       u.arms[0].rotation.x = u.arms[1].rotation.x = T.hand ? -1.4 : -2.4 + Math.sin(T.t*.012)*.25;   // holding it up to show you
       if (T.t > 1500 && T.t < 1560) u.hop = .6;
       if (dP < 2){ const nx = P.x + (m.position.x - P.x)/dP*2, nz = P.z + (m.position.z - P.z)/dP*2; if (canStep(m, nx, nz)){ m.position.x = nx; m.position.z = nz; } else T.t = 9999; }   // walk up to it and it steps back, just out of reach
-      if (T.t > 2300 || dP > 8) thiefLead(T);
+      if ((T.t > 2300 && (beatSeen('grab') || T.t > 9000)) || dP > 8){ beatEnd('grab'); thiefLead(T); }   // (it waits, holding the map up, until you've seen it)
     }
   }
   else if (T.phase === 'redrop'){
@@ -7940,7 +8032,7 @@ function introFrame(dt){
   }
   if (!A.introAt && d < 4.5){ A.introAt = 1; A.introT = 0; A.introI = -1; const bb = A.monkey.userData.bubble; if (bb){ A.monkey.remove(bb); A.monkey.userData.bubble = null; } A.monkey.rotation.y = Math.atan2(P.x - A.monkey.position.x, P.z - A.monkey.position.z); tone(196, .25, 'square', .05); tone(185, .25, 'square', .05, .28); tone(147, .7, 'square', .06, .56); }
   if (A.introAt && !A.introStarted){ A.introStarted = true; P.yaw = Math.atan2(-(A.monkey.position.x - P.x), -(A.monkey.position.z - P.z)); P.pitch = -.05;
-    dlgStart(INTRO.map(l => Array.isArray(l) ? [GUIDE, ...l] : [GUIDE, l]).concat(A.gotKit ? [] : [[GUIDE, 'They all run on REDSTONE. Here: a bag of dust!']]), () => { A.metBarold = true; advSaveSoon(); renderCard(); if (!A.gotKit) A.kitDue = 400; }); }
+    beatTalk('intro', INTRO.map(l => Array.isArray(l) ? [GUIDE, ...l] : [GUIDE, l]).concat(A.gotKit ? [] : [[GUIDE, 'They all run on REDSTONE. Here: a bag of dust!']]), () => { A.metBarold = true; advSaveSoon(); renderCard(); if (!A.gotKit) A.kitDue = 400; }); }
 }
 /* ---- music: a small generative composer, Minecraft-style.
    Like the C418 and Lena Raine soundtracks: a calm piece of a minute or two, then a long silence, then another piece.
@@ -9398,6 +9490,107 @@ function beamTurnFrame(dt, c, p){
   P.yaw += off*k; P.pitch += (wantPitch - P.pitch)*k; B.yaw = P.yaw; B.pitch = P.pitch; A.beamTurned = (A.beamTurned || 0) + (B.t === s ? 1 : 0);
   if (B.t > .9 || (Math.abs(off) < .04 && Math.abs(P.pitch - wantPitch) < .04)){ lookStick(c, 1100); A.beamTurn = null; }
 }
+// ---- the visibility audit (HANDOFF backlog 6: the side door's gap was hidden from the bottom of the steps): stand where a kid stands on
+// walking in (the room's entry cell, eye height, facing the middle of the room, looking a little down) and, for every key piece (the
+// outputs, the inputs, the parts laid down for you, and the GAPS where a laid-down wire stops), ask: is it on the screen, and is anything
+// in the way (a wall, a block, a step, a big bit of decor)? The test (test-visibility.js) runs it over every room of every act.
+function visKeys(r){   // the pieces that matter in a room: [kind, x, y]
+  const keys = [], seen = new Set(), add = (kind, x, y) => { const k = x + ',' + y; if (seen.has(k)) return; seen.add(k); keys.push([kind, x, y]); };
+  (r.out || []).forEach(([x, y]) => add('output', x, y));
+  (r.inputs || []).forEach(([x, y]) => add('input', x, y));
+  (r.fixed || []).filter(f => ['lever', 'button', 'plate', 'rblock', 'lamp', 'torch', 'repeater'].includes(f.t)).forEach(f => add('part', f.x, f.y));
+  visGaps(r).forEach(([x, y]) => add('gap', x, y));
+  return keys;
+}
+// a GAP: the end of a wire laid down for you, next to a square your build has to fill (the wire's end is what you see; the square stays your idea)
+function visGaps(r){ const out = []; (r.sol || []).forEach(s2 => { if (s2.t === 'air') return; DIRS.forEach(([dx, dy]) => { const f = (r.fixed || []).find(q => q.t === 'dust' && q.x === s2.x + dx && q.y === s2.y + dy); if (f && !out.some(o => o[0] === f.x && o[1] === f.y)) out.push([f.x, f.y]); }); }); return out; }
+const VIS_SOLID = ['lamp', 'rblock', 'stone', 'tnt', 'glass', 'steel', 'note', 'piston', 'spiston', 'observer', 'slime', 'idoor', 'door', 'gate'];
+// can you see this piece from here (eye: a Vector3)? its top (middle and four spots near the corners); a piece set in a wall: its face on the room side
+function visCheck(r, eye, keys, noDeco){
+  const b = r.box, mid = cellPos((b.x0 + b.x1)/2, (b.y0 + b.y1)/2), roots = [cellRoot, upRoot, wallRoot].concat(terrainRoot.visible ? [terrainRoot] : []), deco = [];
+  const near = o => { const p = o.getWorldPosition(new THREE.Vector3()), [cx, cy] = cellAtWorld(p.x, p.z); return cx >= b.x0 - 2 && cx <= b.x1 + 2 && cy >= b.y0 - 2 && cy <= b.y1 + 2; };
+  if (!noDeco) decorRoot.traverse(o => { if ((o.isMesh || o.isInstancedMesh) && o.visible && !(o.material && o.material.transparent && o.material.opacity < .7) && !o.userData.noVis && (o.geometry && o.geometry.boundingSphere ? true : true)){ let q = o, ok = true; while (q && q !== decorRoot){ if (!q.visible || q === A.monkey || q === A.captain || q.isSprite || Object.values(A.hosts || {}).includes(q)){ ok = false; break; } q = q.parent; } if (ok && (o.isInstancedMesh || o.geometry.attributes.position.count > 400 || near(o))) deco.push(o); } });
+  const blockedBy = (pt, x, y) => {
+    const dir = pt.clone().sub(eye), dist = dir.length(); dir.normalize(); ray.set(eye, dir); ray.far = dist;
+    const hits = ray.intersectObjects(roots, true); deco.forEach(o => (o.isInstancedMesh ? THREE.InstancedMesh : THREE.Mesh).prototype.raycast.call(o, ray, hits)); hits.sort((u, v) => u.distance - v.distance); ray.far = Infinity;
+    for (const hit of hits){ if (hit.distance > dist - .3) return null; const [hx, hy] = cellAtWorld(hit.point.x + dir.x*.02, hit.point.z + dir.z*.02); if (hx === x && hy === y) return null;
+      return {x:hx, y:hy, what:hit.object.userData.wall ? 'wall' : deco.includes(hit.object) ? 'decor' : hit.object.parent === terrainRoot || hit.object.userData.terrain ? 'step' : ((at(hx, hy) || {}).t || 'block')}; }
+    return null; };
+  return (keys || visKeys(r)).map(([kind, x, y]) => {
+    const q = cellPos(x, y), cell = at(x, y), t = cell ? cell.t : null, h = floorAt(x, y) + (VIS_SOLID.includes(t) ? 1 : t === 'torch' ? .6 : .12);
+    const inWall = wallAt(x, y) || x === b.x0 || x === b.x1 || y === b.y0 || y === b.y1, k2 = inWall ? .55 : 0, mx = Math.sign(mid.x - q.x)*k2, mz = Math.sign(mid.z - q.z)*k2;
+    const pts = [[0, 0], [.3, .3], [-.3, .3], [.3, -.3], [-.3, -.3]].map(([dx, dz]) => new THREE.Vector3(q.x + mx + dx*(inWall ? .4 : 1), inWall ? floorAt(x, y) + .9 : h, q.z + mz + dz*(inWall ? .4 : 1)));
+    let by = null, visible = false; for (const pt of pts){ const bb = blockedBy(pt, x, y); if (!bb){ visible = true; break; } by = by || bb; }
+    return {kind, x, y, t, pts, by:visible ? null : by, dist:+q.distanceTo(eye).toFixed(1)};
+  });
+}
+function visAudit(r, pitch){
+  if (!r || !r.box) return null;
+  const [ex, ey] = entryOf(r), c = cellPos(ex, ey), b = r.box, mid = cellPos((b.x0 + b.x1)/2, (b.y0 + b.y1)/2);
+  P.x = c.x; P.z = c.z; P.y = floorAt(ex, ey); P.yaw = Math.atan2(-(mid.x - c.x), -(mid.z - c.z)); P.pitch = pitch === undefined ? -.3 : pitch;
+  camera.position.set(P.x, P.y + EYE, P.z); camera.rotation.set(P.pitch, P.yaw, 0, 'YXZ'); camera.updateMatrixWorld(); scene.updateMatrixWorld();
+  return visCheck(r, camera.position.clone()).map(k => { const onScreen = k.pts.some(pt => { const n = pt.clone().project(camera); return n.z < 1 && Math.abs(n.x) <= .97 && Math.abs(n.y) <= .97; }); delete k.pts; k.onScreen = onScreen; return k; });
+}
+// ---- what the audit found, fixed in the game: walking into a room, any piece you can't see from the door (a torch round the back of its block,
+// a lever behind a pillar) gets a little sparkle high above it, peeking over whatever is in the way, until you've had a proper look at it;
+// outputs already have their lightning bolt. And the end of a wire laid down for you, where it stops at a gap, gives off sparks till it's mended.
+const PEEK_TEX = (() => { const c = document.createElement('canvas'); c.width = c.height = 32; const g = c.getContext('2d'); g.fillStyle = '#fff6c0'; g.strokeStyle = '#7a5410'; g.lineWidth = 2;
+  g.beginPath(); [[16, 1], [20, 12], [31, 16], [20, 20], [16, 31], [12, 20], [1, 16], [12, 12]].forEach(([x, y], k) => k ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); g.fill(); g.stroke(); return new THREE.CanvasTexture(c); })();
+function roomPeek(r){
+  (A.peeks || []).forEach(m => decorRoot.remove(m)); A.peeks = []; A.gapSparks = []; A.peekJob = null;
+  if (!r || !r.box || A.solved.has(r.id)) return;
+  A.gapSparks = visGaps(r); A.goalNudge = {r, t:0};
+  const [ex, ey] = entryOf(r), c = cellPos(ex, ey);
+  A.peekJob = {r, eye:new THREE.Vector3(c.x, floorAt(ex, ey) + EYE, c.z), keys:visKeys(r).filter(k => k[0] !== 'output'), i:0};   // (checked one piece a frame: no hitch walking in)
+}
+// the cheap check first: walk the grid along the line from your eye; nothing solid or taller than the line on the way? then it's in plain view
+function visQuickClear(eye, x, y){
+  const q = cellPos(x, y), h = floorAt(x, y) + .3, dx = q.x - eye.x, dz = q.z - eye.z, n = Math.ceil(Math.hypot(dx, dz)*5), [sx, sy] = cellAtWorld(eye.x, eye.z);
+  for (let k = 1; k < n; k++){ const f = k/n, px = eye.x + dx*f, pz = eye.z + dz*f, py = eye.y + (h - eye.y)*f, [cx, cy] = cellAtWorld(px, pz); if ((cx === x && cy === y) || (cx === sx && cy === sy)) continue;
+    if (wallAt(cx, cy) || floorAt(cx, cy) > py - .05) return false; const c = at(cx, cy); if (c && (VIS_SOLID.includes(c.t) || c.t === 'torch' || c.t === 'lever') && py < floorAt(cx, cy) + 1.05) return false; }
+  return true;
+}
+function peekJobFrame(){
+  const J = A.peekJob; if (!J) return; if (!A.rt || A.rt.room !== J.r || A.solved.has(J.r.id)){ A.peekJob = null; return; }
+  if (!J.i) world.updateMatrixWorld();   // (once a room: the blocks' places are up to date even before a frame is drawn)
+  const k = J.keys[J.i++]; if (!k){ A.peekJob = null; return; }
+  if (visQuickClear(J.eye, k[1], k[2])) return;
+  const [v] = visCheck(J.r, J.eye, [k], true); if (!v.by) return;
+  const s2 = new THREE.Sprite(new THREE.SpriteMaterial({map:PEEK_TEX, transparent:true, depthTest:false, opacity:.9})); s2.scale.set(.32, .32, 1); s2.renderOrder = 11; s2.raycast = () => {};
+  const p = cellPos(k[1], k[2]), y0 = floorAt(k[1], k[2]) + 1.9; s2.position.set(p.x, y0, p.z); s2.userData = {x:k[1], y:k[2], y0, look:0, pt:new THREE.Vector3(p.x, floorAt(k[1], k[2]) + .3, p.z)}; decorRoot.add(s2); A.peeks.push(s2);
+}
+// a room's PLAY beat (room 18's test machine): flip its levers in every mix; each mix you try fills a row of the table; all of them, and Barold names it
+function playBeatFrame(r){
+  const pb = r && r.playBeat, rt = A.rt; if (!pb || !rt || rt.room !== r || A.solved.has(r.id) || !S.stable) return;
+  const B = rt.pb || (rt.pb = {rows:pb.inputs.length > 1 ? [false, false, false, false] : [false, false], done:false}); if (B.done) return;
+  const ins = pb.inputs.map(p => { const c = at(...p); return !!(c && c.on); }), lamp = at(...pb.out); if (!lamp || !!lamp.lit !== !!pb.fn(...ins)) return;   // (power still on its way)
+  const i = ins.reduce((n, v) => n*2 + (v ? 1 : 0), 0); if (B.rows[i]) return;
+  B.rows[i] = true; renderCard(); if (B.rows.filter(Boolean).length > 1) sfx.row();
+  if (B.rows.every(Boolean)){ B.done = true; sfx.chime(); DLG.wait = DLG.wait.filter(w => !w[0].room); if (DLG.on && DLG.q && DLG.q.room) dlgCancel(); baroldTell(pb.done); /* (his hello is old news now) */ renderCard(); }
+}
+function playBeatHTML(r, rt){
+  const pb = r.playBeat, B = rt.pb || {rows:[]}, n = pb.inputs.length;
+  return `<h3>${pb.head || 'What does it do?'}</h3><table>${n > 1 ? '<tr><th>A</th><th>B</th><th></th><th>lamp</th><th></th></tr>' : ''}${B.rows.map((done, i) => { const ins = rowInputs(i, n), on = !!pb.fn(...ins); return `<tr>${ins.map(v => `<td>${svgLever(v)}</td>`).join('')}<td>&rarr;</td><td>${done ? svgLamp(on) : '<b style="font-size:20px">?</b>'}</td><td class="chk">${done ? '&#10003;' : ''}</td></tr>`; }).join('')}</table><div class="note">Flip the two levers in the glass case.</div>`;
+}
+function peekFrame(dt){
+  const r = A.rt && A.rt.room, done = !r || A.solved.has(r.id);
+  playBeatFrame(r); peekJobFrame();
+  // walked in and the thing to power (the door, the lamp) isn't on your screen: your view turns to it, gently, once (a story-beat turn, so your own turn wins)
+  const N = A.goalNudge; if (N){ if (N.r !== r || done){ if (BEAT.cur && BEAT.cur.id === 'goal:' + N.r.id) beatEnd(); A.goalNudge = null; }
+    else if (!N.go && ((keys.w || keys.a || keys.s || keys.d || keys.arrowup || keys.arrowdown || touchMove.f || touchMove.r || padMove.f || padMove.r) ? (N.t = 0) : (N.t += dt)) > 700 && !(BEAT.cur && !BEAT.cur.seen) && !(DLG.on && !dlgSoft()) && $('#why').hidden && inFP()){ N.go = true;
+      const outs = (r.out || []).map(([x, y]) => { const c = cellPos(x, y); c.y = floorAt(x, y) + .6; return c; });
+      if (outs.length && !outs.some(c => lookingAt(c, .55))){ const near = outs.reduce((m, c) => (!m || c.distanceTo(camera.position) < m.distanceTo(camera.position)) ? c : m, null); beatStart('goal:' + r.id, near, {maxOffers:2}); } } }
+  if (A.peeks && A.peeks.length){ for (let i = A.peeks.length - 1; i >= 0; i--){ const s2 = A.peeks[i], u = s2.userData;
+    if (!reduceMotion) s2.position.y = u.y0 + Math.sin((A.clock || 0)*.004 + i)*.08;
+    if (inFP() && playerSees(u.pt.x, u.pt.y, u.pt.z, .8)) u.look += dt;
+    if (done || u.look > 600){ decorRoot.remove(s2); A.peeks.splice(i, 1); } } }
+  // sparks where a laid-down wire stops (and at the side door's gap, until it's mended)
+  if ((A.sparkT = (A.sparkT || 0) + dt) < 1300) return; A.sparkT = 0;
+  const ends = [];   // [x, y, gx, gy]: a powered end, and the empty square it stops at
+  if (!done) (A.gapSparks || []).forEach(([x, y]) => { const q = at(x, y); if (!q || q.t !== 'dust' || !(q.pw > 0)) return; DIRS.forEach(([dx, dy]) => { if ((r.sol || []).some(s2 => s2.x === x + dx && s2.y === y + dy && s2.t !== 'air') && !at(x + dx, y + dy)) ends.push([x, y, x + dx, y + dy]); }); });
+  if (A.act === 1 && A.trapMet && !A.doorTrapOff && !trapGapMended()) DIRS.forEach(([dx, dy]) => { const q = at(TRAP.gap[0] + dx, TRAP.gap[1] + dy); if (q && (q.t === 'rblock' || (q.t === 'dust' && q.pw > 0))) ends.push([TRAP.gap[0] + dx, TRAP.gap[1] + dy, TRAP.gap[0], TRAP.gap[1]]); });   // (the side door: the powered end of the broken wire)
+  A.sparkEnds = ends; ends.slice(0, 4).forEach(([x, y, gx, gy]) => { const p = cellPos(x, y).lerp(cellPos(gx, gy), .5); p.y = floorAt(gx, gy) + .15; burst(p, 0xff3a2a, reduceMotion ? 2 : 5); });
+}
 function entryOf(r){
   const d = r.entry, b = r.box;
   if (d[0] === b.x0) return [d[0] + 1, d[1]]; if (d[0] === b.x1) return [d[0] - 1, d[1]];
@@ -9454,12 +9647,13 @@ const TYPE_MS = 105;                                  // one word every ~0.1 s
 const BUBBLES = new Set();
 function typeBubble(b, text, opt, ms, done){ const n = String(text).split(' ').length; b.userData.text = text; b.userData.type = {text, opt, n, shown:1, t:0, hold:Math.max(ms || 0, READ_MS(n)), done}; BUBBLES.add(b); }
 function bubblesFrame(dt){   // each new word redraws the same canvas and texture (no new texture per word)
-  BUBBLES.forEach(b => { const T = b.userData.type; if (!T || !b.parent){ BUBBLES.delete(b); return; }
-    T.t += dt;
+  BUBBLES.forEach(b => { const T = b.userData.type; if (!T || !b.parent){ BUBBLES.delete(b); if (T && (T.shown < T.n || T.t < T.hold)) T.superseded = true; bubbleMissCheck(b); return; }   // (taken down early for a newer line: that one says what's going on now)
+    T.t += dt; bubbleSeenFrame(b, T, dt);
     if (T.shown < T.n){ const want = Math.min(T.n, 1 + Math.floor(T.t / TYPE_MS)); if (want !== T.shown){ T.shown = want; drawBubble(b.material.map.image, T.text, Object.assign({show:want}, T.opt)); b.material.map.needsUpdate = true; } if (T.shown >= T.n) T.t = 0; }
-    else if (T.t > T.hold){ BUBBLES.delete(b); T.done && T.done(); } });
+    else if (T.t > T.hold){ BUBBLES.delete(b); bubbleMissCheck(b); T.done && T.done(); } });
 }
 // conversations go in a dialogue box at the bottom: tap (or click, or Enter) to finish the line, tap again for the next
+function dlgArrow(){ return '<svg viewBox="0 0 9 6" shape-rendering="crispEdges" aria-hidden="true"><path fill="#2b1a0c" d="M0 0h9v2H8v1H7v1H6v1H5v1H4V5H3V4H2V3H1V2H0z"/><path fill="#ffd84a" d="M1 1h7v1H7v1H6v1H5v1H4V4H3V3H2V2H1z"/><path fill="#fff6c0" d="M1 1h3v1H2v1H1z"/></svg>'; }   // the box's "next": a little bouncing pixel arrow
 const DLG = {on:false, q:[], i:0, shown:0, t:0, done:null, hello:0, why:null, undo:null, wait:[]};   // hello: the ride whose Captain hello is showing (it gives way to the next ride); why: the ride whose demo is playing (undo puts its levers back); wait: queued dialogues
 function dlgStart(lines, done, why){
   if (lines.room) DLG.wait = DLG.wait.filter(w => !w[0].room);   // Barold's hello for a room you've already left is stale: the new one replaces it
@@ -9470,13 +9664,13 @@ function dlgEnd(){ DLG.on = false; DLG.done = null; DLG.hello = 0; DLG.why = DLG
 // stop talking NOW (menu, new act, walked out of a demo): no done step, the demo's levers go back, your view is yours again. all: drop the queue too
 function dlgCancel(all){ const u = DLG.on && DLG.undo; dlgEnd(); u && u(); whyFocus(null); if (all){ DLG.wait = []; A.whyAt = null; } else dlgNext(); }
 function dlgNext(){ const w = !DLG.on && DLG.wait.shift(); if (w) dlgStart(...w); }
-function dlgShow(){ const [who, text, hook] = DLG.q[DLG.i]; if (hook) hook(); DLG.shown = 1; DLG.t = 0; DLG.words = String(text).split(' '); $('#dlgWho').textContent = who; $('#dlgTxt').textContent = DLG.words[0]; $('#dlgMore').hidden = true; $('#dlg').hidden = false; feed('say', who + ': ' + text);
+function dlgShow(){ const [who, text, hook] = DLG.q[DLG.i]; if (hook) hook(); DLG.shown = 1; DLG.t = 0; DLG.words = String(text).split(' '); $('#dlgWho').textContent = who; $('#dlgTxt').textContent = DLG.words[0]; $('#dlgMore').hidden = true; $('#dlg').hidden = false; feed('say', who + ': ' + text); beatLine();
   if (who === GUIDE && A.monkey) A.monkey.userData.hop = 1; else if (A.captain && /Captain|Parrot/.test(who)) A.captain.userData.hop = 1; else if (A.hosts && A.hosts[who]) A.hosts[who].userData.hop = 1; if (/Parrot/.test(who)) sfx.ook(900); else sfx.click(); }
-function dlgAdvance(){ if (!DLG.on) return false; if (DLG.shown < DLG.words.length){ DLG.shown = DLG.words.length; $('#dlgTxt').textContent = DLG.words.join(' '); $('#dlgMore').hidden = false; DLG.t = 0; return true; }
+function dlgAdvance(){ if (!DLG.on) return false; if (DLG.shown >= DLG.words.length && beatWaiting()){ beatOffer(); return true; } if (DLG.shown < DLG.words.length){ DLG.shown = DLG.words.length; $('#dlgTxt').textContent = DLG.words.join(' '); $('#dlgMore').hidden = false; DLG.t = 0; return true; }
   DLG.i++; if (DLG.i >= DLG.q.length){ const d = DLG.done; dlgEnd(); d && d(); dlgNext(); return true; } dlgShow(); return true; }
 function dlgFrame(dt){ if (!DLG.on) return; DLG.t += dt;
   if (DLG.shown < DLG.words.length){ const want = Math.min(DLG.words.length, 1 + Math.floor(DLG.t / TYPE_MS)); if (want !== DLG.shown){ DLG.shown = want; $('#dlgTxt').textContent = DLG.words.slice(0, want).join(' '); } if (DLG.shown >= DLG.words.length){ $('#dlgMore').hidden = false; DLG.t = 0; } }
-  else if (DLG.t > READ_MS(DLG.words.length) + (dlgSoft() ? 2500 : 6000)) dlgAdvance();   // nobody tapping? it moves on by itself, eventually
+  else if (DLG.t > READ_MS(DLG.words.length) + (dlgSoft() ? 2500 : 6000) && !beatWaiting()) dlgAdvance();   // nobody tapping? it moves on by itself, eventually
 }
 // a "soft" box (Barold telling you something while you play): it's in the dialogue box so you can't miss it, but clicks in the world still build;
 // a tap on the box itself (or a face button, Enter) skips it, and it moves on by itself
@@ -9489,6 +9683,102 @@ function baroldTell(text, room){   // room: it's that room's hello (it gives way
   const who = guideNow(), ml = $('#mline'); if (ml){ ml.hidden = false; ml.innerHTML = '<b>' + who + ':</b> '; ml.appendChild(document.createTextNode(all.join(' '))); }
   const lines = all.map(t => [who, t]); lines.soft = true; if (room) lines.room = room; dlgStart(lines);
 }
+/* ---- STORY BEATS (HANDOFF backlog 3: Max skipped the whole Barold intro and never saw the monkey take the map). A beat is a key moment of the
+   story (an intro, a reveal, a promotion, the map coming back...). While one plays: if what it's about is off your screen, your view turns gently
+   to it (under a second; any turn of your own lets go: never a lock; reduced motion: no turn, an arrow points instead); the story waits (the next
+   line, the next step) until you have SEEN it, in the middle of your screen for a moment; and if you turned away, it's offered again (the turn comes
+   back after a little while, or at your next tap). BEAT.log: every beat (seen, how many offers); BEAT.missed: every line said over a head that you
+   never saw (for the test players: the every-word persona reports both). ---- */
+const BEAT = {cur:null, log:[], missed:[], turn:null};
+function speakerMesh(who){ if (!who) return null; if (who === GUIDE) return guideNow() === GUIDE ? A.monkey : guideMesh(); if (/Captain|Parrot/.test(who)) return A.captain || null; return (A.hosts && A.hosts[who]) || null; }
+function beatPos(t){   // a target: a THREE.Object3D (its middle), a Vector3, a cell [x, y], or a function giving one. null: nothing to look at
+  if (typeof t === 'function') t = t(); if (!t) return null;
+  if (t.isVector3) return t;
+  if (t.isObject3D){ if (!t.parent || !t.visible) return null; const p = t.getWorldPosition(new THREE.Vector3()); p.y += t.userData.beatY !== undefined ? t.userData.beatY : .9*(t.scale.y || 1); return p; }
+  if (Array.isArray(t)){ const c = cellPos(t[0], t[1]); c.y = floorAt(t[0], t[1]) + .9; return c; }
+  return null;
+}
+// start watching a beat (target: what to look at); it's seen once it has been near the middle of your screen for a moment
+function beatStart(id, target, opt){
+  const b = {id, target, t:0, seenMs:0, viewMs:0, seen:false, offers:0, opt:opt || {}, at:A.clock || 0};
+  BEAT.cur = b; BEAT.turn = null; let e = BEAT.log.find(q => q.id === id); if (!e){ e = {id, seen:false, offers:0, at:b.at}; BEAT.log.push(e); } b.e = e;
+  return b;
+}
+function beatEnd(id){ const b = BEAT.cur; if (b && (!id || b.id === id)){ if (!b.seen) b.e.missed = true; BEAT.cur = null; BEAT.turn = null; beatArrow(null); } }
+const beatSeen = id => { const b = BEAT.cur; if (b && b.id === id) return b.seen || !beatPos(b.target); const e = BEAT.log.find(q => q.id === id); return !!(e && e.seen); };
+// the beat's line in the dialogue box is waiting for you to look: a tap offers the turn again instead of moving on
+function beatWaiting(){ const b = BEAT.cur; if (!(b && b.dlg && DLG.on && !b.seen)) return false; const p = beatPos(b.target); if (!p) return false;
+  if (!inFP() || CINE.on || playerSees(p.x, p.y, p.z, .8)){ beatSeenNow(b); return false; }   // it's right there on your screen as you tap: that's seen
+  return true; }
+function beatSeenNow(b){ b.seen = true; b.e.seen = true; b.e.seenAt = A.clock || 0; BEAT.turn = null; beatArrow(null); }
+function beatOffer(){ const b = BEAT.cur; if (!b || b.seen) return; BEAT.turn = null; b.wait = 0; b.offerNow = true; }
+function beatsFrame(dt){
+  const b = BEAT.cur; if (!b) return;
+  if (b.dlg && (!DLG.on || DLG.q !== b.q || DLG.i !== b.i)){ beatEnd(); return; }   // its line is over
+  const p = beatPos(b.target); b.t += dt;
+  if (!p || b.seen){ beatArrow(null); return; }
+  if (!A.on || !inFP() || CINE.on || S.dead){ if (!inFP() || CINE.on) b.seenMs += dt; }   // the overhead view or a cutscene shows it to you
+  else if (playerSees(p.x, p.y, p.z, .8)) b.seenMs += dt;
+  else if (lookingAt(p, .32)) b.viewMs += dt;   // right in front of you but behind something (a wall, a tree): it still counts, after a bit longer
+  if (b.seenMs >= 350 || b.viewMs >= 900){ beatSeenNow(b); if (inFP()) lookStick(b.target.isObject3D || b.target.isVector3 ? b.target : p, 1200); return; }
+  // not seen yet: turn your view to it (gently, once per offer); you turned away yourself? it's offered again in a little while
+  const T = BEAT.turn;
+  if (!T){
+    b.wait = (b.wait || 0) + dt;
+    if (b.offerNow || b.wait > (b.offers ? 2600 : 250)){ b.offerNow = false; b.wait = 0; b.offers++; b.e.offers = b.offers;
+      if (b.opt.maxOffers && b.offers > b.opt.maxOffers){ beatEnd(); return; }   // (a gentle offer, not a nag)
+      if (!reduceMotion && inFP() && !CINE.on) BEAT.turn = {t:0, yaw:P.yaw, pitch:P.pitch}; }
+  } else {
+    if (Math.abs(P.yaw - T.yaw) > .02 || Math.abs(P.pitch - T.pitch) > .02) BEAT.turn = null;   // you turned yourself: it lets go
+    else { const s = Math.min(.05, dt/1000), k = Math.min(1, s*4.5), dx = p.x - P.x, dz = p.z - P.z, h = Math.hypot(dx, dz);
+      const wy = Math.atan2(-dx, -dz), wp = Math.max(-1.1, Math.min(.7, Math.atan2(p.y - (P.y + EYE), Math.max(.5, h)))), off = Math.atan2(Math.sin(wy - P.yaw), Math.cos(wy - P.yaw));
+      P.yaw += off*k; P.pitch += (wp - P.pitch)*k; T.yaw = P.yaw; T.pitch = P.pitch; T.t += s; if (T.t > 1.2) BEAT.turn = null; }
+  }
+  beatArrow(b.t > 700 || reduceMotion ? p : null);
+}
+// an arrow at the side of the screen: "Look!" (it points the way to turn)
+function beatArrow(p){
+  let el = $('#beatArrow'); if (!p){ if (el) el.hidden = true; return; }
+  if (!el){ el = document.createElement('div'); el.id = 'beatArrow'; el.setAttribute('aria-live', 'polite'); document.body.appendChild(el); }
+  const off = Math.atan2(Math.sin(Math.atan2(-(p.x - P.x), -(p.z - P.z)) - P.yaw), Math.cos(Math.atan2(-(p.x - P.x), -(p.z - P.z)) - P.yaw)), left = off > 0;
+  const t = left ? '◀ Look!' : 'Look! ▶'; if (el.textContent !== t){ el.textContent = t; el.className = left ? 'left' : 'right'; }
+  el.hidden = false;
+}
+// a dialogue that is a story beat: each line looks at whoever is talking (or look(i, who): what that line is about; narration keeps the last one)
+function beatTalk(id, lines, done, look){ lines.beat = id; lines.look = look || null; dlgStart(lines, done); }
+function beatLine(){   // (dlgShow: a new line of a beat dialogue)
+  const q = DLG.q; if (!q || !q.beat) return;
+  const [who] = q[DLG.i]; let t = q.look ? q.look(DLG.i, who) : undefined;
+  if (t === undefined){ t = speakerMesh(who); const p = t && beatPos(t); if (p && Math.hypot(p.x - P.x, p.z - P.z) > 14) t = null; }   // (a speaker far off, or a radio: just the box)
+  if (!t && !who && q.lastLook) t = q.lastLook; q.lastLook = t;
+  if (!beatPos(t)){ if (BEAT.cur && BEAT.cur.dlg) beatEnd(); return; }   // nobody to see (a radio, someone far off): just the box
+  const b = beatStart(q.beat + ':' + DLG.i, t); b.dlg = true; b.q = q; b.i = DLG.i;
+}
+// lines said over someone's head: did you see them? (never seen at all, while they were up = missed; the box's copy in the goal panel counts)
+function bubbleSeenFrame(b, T, dt){
+  const m = b.parent; if (!m) return; if (T.who === undefined) T.who = bubbleWho(m); if (T.missOk) return;
+  const ml = $('#mline'); if (ml && !ml.hidden && ml.offsetParent && ml.textContent.includes(T.text)){ T.missOk = true; return; }
+  if (!A.on || !inFP() || CINE.on){ T.seenMs = (T.seenMs || 0) + dt; }
+  else if ((T.chk = (T.chk || 0) + dt) >= 100){ const p = b.getWorldPosition(new THREE.Vector3()); if (playerSees(p.x, p.y, p.z)){ T.seenMs = (T.seenMs || 0) + T.chk; T.unseen = 0; } T.chk = 0; }
+  if ((T.seenMs || 0) >= Math.min(1500, READ_MS(T.n)*.4)) T.missOk = true;
+}
+function bubbleWho(m){ if (!m) return null; if (m === A.monkey) return GUIDE; if (A.captain && m === A.captain) return 'Captain'; for (const [k, v] of Object.entries(A.hosts || {})) if (v === m) return k; return null; }
+// someone who matters is talking over their head, but they're not on your screen: the line shows in a strip at the bottom too, with an arrow
+// pointing the way to them (the every-word persona, looking about, missed 85 lines: the room-by-room "PARP! That's 1! Now flip it OFF..." among them)
+function offLineFrame(dt){
+  let best = null; BUBBLES.forEach(b => { const T = b.userData.type, who = T && bubbleWho(b.parent); if (!who || T.missOk || T.flavour || !A.on || !inFP() || CINE.on) return; if ((T.unseen = (T.unseen || 0) + dt) < 450) return; if (!best || T.t < best.T.t) best = {b, T, who}; });
+  let el = $('#offLine'); if (!best || (DLG.on && !dlgSoft())){ if (el) el.hidden = true; return; }
+  if (!el){ el = document.createElement('div'); el.id = 'offLine'; el.className = 'panel'; el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite'); el.innerHTML = '<i></i><b></b><span></span>'; $('#hud').appendChild(el); }
+  const p = best.b.getWorldPosition(new THREE.Vector3()), off = Math.atan2(Math.sin(Math.atan2(-(p.x - P.x), -(p.z - P.z)) - P.yaw), Math.cos(Math.atan2(-(p.x - P.x), -(p.z - P.z)) - P.yaw));
+  const ar = Math.abs(off) > 2.4 ? '\u25BC' : off > 0 ? '\u25C0' : '\u25B6';
+  if (el.dataset.text !== best.T.text){ el.dataset.text = best.T.text; el.querySelector('b').textContent = best.who + ': '; el.querySelector('span').textContent = best.T.text; }
+  el.querySelector('i').textContent = ar; el.hidden = false;
+  el.style.bottom = DLG.on ? Math.round(innerHeight - $('#dlg').getBoundingClientRect().top + 8) + 'px' : '';   // (a soft box is up: just above it)
+  best.T.stripMs = (best.T.stripMs || 0) + dt; if (best.T.stripMs >= Math.min(1500, READ_MS(best.T.n)*.4)) best.T.missOk = true;
+}
+function bubbleMissCheck(b){ const T = b.userData.type; if (!T || T.missOk || T.logged) return; T.logged = true; BEAT.missed.push({t:Math.round(A.clock || 0), text:T.text, who:T.who || null, flavour:!!(T.flavour || !T.who), superseded:!!T.superseded, seenMs:Math.round(T.seenMs || 0)}); if (BEAT.missed.length > 400) BEAT.missed.shift(); }
+// a bit of chatter that doesn't matter if you miss it (no strip at the bottom for it)
+function flavourSay(text, ms){ monkeySay(text, ms); const M0 = guideNow() === GUIDE ? A.monkey : guideMesh(), b = M0 && M0.userData.bubble, T = b && b.userData.type; if (T) T.flavour = true; }
 function monkeySay(text, ms){
   if (text) feed('say', text);
   const sp = guideNow(), MK0 = sp === GUIDE ? A.monkey : guideMesh();   // (Act 3: the Captain, while Barold is away or outside the ghost train)
@@ -9651,7 +9941,7 @@ function loreCalm(hall){   // hall: this story may be told on arriving in the Cr
   return Math.hypot(m.position.x - P.x, m.position.z - P.z) < 9;
 }
 function loreQuiet(){ for (let i = FEED.length - 1; i >= 0; i--){ const e = FEED[i]; if (e.kind === 'say' || e.kind === 'card') return (A.clock || 0) - e.t; } return Infinity; }
-function loreSay(){ const c = A.loreCur; monkeySay(c.d.say[c.i], 0); c.b = A.monkey.userData.bubble; c.gap = 0; if (c.d.card === c.i) showIdCard(c.d.level || (A.launched ? 3 : A.lore.has('level2') ? 2 : 1), 1600 + c.d.say[c.i].split(' ').length*600); }
+function loreSay(){ const c = A.loreCur; monkeySay(c.d.say[c.i], 0); c.b = A.monkey.userData.bubble; c.gap = 0; if (c.d.soon) beatStart('lore:' + c.d.id, A.monkey); /* (a promotion is a story beat: your view turns to him) */ if (c.d.card === c.i) showIdCard(c.d.level || (A.launched ? 3 : A.lore.has('level2') ? 2 : 1), 1600 + c.d.say[c.i].split(' ').length*600); }
 // a story is ready to be told (by the same rules loreFrame uses), if only Barold were next to you (guideLead: he comes back for it)
 function loreDue(loose){   // loose: due by the clock, however quiet it is right now
   if (!A.lore || !A.on) return false; if (A.loreCur) return true;
@@ -9667,7 +9957,7 @@ function loreFrame(dt){
   if (c){
     if (c.b){
       if (A.monkey && A.monkey.userData.bubble === c.b) return;   // still saying it
-      const T = c.b.userData.type, heard = T && T.shown >= T.n && T.t > T.hold; c.b = null;
+      const T = c.b.userData.type, heard = T && T.shown >= T.n && T.t > T.hold && (T.missOk || !c.d.soon); c.b = null;   // (a promotion said while you never once looked at him: missed, so it's told again later)
       if (!heard){ A.loreCur = null; A.loreAt = now - LORE_GAP + 30000; return; }   // someone talked over him: he tells it again later, from the start
       if (++c.i >= c.d.say.length){ A.lore.add(c.d.id); A.loreCur = null; A.loreAt = now; advSaveSoon(); return; }
       c.gap = 700;
@@ -9688,8 +9978,9 @@ let advFrameT = 0;
 function advFrame(dt, now){
   A.clock = (A.clock || 0) + dt;
   ghostBobFrame(A.clock); goalBriefFrame(dt);
-  dlgFrame(dt); bubblesFrame(dt); whyFrame(dt);
+  dlgFrame(dt); beatsFrame(dt); bubblesFrame(dt); offLineFrame(dt); whyFrame(dt);
   if (!A.on) return;
+  peekFrame(dt);
   const [cx, cy] = cellAtWorld(P.x, P.z);
   const r = roomOf(cx, cy), where = r ? r.id : inHall(cx, cy) ? 'hall' : cy >= HUB.y0 ? 'hub' : (A.room && A.room.id ? A.room.id : A.room) || 'hub';
   if (where !== (A.room && A.room.id ? A.room.id : A.room)){
@@ -9833,6 +10124,7 @@ const boltTex = (() => { const c = document.createElement('canvas'); c.width = c
   g.fillStyle = '#ffe14a'; g.strokeStyle = '#5a3a00'; g.lineWidth = 4; g.beginPath(); g.moveTo(36,4); g.lineTo(14,36); g.lineTo(30,36); g.lineTo(24,60); g.lineTo(50,24); g.lineTo(33,24); g.lineTo(42,4); g.closePath(); g.fill(); g.stroke();
   const t = new THREE.CanvasTexture(c); return t; })();
 function makeBolts(r){
+  roomPeek(r);
   (A.bolts || []).forEach(b => decorRoot.remove(b)); A.bolts = [];
   if (!r || A.solved.has(r.id)) return;
   const targets = (r.out || []).slice();
@@ -10214,8 +10506,8 @@ function solveRoom(r){
     { const nx = ROOMS[ROOMS.indexOf(r) + 1]; if (nx) setTimeout(() => { if (A.on && !A.solved.has(nx.id) && P.y < ROOM_ELEV[nx.id] - 1 && !(A.rt && A.rt.room === nx)) monkeySay('Up the VINES! Walk right into them where the toilet was, and keep going up!', 8000); }, 25000); }
   }
   sfx.chime(); confetti(); spawnCrystal(r); setTimeout(() => { if (A.on) addRoomMonkey(r); }, 2500);
-  monkeySay(r.win + (r.bonus ? ' ' + r.bonus.text : ''), 14000);
-  if ((r.id * 7) % 3 === 0) setTimeout(() => { if (A.on && A.rt && A.rt.room === r) monkeySay(bag('credit', CREDIT), 6000); }, 9000);
+  monkeySay(r.win + (r.bonus ? ' ' + r.bonus.text : ''), 14000);   // (not looking at him? it shows in the strip at the bottom too: offLineFrame)
+  if ((r.id * 7) % 3 === 0) setTimeout(() => { if (A.on && A.rt && A.rt.room === r) flavourSay(bag('credit', CREDIT), 6000); }, 9000);
   if (A.monkey) A.monkey.userData.hop = 1.5;
   $('#lessonNum').textContent = roomNum(r) + ' · solved'; if (A.rt && A.rt.room === r && !r.heart) $('#goalText').textContent = doneGoal(r);
   renderCard(); refreshHotbar(); advSaveSoon(); syncVisuals();
@@ -10640,7 +10932,7 @@ function liftoffFrame(dt){
   if (t > LIFT_END && A.stage < 4){
     A.stage = 4; A.launching = false; A.launched = true; space.floor.userData.flame.visible = false;   // (the password for this spot is on the end card)
     confetti(); sfx.chime(); advSaveSoon();
-    monkeySay('My new LEVEL 3 card! Same old photo. Why change a winning face?', 8000); hideIdCard();
+    monkeySay('My new LEVEL 3 card! Same old photo. Why change a winning face?', 8000); hideIdCard(); beatStart('level3', A.monkey);
     actOneEnd();   // then the map comes back, then TO BE CONTINUED
   }
 }
@@ -10657,8 +10949,9 @@ function actEndFrame(dt){
   E.t += dt;
   if (E.step === 0){
     if (E.t < 1200 || DLG.on || CINE.on || A.launching || A.openCine) return;
+    if (!beatSeen('level3') && E.t < 9000) return; if (BEAT.cur && BEAT.cur.id === 'level3'){ if (E.t - (E.seenT || (E.seenT = E.t)) < 2500) return; beatEnd('level3'); }   // his Level 3 line: seen, and a moment to read it
     if (A.mapBack){ E.step = 3; E.t = 0; return; }
-    E.step = 1; E.t = 0; E.D = dropMonkey(landSpot(null)); E.D.map.visible = true; A.freeze = true; return;
+    E.step = 1; E.t = 0; E.D = dropMonkey(landSpot(null)); E.D.map.visible = true; A.freeze = true; beatStart('mapback', E.D.m); return;
   }
   const D = E.D, m = D && D.m, u = m && m.userData;
   if (m){ const fl = floorAtWorld(m.position.x, m.position.z); if (D.landed){ if (u.hop > 0 && !reduceMotion){ u.hop = Math.max(0, u.hop - dt/1000*1.1); m.position.y = fl + Math.abs(Math.sin(u.hop*Math.PI*3))*.35; } else m.position.y = fl; m.rotation.y = Math.atan2(P.x - m.position.x, P.z - m.position.z); } }
@@ -10670,7 +10963,7 @@ function actEndFrame(dt){
     const k = E.t - E.landT;
     u.arms[0].rotation.x = u.arms[1].rotation.x = -1.5;
     if (!E.said){ E.said = true; sayOn(m, 'Ook ook! (Here you go!)', 2600); }
-    if (k > 900 && !E.fly){ E.fly = makeMapProp(); E.fly.scale.setScalar(.8); decorRoot.add(E.fly); D.map.visible = false; noise(.14, .07, 3200, 'bandpass', 0, 1.2); }
+    if (k > 900 && !E.fly && (beatSeen('mapback') || k > 9000)){ beatEnd('mapback'); E.fly = makeMapProp(); E.fly.scale.setScalar(.8); decorRoot.add(E.fly); D.map.visible = false; noise(.14, .07, 3200, 'bandpass', 0, 1.2); }
     if (E.fly){
       const f = Math.min(1, (k - 900)/350), from = handOf(m); mapInHand(E.fly, 1); E.fly.position.lerpVectors(from, E.fly.position.clone(), f*f); E.fly.scale.setScalar(.8 - .3*f);
       if (f >= 1){
@@ -11522,7 +11815,7 @@ function openInventory(){
   if (isFree()) html += megaHTML(v.map(i => ITEMS[i].id));
   html += achInvHTML();   // the achievements page, from the game
   openPane('Your items', html);
-  $('#paneBody').querySelectorAll('.invItem[data-i]').forEach(b => b.addEventListener('click', () => { const i = +b.dataset.i; if (!hotbar.children[i].classList.contains('locked')) select(i); $('#paneClose').click(); }));
+  $('#paneBody').querySelectorAll('.invItem[data-i]').forEach(b => b.addEventListener('click', () => { const i = +b.dataset.i; if (!hotbar.children[i].classList.contains('locked')){ select(i); $('#paneClose').click(); if (sel === i) itemCard(i); } else $('#paneClose').click(); }));   // (picked from the bag: the same how-it-works card as a hotbar tap)
 }
 
 // the "Mega mode" lines (Tom): ??? with the Gate Card's symbol greyed out until that card is earned, then the line, then a star when done
@@ -14484,14 +14777,14 @@ function sunsetTalk(){
   // you, at the foot of the temple stairs, looking up at the star map
   const c = cellPos(MAYA_TEMPLE.cx, MAYA_TEMPLE.y1 + 6); P.x = c.x; P.z = c.z; P.y = 0; P.yaw = 0; P.pitch = .35;
   if (A.monkey) A.monkey.position.copy(cellPos(MAYA_TEMPLE.cx + 2, MAYA_TEMPLE.y1 + 5)); if (A.stargazer) A.stargazer.position.copy(cellPos(MAYA_TEMPLE.cx - 3, MAYA_TEMPLE.y1 + 4)); if (A.banana) A.banana.position.copy(cellPos(MAYA_TEMPLE.cx + 4, MAYA_TEMPLE.y1 + 4));
-  dlgStart([['Star-Watcher', 'Our star-map engine. It shows where the sun, the moon and Venus will be, for years and years. We wrote it all in our books too.'],
+  beatTalk('starmap', [['Star-Watcher', 'Our star-map engine. It shows where the sun, the moon and Venus will be, for years and years. We wrote it all in our books too.'],
     [GUIDE, 'The HEART? The Heart is a MAP? Of the SKY?'],
     ['Bananahead', 'And WE added ROCKETS! So one day we can follow the map all the way home.'],
     [GUIDE, '...And the toilet?'], ['Bananahead', 'For long journeys.'],
     [GUIDE, 'And why does the crystal look like a SKULL?'], ['Bananahead', 'It doesn\'t. Yet. We\'ll carve a scary face on it, so nobody nicks it.'],
     [GUIDE, 'That\'s the CRYSTAL SKULL! It was a star map ALL ALONG!'],
     ['Radio', '*crackle* Ah. Did I mention...? The time lever is stuck. It says... TUESDAY. *blub*'],
-    [GUIDE, 'TUESDAY?! She\'ll be BACK!']], () => mayaFinish());
+    [GUIDE, 'TUESDAY?! She\'ll be BACK!']], () => mayaFinish(), i => i <= 1 || i === 7 ? A.heartMap : undefined);
 }
 function mayaFinish(){
   A.mayaDone = true; A.mayaEnd = true; advSaveSoon();
@@ -15535,7 +15828,7 @@ function uniGallery(){
   Object.entries(A.hosts || {}).forEach(([who, m], k) => { if (/^Professor/.test(who)){ m.position.copy(cellPos(T.x0 + 6 + k*6, T.y0 + 9)); m.userData.y0 = m.position.y; } });
   const seen = A.uniBeats.has('gallery');
   if (seen){ uniGraduation(); return; }
-  dlgStart([['Headmonkey', 'Welcome to the Great Hall. This is where we hang our portraits.'],
+  beatTalk('gallery', [['Headmonkey', 'Welcome to the Great Hall. This is where we hang our portraits.'],
     [GUIDE, 'Ooh, posh. Who are they? They\'ve all got ENORMOUS hats.'],
     ['Headmonkey', 'Grand Master Guides. Level 99, every one. The greatest family of guides there ever was.'],
     [GUIDE, 'They\'ve all got a crack in their head. Just like... mine.'],
@@ -15553,7 +15846,7 @@ function uniGallery(){
     ['Headmonkey', 'And the Guild has checked your promotions. Level 2: guide a visitor through fifteen rooms. Twelve rooms, a hallway, the stairs and a cupboard...'],
     ['Headmonkey', '*STAMP* APPROVED. Cupboards have doors.', () => { uniStamp(); showIdCard(2, 4000); }],
     ['Headmonkey', 'Level 3: show the visitor the way home, at the top of the temple. *STAMP* APPROVED. With honours.', () => { uniStamp(); showIdCard(3, 5000); }],
-    [GUIDE, 'OFFICIAL! I\'m OFFICIALLY Level 3! Did you all hear that? BAROLD BARRINGTON, LEVEL 3!']], () => { uniBeat('gallery'); A.uniFinale = null; uniGraduation(); });
+    [GUIDE, 'OFFICIAL! I\'m OFFICIALLY Level 3! Did you all hear that? BAROLD BARRINGTON, LEVEL 3!']], () => { uniBeat('gallery'); A.uniFinale = null; uniGraduation(); }, i => i >= 11 && i <= 13 ? A.portraitB : undefined);
 }
 function uniUnveil(){ if (A.curtain){ A.uniFinale && (A.uniFinale.drop = 1); A.curtain.userData.fall = 0; } sfx.chime(); if (typeof musicCue === 'function') try { musicCue('reveal'); } catch (e) {}
   if (A.portraitB) { const p = A.portraitB.position; P.yaw = Math.atan2(-(p.x - P.x), -(p.z - P.z)); P.pitch = .15; } }
@@ -15563,7 +15856,7 @@ function uniGraduation(){
   const T = UNI_TOP, e = UNI_ELEV[UNI_LAST] + 1, cx = Math.round((T.x0 + T.x1)/2);
   if (A.reggie){ A.reggie.position.copy(cellPos(cx, T.y0 + 3)); A.reggie.rotation.y = 0; A.reggie.userData.y0 = A.reggie.position.y; }
   const c = cellPos(cx, T.y0 + 10); P.x = c.x; P.z = c.z; P.y = e; P.yaw = 0; P.pitch = .12;
-  dlgStart([['Headmonkey', 'And now: GRADUATION! Our very first visitor ever. And the best builder this University has ever seen.'],
+  beatTalk('puffer', [['Headmonkey', 'And now: GRADUATION! Our very first visitor ever. And the best builder this University has ever seen.'],
     ['Headmonkey', 'Please welcome our guest speaker. The great explorer: Sir Reginald Puffington!'],
     ['Sir Reginald', 'Ahem. Thank you, thank you. When I first went into that temple, I said to myself...', () => uniCannons()],
     [null, 'BANG! BANG! The confetti cannons go off. Sir Reginald JUMPS.', () => uniPuff(1)],
@@ -15577,7 +15870,7 @@ function uniGraduation(){
     [GUIDE, 'You\'re a FISH. I\'m a SKELETON. We make a GREAT team!'],
     ['Headmonkey', 'Everyone here is a bit different. That\'s what makes a good university.'],
     ['Sir Reginald', 'Ah. Did I mention...? The legs are wind-up robot legs. I never could feel them.'],
-    ['Headmonkey', 'Then let\'s do this properly. Hats ON! You are now a Graduate of Redstone University!', () => uniHats()]], () => uniFinish());
+    ['Headmonkey', 'Then let\'s do this properly. Hats ON! You are now a Graduate of Redstone University!', () => uniHats()]], () => uniFinish(), i => i >= 2 && i <= 10 ? A.reggie : undefined);
 }
 function uniCannons(){ (A.cannons || []).forEach(q => { const p = q.position.clone(); p.y += 1.2; if (typeof confetti3D === 'function') confetti3D(p); }); sfx.party ? sfx.party() : sfx.chime(); noise(.3, .4, 200, 'lowpass'); }
 function uniPuff(k){ const u = A.reggie && A.reggie.userData; if (!u) return; A.reggie.scale.setScalar(k ? 1.25 : 1); }
@@ -15968,7 +16261,7 @@ window.__game = {
     monkeyPos(){ return A.monkey ? [...cellAtWorld(A.monkey.position.x, A.monkey.position.z)] : null; }, baroldXZ(){ return A.monkey ? [A.monkey.position.x, A.monkey.position.z, A.monkey.position.y] : null; }, doorStand(){ return A.doorTrapOff ? [ENTRANCE[0], ENTRANCE[1] + 2] : TRAP.stand; }, trapBlock(){ return TRAP.block; },
     fartAt(x, y){ monkeysFlee(cellPos(x, y)); },
     monkeyFaint(){ return !!(A.monkey && A.monkey.userData.faint > 0); },
-    tut(){ return tut ? tutList()[tut.i].id : 'done'; }, tutPart(){ return tut ? tut.list : null; }, tutSpot(){ return tut ? (tut.placed || tutSpot()) : null; }, skipOpening(){ endOpening(); }, opening(){ return !!A.openCine; }, objective(){ return objectiveCell(); }, entrance(){ return ENTRANCE; }, goAct(n){ goAct(n); }, act(){ return A.act; }, funMet(){ return !!A.funMet; }, funDone(){ return !!A.funDone; }, depot(){ return FUN_DEPOT; }, captainCell(){ return A.captain ? cellAtWorld(A.captain.position.x, A.captain.position.z) : null; }, baroldCell(){ return A.monkey ? cellAtWorld(A.monkey.position.x, A.monkey.position.z) : null; }, baroldTo(x, y){ if (A.monkey){ const c = cellPos(x, y); A.monkey.position.set(c.x, c.y, c.z); A.monkey.userData.path = null; } }, coop(){ return A.rt && A.rt.coop ? JSON.parse(JSON.stringify(A.rt.coop)) : null; }, coopPending(){ return A.coopPending || null; }, isPit(x, y){ return isPit(x, y); }, isQuick(x, y){ return isQuick(x, y); }, scareFromBehind(){ const m = A.monkey; if (!m) return false; const fx = Math.sin(m.rotation.y), fz = Math.cos(m.rotation.y); P.x = m.position.x - fx*1.3; P.z = m.position.z - fz*1.3; P.yaw = Math.atan2(-(m.position.x - P.x), -(m.position.z - P.z)); P.pitch = -.15; stepFP(0); const [cx, cy] = centre(); act(cx, cy, 'use'); return A.disc.has('scare'); }, crackCells(){ const out = []; for (let x = SHRINE[0] - 3; x <= SHRINE[0] + 3; x++) for (let y = SHRINE[1] - 3; y <= SHRINE[1] + 3; y++){ const c = at(x, y); if (c && c.t === 'crackwall') out.push([x, y]); } return out; }, chestCells(){ return (A.chestMeshes || []).filter(ch => !ch.userData.open).map(ch => ch.userData.cell); }, dancePlates(){ return [[-2, -2], [2, -2], [-2, 2], [2, 2]].map(([ox, oy]) => [DANCE[0] + ox, DANCE[1] + oy]); },  grabPickups(){ let n = 0; for (let k = 0; k < 3; k++){ pickupsFrame(16); (A.pickups || []).slice().forEach(pk => { this.walkTo(pk.x, pk.y); for (let j = 0; j < 30; j++){ stepFP(16); pickupsFrame(16); } n++; }); } $('#why').hidden = true; return n; }, pickups(){ return (A.pickups || []).map(pk => pk.t); }, found(){ return [...A.found]; }, trap(){ return {on:trapOn(), gear:gearOn(), gap:TRAP.gap, trapWire:TRAP.trapWire, doorWire:TRAP.doorWire, hole:TRAP.hole, off:!!A.doorTrapOff, met:!!A.trapMet, filling:!!A.filling}; }, lumPairs(){ const L2 = c => { const r = c.r, g = c.g, b = c.b; return .2126*r + .7152*g + .0722*b; }; const avg = cv => { const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data; let t = 0, n = 0; for (let i = 0; i < d.length; i += 4){ if (d[i+3] < 20) continue; t += (.2126*d[i] + .7152*d[i+1] + .0722*d[i+2])/255; n++; } return n ? t/n : 0; }; return {dustOff:L2(dustMats[0].color), dustOn:L2(dustMats[15].color), lampOff:avg(CV.lampOff), lampOn:avg(CV.lampOn)}; }, itemNames(){ return ITEMS.map(i => [i.id, i.name]); }, discTotal(){ return DISCOVERIES.length; }, bonuses(){ return {got:[...A.bonus], total:ROOMS.filter(r => r.bonus).map(r => r.id)}; }, toys(){ return [...A.unlocked]; }, passKept(){ return pwKept(); }, gates(){ return [...(A.gates || [])]; }, sound(on){ soundOn = !!on; updSoundBtn(); }, intro(){ return {at:A.introAt, i:A.introI}; }, tapBarold(){ dlgAdvance(); dlgAdvance(); }, dlgOn(){ return DLG.on; }, feed(){ return FEED; }, clock(){ return A.clock || 0; }, renderInfo(){ const m = renderer.info.memory; return {calls:renderer.info.render.calls, tris:renderer.info.render.triangles, geo:m.geometries, tex:m.textures}; }, gotKit(){ return !!A.gotKit; }, skipTut(){ endTutorial(); },
+    tut(){ return tut ? tutList()[tut.i].id : 'done'; }, tutPart(){ return tut ? tut.list : null; }, tutSpot(){ return tut ? (tut.placed || tutSpot()) : null; }, skipOpening(){ endOpening(); }, opening(){ return !!A.openCine; }, objective(){ return objectiveCell(); }, entrance(){ return ENTRANCE; }, goAct(n){ goAct(n); }, act(){ return A.act; }, funMet(){ return !!A.funMet; }, funDone(){ return !!A.funDone; }, depot(){ return FUN_DEPOT; }, captainCell(){ return A.captain ? cellAtWorld(A.captain.position.x, A.captain.position.z) : null; }, baroldCell(){ return A.monkey ? cellAtWorld(A.monkey.position.x, A.monkey.position.z) : null; }, baroldTo(x, y){ if (A.monkey){ const c = cellPos(x, y); A.monkey.position.set(c.x, c.y, c.z); A.monkey.userData.path = null; } }, coop(){ return A.rt && A.rt.coop ? JSON.parse(JSON.stringify(A.rt.coop)) : null; }, coopPending(){ return A.coopPending || null; }, isPit(x, y){ return isPit(x, y); }, isQuick(x, y){ return isQuick(x, y); }, scareFromBehind(){ const m = A.monkey; if (!m) return false; const fx = Math.sin(m.rotation.y), fz = Math.cos(m.rotation.y); P.x = m.position.x - fx*1.3; P.z = m.position.z - fz*1.3; P.yaw = Math.atan2(-(m.position.x - P.x), -(m.position.z - P.z)); P.pitch = -.15; stepFP(0); const [cx, cy] = centre(); act(cx, cy, 'use'); return A.disc.has('scare'); }, crackCells(){ const out = []; for (let x = SHRINE[0] - 3; x <= SHRINE[0] + 3; x++) for (let y = SHRINE[1] - 3; y <= SHRINE[1] + 3; y++){ const c = at(x, y); if (c && c.t === 'crackwall') out.push([x, y]); } return out; }, chestCells(){ return (A.chestMeshes || []).filter(ch => !ch.userData.open).map(ch => ch.userData.cell); }, dancePlates(){ return [[-2, -2], [2, -2], [-2, 2], [2, 2]].map(([ox, oy]) => [DANCE[0] + ox, DANCE[1] + oy]); },  grabPickups(){ let n = 0; for (let k = 0; k < 3; k++){ pickupsFrame(16); (A.pickups || []).slice().forEach(pk => { this.walkTo(pk.x, pk.y); for (let j = 0; j < 30; j++){ stepFP(16); pickupsFrame(16); } n++; }); } $('#why').hidden = true; return n; }, pickups(){ return (A.pickups || []).map(pk => pk.t); }, found(){ return [...A.found]; }, trap(){ return {on:trapOn(), gear:gearOn(), gap:TRAP.gap, trapWire:TRAP.trapWire, doorWire:TRAP.doorWire, hole:TRAP.hole, off:!!A.doorTrapOff, met:!!A.trapMet, filling:!!A.filling}; }, lumPairs(){ const L2 = c => { const r = c.r, g = c.g, b = c.b; return .2126*r + .7152*g + .0722*b; }; const avg = cv => { const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data; let t = 0, n = 0; for (let i = 0; i < d.length; i += 4){ if (d[i+3] < 20) continue; t += (.2126*d[i] + .7152*d[i+1] + .0722*d[i+2])/255; n++; } return n ? t/n : 0; }; return {dustOff:L2(dustMats[0].color), dustOn:L2(dustMats[15].color), lampOff:avg(CV.lampOff), lampOn:avg(CV.lampOn)}; }, itemNames(){ return ITEMS.map(i => [i.id, i.name]); }, discTotal(){ return DISCOVERIES.length; }, bonuses(){ return {got:[...A.bonus], total:ROOMS.filter(r => r.bonus).map(r => r.id)}; }, toys(){ return [...A.unlocked]; }, passKept(){ return pwKept(); }, gates(){ return [...(A.gates || [])]; }, sound(on){ soundOn = !!on; updSoundBtn(); }, intro(){ return {at:A.introAt, i:A.introI}; }, tapBarold(){ dlgAdvance(); dlgAdvance(); }, dlgOn(){ return DLG.on; }, storyBeats(){ return {cur:BEAT.cur ? {id:BEAT.cur.id, seen:BEAT.cur.seen, offers:BEAT.cur.offers, turning:!!BEAT.turn} : null, log:BEAT.log.map(e => Object.assign({}, e)), missed:BEAT.missed.slice(), arrow:!!($('#beatArrow') && !$('#beatArrow').hidden)}; }, beatWaiting(){ return beatWaiting(); }, beatSay(t, ms){ monkeySay(t, ms); }, beatTalkTest(id, lines, look){ beatTalk(id, lines.map(l => l.slice()), null, look); }, feed(){ return FEED; }, clock(){ return A.clock || 0; }, renderInfo(){ const m = renderer.info.memory; return {calls:renderer.info.render.calls, tris:renderer.info.render.triangles, geo:m.geometries, tex:m.textures}; }, gotKit(){ return !!A.gotKit; }, skipTut(){ endTutorial(); },
     look(dyaw){ P.yaw += dyaw; stepFP(0); },
     setLook(yaw, pitch){ P.yaw = yaw; P.pitch = pitch || 0; stepFP(0); },
     solved(id){ return A.solved.has(id); }, crystals(){ return A.crystals.size; }, unlocked(){ return [...A.unlocked]; },
@@ -15982,8 +16275,9 @@ window.__game = {
     cell(x, y){ const c = at(x, y); return c ? {t:c.t, lit:c.lit, on:c.on, pw:c.pw, attach:c.attach, dir:c.dir, open:c.open} : null; },
     wall(x, y){ return wallAt(x, y); }, elevAt(x, y){ return floorAt(x, y); }, slideAt(x, y){ const v = S.slide[y*NX + x]; return S.ladder[y*NX + x] ? 'L' : v >= 0 ? 'v<>^'[[3,1,0,2].indexOf(v)] || v : ' '; },
     troop(){ return {n:TROOP.list.length, room:TROOP.room && TROOP.room.id, inPen:A.rt && A.rt.inPen, launches:A.rt && A.rt.launches, hand:A.rt && A.rt.handLaunches, danceUntil:TROOP.danceUntil || 0, kinds:TROOP.list.map(m => m.userData.kind)}; },
-    get rooms(){ return ROOMS.map(r => ({journey:r.journey || JOURNEY[r.id], id:r.id, name:r.name, check:r.check, count:r.count, inputs:r.inputs || [], out:r.out || [], exit:r.exit, toilet:r.toilet, entry:r.entry, box:r.box, sol:r.sol, naive:r.naive, after:r.after, tntAt:r.tntAt, quick:r.quick, fixed:r.fixed, loose:r.loose, gate:r.gate, play:!!r.play, why:r.why || null})); },
+    get rooms(){ return ROOMS.map(r => ({journey:r.journey || JOURNEY[r.id], id:r.id, name:r.name, check:r.check, count:r.count, inputs:r.inputs || [], out:r.out || [], exit:r.exit, toilet:r.toilet, entry:r.entry, box:r.box, sol:r.sol, naive:r.naive, after:r.after, tntAt:r.tntAt, quick:r.quick, fixed:r.fixed, loose:r.loose, gate:r.gate, play:!!r.play, why:r.why || null, playBeat:r.playBeat || null})); },
     entryCell(id){ return entryOf(ROOMS.find(r => r.id === id)); },
+    visAudit(id, pitch){ return visAudit(ROOMS.find(r => r.id === id), pitch); }, peeks(){ return (A.peeks || []).map(s2 => [s2.userData.x, s2.userData.y]); }, peekTime(id){ const r = ROOMS.find(q => q.id === id); roomPeek(r); let worst = 0; while (A.peekJob){ const t0 = performance.now(); A.rt = A.rt || {}; const rt0 = A.rt.room; A.rt.room = r; peekJobFrame(); A.rt.room = rt0; worst = Math.max(worst, performance.now() - t0); } return worst; }, peekBusy(){ return !!A.peekJob; }, gapSparks(){ return (A.gapSparks || []).slice(); }, sparkEnds(){ return (A.sparkEnds || []).slice(); },
     heart: {entry:HEART.entry, levers:HEART.levers, sol:HEART.sol},
     pickCrystals(){ A.crystalsMesh.slice().forEach(m => { P.x = m.position.x; P.z = m.position.z; P.y = m.userData.baseY - 1.1; advFrame(16, 0); }); return A.crystals.size; },
     heartSolve(){ SHIP_ROOMS.forEach(r => A.solved.add(r.id)); shipVisuals(); HEART.levers.forEach(([x,y]) => { const c = at(x,y); if (!c.on) interact(c); }); syncVisuals(); },   // (a shortcut: all four machines fixed, then the LAUNCH lever)
