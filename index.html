@@ -1557,6 +1557,8 @@ const M = {
   knobOff: new THREE.MeshLambertMaterial({color:0x6a6a6a}),
   tnt: null, tntFlash: new THREE.MeshBasicMaterial({color:0xffffff}), cushion: null,
   glowGreen: new THREE.SpriteMaterial({map:new THREE.CanvasTexture(glowCV('150,220,70')), depthWrite:false, transparent:true}),
+  glowSmoke: new THREE.SpriteMaterial({map:new THREE.CanvasTexture(glowCV('205,205,205')), color:0x8a8a8a, depthWrite:false, transparent:true, opacity:.75}),   // grey smoke (not green: c15 saw "a green cloud")
+  charred: new THREE.MeshLambertMaterial({color:0x26201c}), charStick: new THREE.MeshLambertMaterial({color:0x3a2c20}),   // a burnt-out torch
   arrow: new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:.9, depthWrite:false, side:THREE.DoubleSide}),
   glowRed: new THREE.SpriteMaterial({map:new THREE.CanvasTexture(glowCV('255,70,40')), blending:THREE.AdditiveBlending, depthWrite:false, transparent:true}),
   glowGold: new THREE.SpriteMaterial({map:new THREE.CanvasTexture(glowCV('255,210,110')), blending:THREE.AdditiveBlending, depthWrite:false, transparent:true})
@@ -1835,9 +1837,11 @@ function buildMesh(c, ghost){
       const a = ghost ? c.attach : effAttach(c);
       const piv = new THREE.Group(); g.add(piv);
       if (a >= 0){ const [dx,dz] = DIRS[a]; piv.position.set(dx*.3, .05, dz*.3); piv.rotation.z = .42*dx; piv.rotation.x = -.42*dz; }
-      const st = new THREE.Mesh(cbox(.13,.6,.13), M.wood); st.position.y = .3; piv.add(st);
-      const hd = new THREE.Mesh(cbox(.2,.2,.2), c.lit ? M.hotOn : M.hotOff); hd.position.y = .66; piv.add(hd);
+      const burnt = !ghost && c.burnt > 0;   // burnt out: a black, charred head with a wisp of grey smoke over it, until it cools down
+      const st = new THREE.Mesh(cbox(.13,.6,.13), burnt ? M.charStick : M.wood); st.position.y = .3; piv.add(st);
+      const hd = new THREE.Mesh(cbox(.2,.2,.2), burnt ? M.charred : c.lit ? M.hotOn : M.hotOff); hd.position.y = .66; piv.add(hd);
       if (c.lit && !ghost) hd.add(glow(M.glowRed, 1.4, 0));
+      if (burnt){ const w = glow(M.glowSmoke, .55, .45); w.userData.burntWisp = true; hd.add(w); }
       if (ghost && a >= 0){ const holder = new THREE.Group(); holder.rotation.y = -opp(a)*Math.PI/2; holder.add(arrowMesh(.02)); g.add(holder); }
       break; }
     case 'repeater': {
@@ -1846,10 +1850,22 @@ function buildMesh(c, ghost){
       const hot = c.out ? M.hotOn : M.hotOff;
       const mk = z => { const p = new THREE.Mesh(cbox(.11,.22,.11), M.wood); p.position.set(0,.25,z); inner.add(p); const h = new THREE.Mesh(cbox(.15,.12,.15), hot); h.position.set(0,.4,z); inner.add(h); };
       mk(-.08); mk(.05 + c.delay*.09);
-      if (ghost) inner.add(arrowMesh(.16));
       break; }
   }
   if (ghost) ghostify(g);
+  if (ghost && FACE_PARTS.has(c.t)) g.add(faceArrow(c));   // (in your hand, and on a hint's ghost: the way it will face)
+  return g;
+}
+// ---- which way it will face: a big sky-blue arrow over every part with a direction, in your hand (the preview) and on a hint's ghost
+// (the University's U3 arrow, for every act since the cold-return audit). Sky blue, never the yellow of the glowing "stand here"
+// square (c30 took the University's gold arrow for the professor's glowing square). A repeater: the way the power goes; a piston:
+// the way it pushes; an observer: the way its eyes look. ----
+const FACE_PARTS = new Set(['repeater', 'piston', 'spiston', 'observer']), FACE_COL = 0x38d8ff;
+let FACE_MAT = null;
+function faceArrow(c){
+  const g = new THREE.Group(), low = c.t === 'repeater', ar = arrowMesh(low ? .55 : 1.25);
+  ar.material = FACE_MAT || (FACE_MAT = new THREE.MeshBasicMaterial({color:FACE_COL, side:THREE.DoubleSide}));
+  ar.scale.setScalar(low ? 1.6 : 1.8); g.add(ar); g.rotation.y = -(c.dir || 0)*Math.PI/2 + (c.t === 'observer' ? Math.PI : 0); g.userData.faceArrow = true;
   return g;
 }
 const ghostCache = new Map(), ghostMats = [];
@@ -1993,7 +2009,7 @@ function vkey(c){
     case 'lever': return 'l'+c.on+effAttach(c);
     case 'button': return 'b'+(c.timer>0)+effAttach(c);
     case 'lamp': return 'L'+c.lit;
-    case 'torch': return 't'+c.lit+effAttach(c);
+    case 'torch': return 't'+c.lit+effAttach(c)+(c.burnt > 0 ? 'b' : '');
     case 'repeater': return 'r'+c.dir+c.delay+c.out;
     case 'tnt': return 'x'+(c.fuse > 0 && c.fuse % 4 < 2);
     case 'fart': return 'f'+c.lit;
@@ -2420,12 +2436,12 @@ function renderCard(){
     if (UNI_CHECKS.has(r.check)){ card.innerHTML = uniCardHTML(r, rt); return; }   // the University's classrooms (and the picture book button)   // the Maya act's counting, serve, goal and sun checks
     if (['delay', 'clock', 'alt', 'order'].includes(r.check)){ card.hidden = true; card.innerHTML = ''; return; }
     if (r.check === 'seq'){ card.innerHTML = `<h3>Fuel valves</h3><div class="note">Press the button. They must open <b>1</b>, then <b>2</b>, then <b>3</b>.${rt.seqText ? '<br>Last try: <b>' + rt.seqText + '</b>' : ''}</div>`; return; }
-    if (r.inputs && r.inputs.length > 2){ card.innerHTML = `<h3>Try every mix</h3><div class="note"><b style="font-size:22px">${(rt.rows || []).filter(Boolean).length} / ${(rt.rows || []).length}</b> mixes work</div>`; return; }
+    if (r.inputs && r.inputs.length > 2){ const nb = Object.keys(rt.bad || {}).length; card.innerHTML = `<h3>Try every mix</h3><div class="note"><b style="font-size:22px">${(rt.rows || []).filter(Boolean).length} / ${(rt.rows || []).length}</b> mixes work${nb ? `<br><b style="color:#b01e12">&#10007; ${nb} ${nb === 1 ? 'mix is' : 'mixes are'} wrong</b>` : ''}</div>`; return; }
     const outIcon = (on, k) => at(...r.out[k]) && at(...r.out[k]).t === 'fart' ? `<span style="font-size:15px;font-weight:700;color:${on?'#c0306a':'#888'}">${on?'PARP':'quiet'}</span>` : svgLamp(on);
     const inIcon = (on, k) => { const c = at(...r.inputs[k]); return c && c.t === 'plate' ? `<span style="font-size:14px;font-weight:700">${on ? 'ON plate' : 'OFF plate'}</span>` : c && c.t === 'drail' ? `<span style="font-size:14px;font-weight:700">${on ? 'cart ON' : 'no cart'}</span>` : svgLever(on); };
     const n = r.inputs.length;
     if (r.play){ card.innerHTML = `<h3>What does it do?</h3><table>${rt.rows.map((done, i) => { const ins = rowInputs(i, n), outs = [].concat(r.fn(...ins)).map(Boolean); return `<tr>${ins.map((v, k) => `<td>${inIcon(v, k)}</td>`).join('')}<td>&rarr;</td>${outs.map((v, k) => `<td>${done ? outIcon(v, k) : '<b style="font-size:20px">?</b>'}</td>`).join('')}<td class="chk">${done ? '&#10003;' : ''}</td></tr>`; }).join('')}</table>`; return; }
-    card.innerHTML = `<h3>${n > 1 ? 'Try every mix' : 'Try both'}</h3><table>${n > 1 ? `<tr>${r.inHead || '<th>A</th><th>B</th>'}<th></th>${r.outHead !== undefined ? r.outHead : r.out.length > 1 ? '<th>top</th><th>bottom</th>' : '<th>lamp</th>'}<th></th></tr>` : ''}${rt.rows.map((done, i) => { const ins = rowInputs(i, n), outs = [].concat(r.fn(...ins)).map(Boolean); return `<tr>${ins.map((v, k) => `<td>${inIcon(v, k)}</td>`).join('')}<td>&rarr;</td>${outs.map((v, k) => `<td>${outIcon(v, k)}</td>`).join('')}<td class="chk">${done ? '&#10003;' : ''}</td></tr>`; }).join('')}</table>`;
+    card.innerHTML = `<h3>${n > 1 ? 'Try every mix' : 'Try both'}</h3><table>${n > 1 ? `<tr>${r.inHead || '<th>A</th><th>B</th>'}<th></th>${r.outHead !== undefined ? r.outHead : r.out.length > 1 ? '<th>top</th><th>bottom</th>' : '<th>lamp</th>'}<th></th></tr>` : ''}${rt.rows.map((done, i) => { const ins = rowInputs(i, n), outs = [].concat(r.fn(...ins)).map(Boolean); return `<tr>${ins.map((v, k) => `<td>${inIcon(v, k)}</td>`).join('')}<td>&rarr;</td>${outs.map((v, k) => `<td>${outIcon(v, k)}</td>`).join('')}${done ? '<td class="chk">&#10003;</td>' : rt.bad && rt.bad[i] ? '<td class="chk bad" title="Tried: wrong">&#10007;</td>' : '<td class="chk"></td>'}</tr>`; }).join('')}</table>`;   // (a red cross on a mix you tried that came out wrong, like the green tick on a right one: c09)
     return;
   }
   card.hidden = false;
@@ -2528,14 +2544,14 @@ function hudBand(){
   return {top: Math.min(.5, t/h), bot: Math.max(.55, b/h)};
 }
 // how far the sky view may look from the middle: the small levels as before; Acts 3-5 the whole map (sweep 2 A6: it was held near the middle of the pier)
-const camLim = d => A.on && A.act >= FUN_ACT ? Math.max(d, NX/2, NY/2) : d, camRMax = d => A.on && A.act >= FUN_ACT ? 100 : d;   // (and how far out: far enough to see you AND the next beam)
+const camLim = d => A.on ? Math.max(d, NX/2, NY/2) : d, camRMax = d => A.on ? 100 : d;   // (and how far out: far enough to see you AND the next beam; every act since the cold-return audit: Act 1's View showed a different yard, c01/c02)
 function focusCamera(def){
   if (A.on){
     const r = A.rt && A.rt.room, b = r ? r.box : A.room === 'hall' ? HALL : HUB;
     def = {inputs:[[b.x0, b.y0], [b.x1, b.y1]]};
-    // Acts 3-5 (sweep 2 A6/C4: the whole pier with your ride squashed in a corner; rooms but not you): centred on YOU (and your room),
-    // with the next room's beam in the picture when it's near enough
-    if (A.act >= FUN_ACT){ const [px, py] = cellAtWorld(P.x, P.z), c = r ? null : objectiveCell();
+    // every act (sweep 2 A6/C4: the whole pier with your ride squashed in a corner; rooms but not you; the cold-return audit c01/c02:
+    // Act 1's View showed a different yard): centred on YOU (and your room), with the next room's beam in the picture when it's near enough
+    {  const [px, py] = cellAtWorld(P.x, P.z), c = r ? null : objectiveCell();
       def = {inputs:r ? def.inputs.concat([[px, py]]) : [[px - 5, py - 5], [px + 5, py + 5]].concat(c && Math.hypot(c[0] - px, c[1] - py) < 70 ? [[c[0] - 1, c[1] - 1], [c[0] + 1, c[1] + 1]] : [])}; }
   }
   const pts = [];
@@ -2548,10 +2564,11 @@ function focusCamera(def){
   const xs = pts.map(p=>p[0]), ys = pts.map(p=>p[1]);
   const x0 = Math.min(...xs)-.4, x1 = Math.max(...xs)+1.4, y0 = Math.min(...ys)-.4, y1 = Math.max(...ys)+1.4;
   const corners = [];
-  for (const x of [x0,x1]) for (const y of [y0,y1]) for (const h of [0,.9]){ const v = cellPos(x,y); v.y = h; corners.push(v); }
+  const base = A.on && P ? P.y : 0;   // (the floor you're on: Act 1's upper rooms sit 6 blocks up, over the rooms below)
+  for (const x of [x0,x1]) for (const y of [y0,y1]) for (const h of [0,.9]){ const v = cellPos(x,y); v.y = base + h; corners.push(v); }
   cam.theta = 0; cam.phi = 0.84;
   const c = cellPos((x0+x1)/2, (y0+y1)/2);
-  cam.target.set(c.x, .4, c.z);
+  cam.target.set(c.x, base + .4, c.z);
   cam.r = Math.max(9, Math.min(camRMax(42), Math.max(x1-x0, (y1-y0)*1.3) + 6));
   const band = hudBand();
   const wantY = 1 - band.top - band.bot;            // NDC y centre of the clear band
@@ -2934,10 +2951,9 @@ function place(item, x, y, clicked){
   setCell(x, y, c); sfx.place(p.t); syncVisuals(); updatePreview(); plogEvent('place');
   if (A.on && (p.t === 'lever' || p.t === 'button') && !(A.toldUse || (A.toldUse = new Set())).has(p.t)){ A.toldUse.add(p.t); const w = useWord(); showToast(p.t === 'lever' ? `Lever down! Now ${w} it to flip it ON. ${w[0].toUpperCase() + w.slice(1)} it again for OFF.` : `Button down! ${w[0].toUpperCase() + w.slice(1)} it to press it.`); }
   // the hint wanted it stuck on a block, or facing another way: say how to aim it (the rules stay Minecraft's)
-  if (gh && gh.t === p.t && ['torch','lever','button'].includes(p.t) && (gh.attach ?? -1) !== p.attach) showToast((gh.attach ?? -1) < 0 ? 'Tap the FLOOR to stand it up on its own.' : 'To stick it on the block, tap the SIDE of the block.');
-  else if (gh && gh.t === 'repeater' && p.t === 'repeater' && (gh.dir || 0) !== p.dir) showToast('A repeater points the way YOU look. Stand behind it and look along the wire.');
-  else if (A.on && gh && gh.t === p.t && (!('dir' in gh) || (gh.dir || 0) === p.dir)) showToast('Yes! That piece goes there.');   // (c19 broke a right piece: nothing said it was right)
-  if (A.on && A.act === UNI_ACT && UNI_FACE.has(p.t)) uniFaceSay(c, gh);   // the University: a piston or observer that landed backwards says why (playtest sweep 2, U3)
+  const faced = A.on && (FACE_PARTS.has(p.t) || FACE_HANG.has(p.t)) && faceSay(c, gh);   // facing (or hanging) differently from the room's answer: the room's host says why + a glowing square (every act)
+  if (!faced && gh && gh.t === p.t && FACE_HANG.has(p.t) && (gh.attach ?? -1) !== p.attach) showToast((gh.attach ?? -1) < 0 ? 'Tap the FLOOR to stand it up on its own.' : 'To stick it on the block, tap the SIDE of the block.');
+  else if (!faced && A.on && gh && gh.t === p.t && (!('dir' in gh) || (gh.dir || 0) === p.dir)) showToast('Yes! That piece goes there.');   // (c19 broke a right piece: nothing said it was right)
   if (L && L.def.kind === 'free'){ S.freePlaced = (S.freePlaced || 0) + 1; if (S.freePlaced === 60 && !S.backupNudged){ S.backupNudged = true; let t = 0; try { t = +localStorage.getItem(KEY_PREFIX + 'backedUp') || 0; } catch (e) {} if (Date.now() - t > 3*864e5) showToast('Building something great? Ask a grown-up to save a backup file: Menu, then Grown-ups.'); } }
   return true;
 }
@@ -2967,18 +2983,34 @@ function interact(c){
   if (c.t === 'repeater'){ c.delay = c.delay % 4 + 1; c.buf = null; sfx.click(); showToast('Delay ' + c.delay); saveBuildSoon(); return true; }
   return false;
 }
-function pokeMonkey(){
+// the click's ray (where you clicked: the middle of the screen with the pointer locked, the pointer itself otherwise)
+function clickRay(cx, cy){ const r = canvas.getBoundingClientRect(); ndc.set(((cx - r.left)/r.width)*2-1, -((cy - r.top)/r.height)*2+1); ray.setFromCamera(ndc, camera); return ray.ray.direction.clone(); }
+// everybody walking about (Barold, the monkeys, the hosts): they never block a click on a part (the cold-return audit: c01 clicked a lever
+// with Barold in front of it and put dust down instead). Only a click right on one of them, with nothing to use behind, pokes them.
+function npcMeshes(){ return [A.monkey, ...(A.extras || []), ...TROOP.list, A.reggie, ...Object.values(A.hosts || {})].filter((m, i, l) => m && m.parent === decorRoot && m.visible !== false && l.indexOf(m) === i); }
+function npcOnRay(dir, maxT){ for (const m of npcMeshes()){ const sc = m.scale.x || 1, c = new THREE.Vector3(m.position.x, m.position.y + .55*sc, m.position.z).sub(camera.position), t = c.dot(dir);
+  if (t < .3 || t > maxT) continue; if (c.addScaledVector(dir, -t).length() <= .45*sc + .1) return m; } return null; }
+const USE_PARTS = ['lever', 'button', 'repeater', 'note', 'lectern', 'idoor'];
+// a part you can use, next to where the click landed, that the ray passes close to (it was hidden behind somebody)
+function useNear(h, dir){ if (!h || !h.point) return null; let best = null, bd = .75;
+  for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++){ const c = at(h.x + dx, h.y + dy); if (!c || !USE_PARTS.includes(c.t)) continue;
+    const p = cellPos(c.x, c.y); p.y += .3; const v = p.sub(camera.position), t = v.dot(dir); if (t < .3 || t > REACH + .5) continue; const d = v.addScaledVector(dir, -t).length(); if (d < bd){ bd = d; best = c; } }
+  return best; }
+function pokeMonkey(cx, cy){
   if (!A.on || !inFP()) return false;
-  camera.getWorldDirection(_dir);
+  if (cx === undefined) [cx, cy] = centre();
+  _dir.copy(clickRay(cx, cy));
   // what block would this click hit? a monkey only counts if it's in front of that
-  const [ccx, ccy] = centre(), bh = pick(ccx, ccy), blockD = bh && bh.point ? bh.point.distanceTo(camera.position) : Infinity;
+  const bh = pick(cx, cy), blockD = bh && bh.point ? bh.point.distanceTo(camera.position) : Infinity;
+  if (bh && bh.cell && USE_PARTS.includes(bh.cell.t)) return false;   // aiming at a lever, a button...: the part wins, whoever is in the way (Barold too)
+  if (useNear(bh, _dir)) return false;   // (or one hidden just behind them)
   let best = null, bestT = Infinity;
   for (const m of [A.monkey, ...(A.extras || []), ...TROOP.list, A.reggie]){
     if (!m || m.parent !== decorRoot) continue;
     const sc = m.scale.x || 1, c = new THREE.Vector3(m.position.x, m.position.y + .55*sc, m.position.z).sub(camera.position);
     const tAlong = c.dot(_dir); if (tAlong < .3 || tAlong > 3.5 || tAlong > blockD + .2) continue;
     if (blockD < tAlong + 1.2) continue;   // reaching past someone to a block just behind them: the click goes through to the block
-    if (bh && bh.cell && ['lever','button','plate','repeater'].includes(bh.cell.t) && m !== A.monkey) continue;   // aiming at a switch: switches win (Sir Reginald snoring in the way can't steal it)
+    if (bh && bh.cell && bh.cell.t === 'plate' && m !== A.monkey) continue;   // aiming at a plate: it wins (Sir Reginald snoring in the way can't steal it; Barold ON his plate can still be poked)
     const perp = c.clone().addScaledVector(_dir, -tAlong).length();
     if (perp > .32*sc + .08) continue;
     if (tAlong < bestT){ bestT = tAlong; best = m; }
@@ -3022,11 +3054,14 @@ function act(cx, cy, mode){
   if (DLG.on && !dlgSoft()){ dlgAdvance(); if (!DLG.on) tapQuiet(); return; }
   if (A.gRide){ rideTap(cx, cy); return; }   // Act 3's ghost train ride
   if (mode === 'use' && $('#why').hidden && partyDialTap(cx, cy)) return;   // room 12's PARTY POWER button
-  if (mode === 'use' && pokeMonkey()) return;
+  if (mode === 'use' && pokeMonkey(cx, cy)) return;
   if (!$('#why').hidden && locked){ if (cardQuiz()){ try { document.exitPointerLock(); } catch (_) {} return; } closeCard(); return; }
   const h = pick(cx, cy); if (!h) return;
   swing();
   const item = ITEMS[sel].id;
+  // somebody stood between you and a lever (or a button...): the click was meant for it, not for the floor behind them
+  if (mode === 'use' && A.on && inFP() && !asking && !(h.cell && USE_PARTS.includes(h.cell.t)) && h.point){ const dir = clickRay(cx, cy), u = npcOnRay(dir, h.point.distanceTo(camera.position)) && useNear(h, dir);
+    if (u && interact(u)){ syncVisuals(); return; } }
   const c = h.cell;
   if (asking){ explain(c, h); return; }
   if (sbAct(h, mode, item)) return;   // free build: stacking, creatures, rides
@@ -3136,7 +3171,11 @@ function updatePreview(){
   if (!p) return;
   const m = buildMesh(Object.assign({lit:true, pw:15, isDot:true}, p), true);
   m.position.copy(cellPos(x,y)); previewRoot.add(m);
+  // a torch, lever or button on a block's side: the block it will hang on lights up sky blue (the same "this is how it goes" colour)
+  if (p.attach >= 0 && ['torch', 'lever', 'button'].includes(p.t)){ const [dx, dy] = DIRS[p.attach], o = new THREE.LineSegments(outline.geometry, FACE_LINE || (FACE_LINE = new THREE.LineBasicMaterial({color:FACE_COL})));
+    o.position.copy(cellPos(x + dx, y + dy)); o.scale.setScalar(1.03); o.userData.hangOn = true; previewRoot.add(o); }
 }
+let FACE_LINE = null;
 
 /* keyboard + gamepad */
 window.addEventListener('keydown', e => {
@@ -4006,7 +4045,7 @@ function stinkCloud(pos, dx, dz, n, big){
 // a burnt-out torch: a little puff of grey smoke
 function smoke(c){
   if (fx.length > 600) return;
-  for (let i=0;i<8;i++){ const s = glow(new THREE.SpriteMaterial({map:M.glowGreen.map, color:0x6a6a6a, transparent:true, opacity:.8, depthWrite:false}), .5, .75); s.position.add(cellPos(c.x, c.y)); s.position.x += (Math.random()-.5)*.25; s.position.z += (Math.random()-.5)*.25; fxRoot.add(s); fx.push({g:s, t:0, kind:'puff', vx:(Math.random()-.5)*.3, vz:(Math.random()-.5)*.3, d:i*.1}); }
+  for (let i=0;i<8;i++){ const s = glow(new THREE.SpriteMaterial({map:M.glowSmoke.map, color:0x8a8a8a, transparent:true, opacity:.8, depthWrite:false}), .5, .75); s.position.add(cellPos(c.x, c.y)); s.position.x += (Math.random()-.5)*.25; s.position.z += (Math.random()-.5)*.25; fxRoot.add(s); fx.push({g:s, t:0, kind:'puff', vx:(Math.random()-.5)*.3, vz:(Math.random()-.5)*.3, d:i*.1}); }
 }
 // first burnout ever: a funny line that explains it. In a clock room, the room check explains it again.
 function burnLine(){
@@ -4653,10 +4692,10 @@ const FUN_SPAWN = [34, 178];   // the teleporter pad on the pier
 const GHOST = {x0:2, x1:67, y0:20, y1:47};   // the ghost train building: the top of the map
 FUN_ROOMS.forEach(r => { r.zone = r.part !== undefined ? 'ghost' : 'fun'; r.journey = 'stairs'; r.host = 'Captain'; });
 // each room's goal on a flat wall sign (short, a 7-year-old's words)
-const FUN_SIGN = {301:'Prize: a duck AND the Captain NOT looking.', 302:'Each boat lights its OWN lamp. BIG lamp: EITHER boat.', 303:'PLAY! What does the lever do to the haunted lamp?', 304:'Make the lights flash ALL BY THEMSELVES.',
-  305:'The MIRROR lamp does the OPPOSITE of the real one.', 306:'FISH, CHIPS, FISH, CHIPS: the lamps take turns.', 307:'The lighthouse flashes by itself. Build it all!', 308:'PLAY! Plate on, plate off. Does it REMEMBER?',
+const FUN_SIGN = {301:'Prize: a duck AND the Captain NOT looking.', 302:'Each boat lights its OWN lamp. BIG lamp: EITHER boat.', 303:'PLAY! What does the lever do? Watch the haunted lamp!', 304:'Make the lights flash ALL BY THEMSELVES.',
+  305:'MIRROR lamp: the OPPOSITE of the real one.', 306:'FISH, CHIPS, FISH, CHIPS: the lamps take turns.', 307:'The lighthouse flashes by itself. Build it all!', 308:'PLAY! Plate on, plate off. Does it REMEMBER?',
   309:'The bell lamp STAYS on. Only the button resets it.', 310:'EITHER plate sets the alarm. It STAYS on.', 311:'PLAY! ONE press. Count the dings!', 312:'ONE press. The bell rings TWICE.',
-  313:'Get the cart to the END. Why does it stop?', 314:'Doors open: cart here AND ghost NOT in the way.', 315:'Skeletons flash only while the RIDE lever is ON.', 316:'Bats, THEN coffin, THEN BOO. One button.',
+  313:'Get the cart to the END. Why does it stop?', 314:'Doors open: cart here AND ghost NOT in the way.', 315:'RIDE lever ON: the skeletons flash. OFF: dark.', 316:'Bats, THEN coffin, THEN BOO. One button.',
   317:'EITHER target switches the points. Neither: TREASURE.', 318:'The score board REMEMBERS the cart went by.', 319:'Plank OUT. Someone on the plate: plank IN.', 320:'One lever: wheel, carousel, bell, BOO. In ORDER.'};
 // pier materials (wall kinds 10..13): pirate-trouser stripes (red, navy), crates, and old dark pier timber (kind 13 used to be moon rock)
 CV.stripeR = cv16(g => { for (let x = 0; x < 16; x++){ g.fillStyle = (x >> 2) % 2 ? '#f2ece0' : '#c8281c'; g.fillRect(x, 0, 1, 16); } g.fillStyle = 'rgba(0,0,0,.12)'; g.fillRect(0, 15, 16, 1); g.fillStyle = '#5a3c18'; g.fillRect(7, 6, 2, 2); });   // (a patch)
@@ -5903,7 +5942,7 @@ function apeBeatsFrame(){
 }
 // ---- each room's goal on a flat sign on the wall you face as you walk in (one canvas for all 19, merged into one mesh) ----
 const APE_SIGN = {201:'PLAY! Try every mix of the two levers. When is the light ON?', 202:'Light ON only when NOBODY pulls a lever. One lever needs a wire.', 203:'Light ON only when NEITHER lever is on. Build it all!',
-  204:'PLAY! Try every mix of the two keys. What turns the LOCKED light off?', 205:'LOCKED light stays on until BOTH keys are on. Finish it!', 206:'The General\'s safe: LOCKED unless BOTH keys are on. Build it all!',
+  204:'PLAY! Try every mix of the two keys. What turns the LOCKED light off?', 205:'LOCKED light: ON until BOTH keys are on. Finish it!', 206:'The General\'s safe: LOCKED unless BOTH keys are on. Build it all!',
   207:'PLAY! Two switches, one light. What flips it?', 208:'Light ON when exactly ONE lever is on. One half needs a torch!', 209:'The door light: ON with exactly ONE key. Join up the wires!',
   210:'PASS: a stamp OR a banana... but NOT if the General is looking.', 211:'PASS: stamp AND banana. OR the King says so.',
   212:'Get the cart to the END. Gold rails: power ON = GO, OFF = STOP.', 213:'The bell rings when the cart ARRIVES. Two bits of track are missing.', 214:'Send the cart to the CRYSTALS, not the SLIME.',
@@ -6251,6 +6290,12 @@ function setupRoomCells(save, wallKindOf){
   });
   if (cellsOk) ROOMS.forEach(r => r.fixed.forEach(f => { if (f.t === 'lever' && save.levers && (f.x+','+f.y) in save.levers){ const c = at(f.x, f.y); if (c) c.on = !!save.levers[f.x+','+f.y]; } }));
 }
+// the temple's rooms you climb up into on vines: their doorway's two side cells (a low wall) and the way out of the room
+function ladderTops(){
+  if (ROOMS !== TEMPLE_ROOMS) return [];
+  return ROOMS.filter((r, i) => i > 0 && JOURNEY[ROOMS[i - 1].id] === 'ladder').map(r => { const b = r.box, [ex, ey] = r.entry, out = ey === b.y1 ? [0, 1] : ey === b.y0 ? [0, -1] : ex === b.x0 ? [-1, 0] : [1, 0];
+    return {r, out, side:doorSpan(r.entry, b).filter(([x, y]) => x !== ex || y !== ey)}; });
+}
 function buildTemple(save){
   setWorld(ADV_W, ADV_H, 'adventure');
   clearWorld();
@@ -6297,6 +6342,10 @@ function buildTemple(save){
   }
   function ZK_zone(e){ return 0; }
   ROOMS.forEach((r, i) => { const nx = ROOMS[i+1]; doorSpan(r.entry, r.box).forEach(([x, y]) => setWall(x, y, 0)); if (nx) journey(r.exit || r.toilet, nx.entry, r.elev, nx.elev, JOURNEY[r.id]); });
+  // rooms you climb up into on vines (9, 21): their doorway is the top of a drop. A low wall across it with a gap only over the middle
+  // vine, so you can't step off the edge by mistake (cold-return testers fell back into the room below and worked on ITS wires); the
+  // vines are only in that gap, and a sign over it says it's the way out (ladderTopSigns)
+  ladderTops().forEach(({r, side, out}) => { side.forEach(([x, y]) => { setWall(x, y, 1, ZK[ZONE_OF(r.id)][4]); const i = I(x + out[0], y + out[1]); if (inb(x + out[0], y + out[1])) S.ladder[i] = 0; }); });
   journey([ENTRANCE[0], HUB.y0], ENTRANCE, 0, ROOM_ELEV[1], 'grand');
   buildPlazaSecrets();
   const last = ROOMS[ROOMS.length - 1]; journey(last.exit, HALL_DOOR, last.elev, HALL_ELEV, 'stairs'); doorSpan(HALL_DOOR, HALL).forEach(([x, y]) => setWall(x, y, 0));
@@ -6647,6 +6696,7 @@ function guideFollow(dt){
 // ---- Barold runs AHEAD into each room, waits by the door chatting, and runs on when the room is done (playtest round 2: he was always behind you) ----
 // he only ever walks or runs along a real path: never through walls, never into the chasm or onto blocks, never pops from place to place
 const RUN_ON = ['A GREAT GROUP EFFORT! Next room!', 'I DID IT! ...WE did it. Come on!', 'Another one for my scrapbook! This way!', 'Brilliant! Race you to the next door!', 'Done! I\'ll go first. In case of traps. Brave, me.', 'Ta-daa! Follow me! I know the way. Probably.', 'Teamwork! That\'s when you do the work and I do the cheering.', 'Nailed it! Onwards and upwards!'];
+const WAIT_NEXT = ['Over here, in the NEXT room!', 'Come on! The next room is over here!'];   // (you're in a finished room: never "in here")
 const WAIT_IN = ['In here! This is the next room!', 'Yoo-hoo! Over here, by the door!', 'Come on! I\'ve been waiting for AGES. Well, a few seconds.', 'This way! I checked it for traps. With my eyes shut.'];
 // a free cell just inside a room, beside its door (not in the doorway, not where you need to build)
 function leadSpot(r){
@@ -6687,7 +6737,11 @@ function guideLead(dt, m, u, d, mx, my, px, py){
   u.follow = false; u.path = null; u.target = null; u.run = 0; u.leadFor = T.id;
   m.rotation.y = Math.atan2(P.x - m.position.x, P.z - m.position.z);
   u.waitT = (u.waitT || 0) + dt; u.idleT = cur === T ? 0 : (u.idleT || 0) + dt;
-  if (cur !== T && d > 6 && d < 30 && u.waitT > 12000 && !u.bubble && !DLG.on){ u.waitT = 0; monkeySay(bag('waitIn', WAIT_IN), 3500); }
+  // "In here! This is the next room!" only when you can SEE him in the next room and you're not in a room yourself: said while you stood in
+  // a finished room (or he was out of sight), "in here" read as YOUR room (cold-return tester c06 in room 20). From a finished room he
+  // says it's the NEXT room.
+  if (cur !== T && d > 6 && d < 30 && u.waitT > 12000 && !u.bubble && !DLG.on){ u.waitT = 0;
+    if (seenAt(m.position.x, m.position.z) && roomOf(mx, my) === T){ if (!cur) monkeySay(bag('waitIn', WAIT_IN), 3500); else if (A.solved.has(cur.id)) monkeySay(bag('waitNext', WAIT_NEXT), 3500); } }
   return true;
 }
 /* ---- Barold co-op moments (rooms 18 and 19): he stands on a plate for you, and steps OFF it, which you have to cope with ----
@@ -7803,20 +7857,21 @@ function openGrownups(){
 /* ==== QA: coming back to a room (docs/reading-audit-plan.md, docs/wip-qa-cold.md) ====
    "Where was I?": after a break (a few minutes with no input, the page hidden and shown again, or a reload / Continue into a room you'd
    started), a short card says what the room wants, what's done, and what's next or wrong, worked out from the room as it is NOW (its
-   parts, its outputs, its check's progress). Every line is short (10 words or fewer) and literal. Tap the goal panel to see it again.
+   parts, its outputs, its check's progress). Every line is short (8 words or fewer: RECAP_MAX) and literal. Tap the goal panel to see it again.
    Also here: Reset this room (a clean restart of just this room, the same as a fresh load of it: nothing can get stuck). */
 const RECAP = {due:null, dueAt:0, hiddenAt:0, lastInput:performance.now(), GAP:180000, LOAD_MS:20000, shownN:0, last:null};
 const recapNow = () => performance.now() + (RECAP.skew || 0);   // (tests move the clock on with __game.recap.idle)
-const recapWords = s => String(s).trim().split(/\s+/).filter(w => /[A-Za-z0-9]/.test(w)).length;
+const recapWords = s => String(s).trim().split(/\s+/).filter(w => /[A-Za-z0-9=+&]/.test(w)).length;   // ("=" is read out as a word too)
 // split text into lines of at most `max` words: sentences first, then clauses (after : ; , or before and/but/then), then plain chunks;
 // short neighbours are joined back up while they fit
+const RECAP_CHOPPED = [], RECAP_MAX = 8;   // a card line is 8 words or fewer: an early reader reads up to 8 (Tom, after the cold-return audit)
 function recapSplit(text, max){
   max = max || 10; const bits = [];
   (String(text || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').match(/[^.!?]+[.!?]*["')]*/g) || []).forEach(s => { s = s.trim(); if (!s) return;
     if (recapWords(s) <= max){ bits.push(s); return; }
     s.split(/(?<=[:;,])\s+|\s+(?=(?:and|but|then|THEN|or|so) )/).forEach(c => { c = c.trim(); if (!c) return;
       if (recapWords(c) <= max){ bits.push(c); return; }
-      const w = c.split(/\s+/); for (let i = 0; i < w.length; i += max) bits.push(w.slice(i, i + max).join(' ')); }); });
+      const w = c.split(/\s+/); RECAP_CHOPPED.push(c); for (let i = 0; i < w.length; i += max) bits.push(w.slice(i, i + max).join(' ')); }); });   // (a sentence with no place to break: a test lists these, so the card never shows a chopped one)
   const out = []; bits.forEach(b => { const k = out.length - 1; if (k >= 0 && recapWords(out[k] + ' ' + b) <= max) out[k] += ' ' + b; else out.push(b); });
   return out;
 }
@@ -7891,10 +7946,10 @@ function recapWrong(r, rt){
     if (f) return `The ${recapName(f.t).toLowerCase()} faces the wrong way.`;
     // a torch standing on the floor where the answer's torch hangs on a block's side (c17 clicked the floor twice)
     const t = (r.sol || []).find(g => g.t === 'torch' && 'attach' in g && g.attach >= 0 && (c => c && !c.locked && c.t === 'torch' && c.attach !== g.attach)(at(g.x, g.y)));
-    if (t) return 'That torch must hang on the side of a block.'; }
+    if (t) return 'That torch must hang on a block\'s side.'; }
   const own = ownPowerIn(r); if (own) return `Your own ${recapName(own.t)} doesn't count here. Take it away.`;
   const wire = ['lit', 'pulse', 'boom', 'coop', 'together', 'each', 'pen', 'launch'].includes(r.check);
-  if (wire){ const past = alongsideOut(r) || recapPastOut(r); if (past){ const w = recapOutWord(past.t), t = `A wire runs PAST the ${w}. Point its END in.`; return recapWords(t) <= 10 ? t : `A wire runs PAST the ${w}. Point it IN.`; } }
+  if (wire){ const past = alongsideOut(r) || recapPastOut(r); if (past){ const w = recapOutWord(past.t), t = `A wire runs PAST the ${w}. Point its END in.`; return recapWords(t) <= 8 ? t : `A wire runs PAST the ${w}. Point it IN.`; } }
   if (wire && A.act === 1 && ranOutIn(r)) return 'The wire is too long. The power runs out.';
   if (typeof burntIn === 'function' && burntIn(r.box)) return 'A torch burnt out! That loop flips too fast.';
   if (!r.direct && r.check === 'lit' && r.out.some(([x, y]) => outLit(x, y) && shortcutAt(x, y))) return 'Power is jammed right next to it. Use a wire.';
@@ -7905,7 +7960,7 @@ function recapWrong(r, rt){
 function recapFor(r){
   const rt = A.rt && A.rt.room === r ? A.rt : {}, word = r.zone === 'fun' || r.zone === 'ghost' ? 'ride' : 'room';
   const head = r.name;
-  const goal = recapSplit(roomSignText(r) || (String(r.goal || "").match(/[^.!?]+[.!?]*/) || [''])[0], 10).slice(0, 3);
+  const goal = recapSplit(roomSignText(r) || (String(r.goal || "").match(/[^.!?]+[.!?]*/) || [''])[0], RECAP_MAX).slice(0, 4);
   const done = [], built = recapBuilt(r), need = (r.sol || []).filter(g => g.t !== 'air').length;
   let next = '', wrong = '', tried = false;
   if (A.solved.has(r.id)) return {head, goal, done:[`You finished this ${word}!`], wrong:'', next:`Follow the glowing trail to the next ${word}.`};
@@ -7932,7 +7987,7 @@ function recapFor(r){
     // which of the two jobs is done (the gate open, the banana machine firing): the card says which one is still missing
     const isT = t => (r.out || []).filter(([x, y]) => { const c = at(x, y); return c && c.t === t; }), gateOn = isT('gate').some(([x, y]) => outLit(x, y)), fireOn = isT('dispenser').some(([x, y]) => outLit(x, y));
     if (gateOn) done.push('The gate is open.'); if (fireOn) done.push('The banana machine is firing.');
-    next = n >= all ? 'Now shut the gate!' : gateOn && fireOn ? 'Wait for a tamarin to go into the pen.' : fireOn ? 'The gate is SHUT. Get power INTO the gate too.' : gateOn ? 'Now get power INTO the banana machine too.'
+    next = n >= all ? 'Now shut the gate!' : gateOn && fireOn ? 'Wait for a tamarin to go in.' : fireOn ? 'The gate is SHUT. Get power INTO the gate too.' : gateOn ? 'Now get power INTO the banana machine too.'
       : 'Wire the lever to the gate. Wire it to the banana machine too.';   // (sentences of 8 words or fewer: the retest's early reader couldn't read a 9-word line)
   } else if (ck === 'launch'){ const n = Math.min(rt.launches || 0, r.launches); if (n){ tried = true; done.push(`Launches: ${n} of ${r.launches}.`); } next = 'Make the Bounce Pad fire by itself.';
   } else if (ck === 'table'){
@@ -7961,7 +8016,7 @@ function recapFor(r){
     // Stop That Cart!: what the platform rail is doing now, the room's whole rule (testers c10-c12 never learnt it from the card)
     if (ck === 'stopgo' && r.platformAt){ const pc = at(...r.platformAt);
       if (rt.stopped) next = 'Now give the platform rail power. Then tap the cart.';
-      else if (pc && pc.t === 'prail' && pc.lit){ done.push('The platform rail has power: the cart zooms past.'); next = 'A gold rail with NO power is a brake. Break the gold rails beside it.'; }   // (the retest: "Cut its power" didn't say how)
+      else if (pc && pc.t === 'prail' && pc.lit){ done.push('The platform rail has power: the cart zooms past.'); next = 'With NO power, a gold rail is a brake. Break the gold rails beside it.'; }   // (the retest: "Cut its power" didn't say how)
       else if (pc && pc.t === 'prail'){ done.push('The platform rail has no power. It is a brake!'); }
       else if (pc){ wrong = 'The platform rail must be GOLD, with no power.'; } }
   } else if (MAYA_CHECKS.has(ck)){
@@ -7977,29 +8032,29 @@ function recapFor(r){
     else if (ck === 'secret'){ const ph = rt.ph || 0; if (ph){ tried = true; done.push(ph >= 2 ? 'Lever ON: it opened.' : 'Lever OFF: the gap is shut.'); } next = ph >= 2 ? 'Now flip the secret lever OFF. It must shut.' : ph ? 'Flip the secret lever ON. It must open.' : 'Lever OFF: the gap must be SHUT.'; }
     else if (ck === 'trap'){ if (rt.wasIn){ tried = true; done.push('Gloop hopped into the pen.'); } next = rt.wasIn ? 'Shut the gate behind Gloop. Keep it shut.' : 'Wait for Gloop to hop in. Then shut the gate.'; }
     else if (ck === 'farm'){ const n = Math.max(0, uniPicksIn(r) - (rt.p0 || 0)); if (n){ tried = true; done.push(`Pumpkins picked: ${Math.min(3, n)} of 3.`); } next = 'A piston must pick each pumpkin. No hands!'; }
-    else if (ck === 'lift'){ next = 'Put the right block at the bottom of the tube.'; }
-    else if (ck === 'fly'){ if (rt.flew){ tried = true; done.push('It moved by itself!'); } next = rt.flew ? 'It must fly all the way to the gold line.' : 'Start it: put a block in front of the observer.'; }
+    else if (ck === 'lift'){ next = 'Put the right block at the tube\'s bottom.'; }
+    else if (ck === 'fly'){ if (rt.flew){ tried = true; done.push('It moved by itself!'); } next = rt.flew ? 'It must fly to the gold line.' : 'Start it: put a block in front of the observer.'; }
     else if (ck === 'cannon'){ if (rt.last){ tried = true; done.push('You fired it once.'); } next = 'Press FIRE. The BACK TNT must go first.'; }
     else if (ck === 'dingdong'){ if (rt.last){ tried = true; done.push('You pressed the doorbell.'); } next = 'Press the doorbell. DING... then DONG.'; }
   } else next = 'Try it, then watch what happens.';
   if (!built.added && !built.removed && !tried) done.unshift(r.play || !need ? 'Nothing tried yet.' : need > 2 && need <= 30 ? `Nothing built yet. It needs about ${need} parts.` : 'Nothing built yet.');
   if (/faces the wrong way/.test(wrong)) next = /repeater/.test(wrong) ? 'Break it. Stand behind it and look along the wire.' : /observer|piston/.test(wrong) ? 'Break it. Stand where its face should look.' : 'Break it. Put it back from another side.';   // (c30: "which side?")
-  else if (/hang on the side/.test(wrong)) next = 'Break it. Then click the SIDE of the block.';
+  else if (/hang on a block/.test(wrong)) next = 'Break it. Then click the SIDE of the block.';
   else if (/burnt out/.test(wrong)){ let rep = false; const b = r.box; for (let x = b.x0 + 1; x < b.x1 && !rep; x++) for (let y = b.y0 + 1; y < b.y1; y++){ const c = at(x, y); if (c && c.t === 'repeater'){ rep = true; break; } }
     next = rep ? 'Tap the repeater to make it slower.' : 'Put a slow repeater in the loop.'; }   // (c15 read "flips too fast" and made the loop longer)
   else if (wrong) next = next && !/^(Fix|Build)/.test(next) ? 'Fix that first. Then ' + next[0].toLowerCase() + next.slice(1) : next;
-  if (typeof unfound === 'function' && unfound(r).length){ wrong = ''; next = 'First walk over the glowing part to pick it up.'; }   // (a part you haven't found yet: that comes first)
+  if (typeof unfound === 'function' && unfound(r).length){ wrong = ''; next = 'First walk over the glowing part. That picks it up.'; }   // (a part you haven't found yet: that comes first)
   return {head, goal, done, wrong, next};
 }
 // every line on the card (a test checks them all: short, literal)
-const recapAllLines = c => [c.head, ...c.goal, ...c.done, c.wrong, ...recapSplit(c.next, 10)].filter(Boolean);
+const recapAllLines = c => [c.head, ...c.goal, ...[].concat(...c.done.map(t => recapSplit(t, RECAP_MAX))), ...recapSplit(c.wrong, RECAP_MAX), ...recapSplit(c.next, RECAP_MAX)].filter(Boolean);
 function recapHTML(c){
   const L2 = (cls, ico, txt) => `<div class="rcLine ${cls}"><span class="rcIco" aria-hidden="true">${ico}</span><span>${escH(txt)}</span></div>`;
   return `<div class="recap"><div class="rcHead">${escH(c.head)}</div>`
     + `<div class="rcLbl">The goal</div>${c.goal.map(t => L2('rcGoal', '&#9733;', t)).join('')}`
-    + `<div class="rcLbl">Done</div>${c.done.map(t => /^Nothing/.test(t) ? L2('rcNone', '&#8226;', t) : L2('rcDone', '&#10003;', t)).join('')}`
-    + (c.wrong ? `<div class="rcLbl">Oops</div>${L2('rcWrong', '&#10007;', c.wrong)}` : '')
-    + `<div class="rcLbl">Next</div>${recapSplit(c.next, 10).map(t => L2('rcNext', '&#10140;', t)).join('')}</div>`;
+    + `<div class="rcLbl">Done</div>${c.done.map(t => recapSplit(t, RECAP_MAX).map((u, i) => /^Nothing/.test(t) ? L2('rcNone', i ? '' : '&#8226;', u) : L2('rcDone', i ? '' : '&#10003;', u)).join('')).join('')}`
+    + (c.wrong ? `<div class="rcLbl">Oops</div>${recapSplit(c.wrong, RECAP_MAX).map((u, i) => L2('rcWrong', i ? '' : '&#10007;', u)).join('')}` : '')
+    + `<div class="rcLbl">Next</div>${recapSplit(c.next, RECAP_MAX).map((u, i) => L2('rcNext', i ? '' : '&#10140;', u)).join('')}</div>`;
 }
 function recapShow(why){
   const r = A.rt && A.rt.room; if (!r || r.heart) return false;
@@ -8012,12 +8067,13 @@ function recapShow(why){
 // sat over the Next line on a short screen, and nobody scrolls)
 function recapFit(){ const w = $('#why'), rc = w.querySelector('.recap'); if (w.hidden || !rc) return; rc.classList.remove('rcTight'); if (typeof fitCard === 'function') fitCard();
   if (w.scrollHeight > w.clientHeight + 2){ rc.classList.add('rcTight'); if (typeof fitCard === 'function') fitCard(); } }
-// ...and the room's own switches and outputs get name tags for a little while (LEVER, LAMP...), seen through walls: a child coming
-// back doesn't remember where the lever was, or that the dark box under the lightning bolt IS the lamp (cold-return testers c01-c04)
+// ...and the room's own switches and outputs get name tags (LEVER, LAMP...), seen through walls: a child coming back doesn't remember
+// where the lever was, or that the dark box under the lightning bolt IS the lamp (cold-return testers c01-c04). Since Tom's decision
+// after the audit they are up the whole time you're in an unsolved room (recapFrame), not only with the card.
 const RECAP_TAG_IN = new Set(['lever', 'button', 'plate']), RECAP_TAG_OUT = new Set(['lamp', 'door', 'gate', 'dispenser', 'tnt', 'fart', 'firework', 'disco', 'bridge', 'launcher', 'note', 'idoor']);
-function recapTagsDrop(){ (RECAP.tags || []).forEach(t => { decorRoot.remove(t); t.material.map.dispose(); t.material.dispose(); }); RECAP.tags = []; RECAP.tagT = 0; }
+function recapTagsDrop(){ (RECAP.tags || []).forEach(t => { decorRoot.remove(t); t.material.map.dispose(); t.material.dispose(); }); RECAP.tags = []; }
 function recapTags(r){
-  recapTagsDrop(); if (A.solved.has(r.id)) return;
+  recapTagsDrop(); RECAP.tagRoom = r.id; if (A.solved.has(r.id)) return;
   const named = new Set(((r.troop && r.troop.labels) || []).map(([, x, y]) => x + ',' + y)), seen = new Set();
   const tag = (x, y, word, high) => { const k = x + ',' + y; if (named.has(k) || seen.has(k)) return; seen.add(k);
     const sp = textSprite(word.toUpperCase(), {w:150, fs:34, bg:'#fff6c8', ink:'#3a2a10', scale:1.15}), p = cellPos(x, y);
@@ -8031,7 +8087,6 @@ function recapTags(r){
   // University classrooms keep their switch and their door in their own fields (c25 never found 504's book lever or its gap)
   if (r.leverAtW){ const c = at(...r.leverAtW); if (c && RECAP_TAG_IN.has(c.t)) tag(...r.leverAtW, c.label ? c.label.toLowerCase() : recapName(c.t)); }
   if (r.doorAtW) tag(...r.doorAtW, r.check === 'secret' ? 'the gap' : 'door', true);
-  RECAP.tagT = 1e9; RECAP.tagRoom = r.id;   // shown from the card on, until you leave the room or finish it
 }
 // is now a calm moment? (no card, no talk box, no cutscene, no tutorial, no ride, no menu)
 function recapCalm(){
@@ -8047,7 +8102,12 @@ function recapFrame(dt){
   const now = recapNow();
   { const gb = $('#goalBox'), inR = !!(A.on && A.rt && A.rt.room && !A.rt.heart); if (gb.classList.contains('inRoom') !== inR) gb.classList.toggle('inRoom', inR); }
   if (A.on && P && (Math.abs(P.x - (RECAP.px || 0)) + Math.abs(P.z - (RECAP.pz || 0)) > .05)){ if (RECAP.px !== undefined && !A.freeze && !CINE.on) recapInput(); RECAP.px = P.x; RECAP.pz = P.z; }
-  if (RECAP.tags && RECAP.tags.length){ const r0 = A.rt && A.rt.room; RECAP.tags.forEach(t => { t.visible = viewFP; }); if (!r0 || r0.id !== RECAP.tagRoom || A.solved.has(r0.id)) recapTagsDrop(); else if ($('#why').hidden && (RECAP.tagT -= dt) <= 0) recapTagsDrop(); }
+  // the room's name tags are ALWAYS up while you're inside an unsolved room (Tom, after the cold-return audit: Max looks at the floor,
+  // the tags help him find the lever, the lamp, the gate); gone in the sky View, once the room is solved, and when you leave
+  { const r0 = A.rt && A.rt.room, want = A.on && r0 && !r0.heart && !r0.ship && !A.solved.has(r0.id) ? r0.id : null;
+    if (want !== RECAP.tagRoom || (RECAP.tags || []).some(t => !t.parent)){ recapTagsDrop(); RECAP.tagRoom = null; if (want) recapTags(r0); }
+    (RECAP.tags || []).forEach(t => { t.visible = viewFP; }); }
+  uniStandFrame();   // (the glowing "stand here" square: every act)
   if (!RECAP.due) return;
   const r = A.rt && A.rt.room, late = now - RECAP.dueAt;
   if (RECAP.due === 'load'){
@@ -9050,9 +9110,9 @@ const ROOM_DECOR = {
     props:[['pegs'], ['picture', 'foot'], ['poster', 'WIPE YOUR FEET!'], ['boots'], ['keys']]},
   2:{who:'giant', use:'the giants\' sitting room', ceil:8, sign:'ONE red block. Wake up all FOUR things!',
     props:[['fireplace'], ['clock'], ['picture', 'bananas'], ['shelf', 'books'], ['picture', 'planet']]},
-  3:{who:'giant', use:'the giants\' kitchen', ceil:8, sign:'Run dust from the red block all the way to the DOOR!',
+  3:{who:'giant', use:'the giants\' kitchen', ceil:8, sign:'Start at the red block. Run dust ALL the way to the DOOR!',
     props:[['shelf', 'jars'], ['spoon'], ['poster', 'BANANA JAM. Do NOT eat it all.'], ['pans']]},
-  4:{who:'work', use:'the wire workshop', ceil:5, sign:'Make the END of the wire point INTO the lamp!',
+  4:{who:'work', use:'the wire workshop', ceil:5, sign:'The wire\'s END must point INTO the lamp!',
     props:[['pipes'], ['spools'], ['gauge'], ['poster', 'WIRES: the end goes IN.'], ['picture', 'plan']]},
   5:{who:'small', use:'the little ones\' clubhouse', ceil:4, sign:'Make the cushion go PARP two times!',
     props:[['tinydoor'], ['tinydoor'], ['bunting'], ['tinyshelf', 'cushions'], ['poster', 'LITTLE ONES ONLY'], ['tinydoor']]},
@@ -9068,9 +9128,9 @@ const ROOM_DECOR = {
     props:[['crates'], ['poster', 'FRAGILE: BANANAS'], ['gauge'], ['crates']]},
   11:{who:'giant', use:'the giants\' roof theatre', ceil:0, sign:'ONE button. All three fireworks at the SAME time!',
     props:[['curtains'], ['bunting'], ['poster', 'SHOW TONIGHT! Bring your own banana.'], ['spots']]},
-  12:{who:'giant', use:'the giants\' ballroom', ceil:7, sign:'Wire ALL FOUR dance plates to the disco ball!',
+  12:{who:'giant', use:'the giants\' ballroom', ceil:7, sign:'Wire ALL FOUR plates to the disco ball!',
     props:[['speakers'], ['record'], ['bunting'], ['speakers'], ['poster', 'DANCE FLOOR. No sitting down.']]},
-  13:{who:'work', use:'the torch store', sign:'Wake the lamp AND the cushion with ONE torch!',
+  13:{who:'work', use:'the torch store', sign:'Wake the lamp AND cushion with ONE torch!',
     props:[['torchrack'], ['shelf', 'crates'], ['poster', 'SPARE TORCHES. Do not lick.'], ['torchrack']]},
   14:{who:'small', use:'the little ones\' bedroom', sign:'Flip the lever. Watch the torch... and the lamp!',
     props:[['bunks'], ['tinydoor'], ['poster', 'SHHH! Torches sleeping.'], ['bunks']]},
@@ -9084,7 +9144,7 @@ const ROOM_DECOR = {
     props:[['pipes'], ['hopper'], ['gauge'], ['poster', 'SAND TANK. Do NOT paddle.']]},
   19:{who:'small', use:'the little ones\' bouncy gym (open roof: mind your head)', ceil:0, sign:'Barold steps OFF his plate: the pad flings you over!',
     props:[['bunting'], ['poster', 'NO BOUNCING. (Bounce anyway.)'], ['tinydoor'], ['tinyshelf', 'bowls']]},
-  20:{who:'work', use:'the measuring room', sign:'Light the lamp at the very END of the wire!',
+  20:{who:'work', use:'the measuring room', sign:'Light the lamp at the wire\'s very END!',
     props:[['ruler'], ['gauge'], ['poster', 'POWER GOES 15 STEPS. Then it gets tired.']]},
   21:{who:'work', use:'the top deck', ceil:0, sign:'Make the lever switch the lamp, the long way round!',
     props:[['flags'], ['telescope'], ['spools']]},
@@ -9434,6 +9494,8 @@ function buildDecor(){
   });
   A.bolts = [];
   ROOMS.forEach(r => { if (A.solved.has(r.id)) addRoomMonkey(r); });
+  // over the gap at the top of the vines (rooms 9, 21): the way out is DOWN (c03 backed down room 9's vines without knowing they were the door)
+  ladderTops().forEach(({r}) => { const p = cellPos(...r.entry), sg = textSprite('WAY OUT: down the vines', {w:300, fs:26, bg:'#e8d8a8', ink:'#3a2a10', scale:1.2, depth:true}); sg.position.set(p.x, p.y + 1.5, p.z); sg.userData.ladderTop = r.id; decorRoot.add(sg); });
   // entrance sign
   { const p = cellPos(...ENTRANCE), plate = new THREE.Group(), back = new THREE.Mesh(cbox(6.5, 1.6, .12), M.gold); back.raycast = () => {}; plate.add(back);   // a gold name plate fixed flat to the gatehouse (it used to float in the air)
     const f = artPlane('wall:name', 6.2, 1.36); f.position.z = .065; plate.add(f); plate.position.set(p.x, p.y + 6.2, p.z + .88); decorRoot.add(plate); }
@@ -10015,9 +10077,9 @@ function hostWalkFrame(dt){
     if (u.arms && !reduceMotion){ u.arms[0].rotation.x = Math.sin(w.ph)*.5; u.arms[1].rotation.x = -Math.sin(w.ph)*.5; }
   }
 }
-// the sky view in Acts 3-5: a YOU marker over your head (sweep 2 C4: "rooms from the sky, but not me")
+// the sky view (every act): a YOU marker over your head (sweep 2 C4: "rooms from the sky, but not me")
 function youMarkFrame(){
-  const on = A.on && A.act >= FUN_ACT && !inFP() && !!L && !$('#hud').hidden && S.mode === 'adventure';
+  const on = A.on && !inFP() && !!L && !$('#hud').hidden && S.mode === 'adventure';
   if (!on){ if (A.youMark) A.youMark.visible = false; return; }
   if (!A.youMark){ A.youMark = textSprite('YOU', {w:90, fs:34, scale:2.2, tail:true}); A.youMark.material.depthTest = false; A.youMark.material.sizeAttenuation = false; A.youMark.userData.k = .07/A.youMark.scale.y; A.youMark.scale.multiplyScalar(A.youMark.userData.k);   // (the same size on screen, however far out the view is)
     A.youMark.renderOrder = 998; A.youMark.userData.youMark = true; world.add(A.youMark); }   // (on the world, not labelRoot: a level build frees labelRoot's children)
@@ -10025,7 +10087,7 @@ function youMarkFrame(){
 }
 function objectiveFrame(dt){
   beamTurnArm();
-  const c = S.mode === 'adventure' && (inFP() || (A.act >= FUN_ACT && L && !$('#hud').hidden)) ? objectiveCell() : null, el = $('#objArrow');   // (Acts 3-5: the beam shows in the sky view too: the landmark)
+  const c = S.mode === 'adventure' && (inFP() || (L && !$('#hud').hidden)) ? objectiveCell() : null, el = $('#objArrow');   // (the beam shows in the sky view too: the landmark)
   youMarkFrame();
   if (!A.beacon){ const g = new THREE.Group(), mat = new THREE.MeshBasicMaterial({color:0xffe27a, transparent:true, opacity:.22, depthWrite:false, blending:THREE.AdditiveBlending}); const col = new THREE.Mesh(cbox(.9, 60, .9), mat); col.position.y = 30; g.add(col); const core = new THREE.Mesh(cbox(.35, 60, .35), mat); core.position.y = 30; g.add(core); g.add(glow(M.glowGold, 2.2, 1.2)); g.traverse(o => o.raycast = () => {}); A.beacon = g; }
   if (!c){ if (A.beacon.parent) decorRoot.remove(A.beacon); if (el) el.hidden = true; if (A.wf && A.wf.crumbs.length){ A.wf.crumbs.forEach(m => decorRoot.remove(m)); A.wf.crumbs = []; A.wf.t = 0; } return; }
@@ -10671,7 +10733,7 @@ function enterArea(r, where){
   advSaveSoon();   // autosave on the way between rooms
   { const pr = A.rt && A.rt.room;   // walked OUT of a room you were busy in, without finishing it (cold-return testers backed out by mistake and didn't notice)
     if (pr && pr !== r && ROOMS.includes(pr) && !pr.ship && !A.solved.has(pr.id) && !A.freeze && (recapBuilt(pr).added || (A.clock || 0) - (A.rt.inAt || 0) > 15000))
-      showToast(`You walked out of ${pr.name}! Its door is behind you.`); }
+      showToast(`You walked out of ${pr.name}${/[!?.]$/.test(pr.name) ? '' : '!'} ` + (ladderTops().some(q => q.r === pr) ? 'Climb the vines back up.' : 'Its door is behind you.')); }
   if (DLG.on && (DLG.why || (DLG.hello && !(r && r.id === DLG.hello)))) dlgCancel();   // walked out of a demo (or a ride's hello): stop it, give the view back
   if (r) zoneTitle(r.zone);
   if (r && r.zone === 'sky' && !A.flungDone && A.metBarold){ A.flungDone = true; setTimeout(catapultBarold, 2500); } else if (where === 'hall') zoneTitle('hall');
@@ -10687,7 +10749,7 @@ function enterArea(r, where){
     A.whyAt = demo || capHello ? {r, t:(A.clock || 0) + 900, hello:!demo} : null;
     A.rt = {room:r, inAt:A.clock || 0, tested:new Set(), rows:new Array(r.inputs ? 1 << r.inputs.length : 0).fill(false), pulses:0, prevOut:false, prevKey:null, tired:false};
     if (r.inputs) A.rt.prevKey = r.inputs.map(([x,y]) => { const c = at(x,y); return !!c && (c.on || c.timer > 0); }).join();
-    L.ghosts = []; L.hintLevel = 0; while (ghostRoot.children.length) ghostRoot.remove(ghostRoot.children[0]);
+    L.ghosts = []; L.hintLevel = 0; L.hintGhostKey = null; while (ghostRoot.children.length) ghostRoot.remove(ghostRoot.children[0]);
     makeBolts(r);
     if (r.troop){ if (TROOP.room !== r) spawnTroop(r); } else if (TROOP.room) despawnTroop();
     setTimeout(() => plogEvent('enter'), 0);
@@ -10699,7 +10761,7 @@ function enterArea(r, where){
     goal.textContent = HEART.goal + (missing.length ? ` The Skull also wants all ${ROOMS.length} crystals: still to find in room${missing.length > 1 ? 's' : ''} ${missing.join(', ')}.` : '');
     if (!A.launched && !(A.rt && A.rt.room && A.rt.room.ship)){ monkeySay(HEART.hello, 10000); if (!A.sawReggie){ A.sawReggie = true; setTimeout(() => { if (A.on && A.room === 'hall' && !A.launching) monkeySay('Wait... is that HIM? Sir Reginald! Why is he wearing a... SPACESUIT?', 8000); }, 10500); } }   // (hello not again every time you come back out of a machine room)
     A.rt = {room:null, heart:true};
-    L.ghosts = []; L.hintLevel = 0; while (ghostRoot.children.length) ghostRoot.remove(ghostRoot.children[0]);
+    L.ghosts = []; L.hintLevel = 0; L.hintGhostKey = null; while (ghostRoot.children.length) ghostRoot.remove(ghostRoot.children[0]);
   } else {
     makeBolts(null);
     hubCard();
@@ -10778,7 +10840,7 @@ function whyFrame(dt){
     if (DLG.on && !DLG.hello) w.t = (A.clock || 0) + 500;   // someone's still talking: wait for them to finish
     else { A.whyAt = null; if (DLG.on) dlgEnd(); (w.hello ? captainHello : runWhy)(w.r); } }   // an old ride's hello just gives way
   const rt = A.rt;
-  if (rt && rt.demo && rt.demoEnd && (A.clock || 0) >= rt.demoEnd){ const r = rt.room; rt.demo = false; rt.demoEnd = 0; rt.rows = (rt.rows || []).map(() => false); rt.tested = new Set(); rt.obs = {}; rt.missShown = false; rt.prevKey = (r.inputs || []).map(([x, y]) => pressedAt(x, y)).join(); renderCard(); }
+  if (rt && rt.demo && rt.demoEnd && (A.clock || 0) >= rt.demoEnd){ const r = rt.room; rt.demo = false; rt.demoEnd = 0; rt.rows = (rt.rows || []).map(() => false); rt.tested = new Set(); rt.obs = {}; rt.bad = {}; rt.missShown = false; rt.prevKey = (r.inputs || []).map(([x, y]) => pressedAt(x, y)).join(); renderCard(); }
   if (A.whyGlow && !reduceMotion){ const k = 1.5 + .4*Math.sin(performance.now()*.008); A.whyGlow.scale.set(k, k, 1); }
   if (!A.lookTo || !DLG.on || !inFP()) return;
   const c = cellPos(A.lookTo[0], A.lookTo[1]), dx = c.x - P.x, dz = c.z - P.z, dist = Math.hypot(dx, dz);
@@ -10835,7 +10897,7 @@ function checkAdventure(){
   if (A.solved.has(r.id)){ checkBonus(r, rt); return; }
   { const own = ownPowerIn(r); if (own){
     // nothing counts while it's in: no rows, no pulses, no half-done tests
-    if (rt.rows) rt.rows = rt.rows.map(() => false); rt.tested = new Set(); rt.obs = {}; rt.pulses = 0; rt.calmSeen = rt.blinkSeen = false; rt.phase = 0; rt.armed = rt.armed2 = false; rt.t0 = undefined; rt.sig = undefined;
+    if (rt.rows) rt.rows = rt.rows.map(() => false); rt.tested = new Set(); rt.obs = {}; rt.bad = {}; rt.pulses = 0; rt.calmSeen = rt.blinkSeen = false; rt.phase = 0; rt.armed = rt.armed2 = false; rt.t0 = undefined; rt.sig = undefined;
     if (!rt.ownSaid){ rt.ownSaid = true; plogEvent('cheat'); sfx.nope(); monkeySay(ownPowerLine(r, own), 10000); renderCard(); }
     return; } }
   if (r.cartsAt && r.cartsAt.length) cartCheck(r, rt);   // the Crystal Mine's minecarts (the room may still be a table room: the Signal Box)
@@ -10986,9 +11048,15 @@ function checkAdventure(){
   } else if (r.check === 'seq'){
     checkSeq(r, rt);
   } else if (r.check === 'table'){
-    // every row has to come from the SAME circuit: change the build and the ticks start again
+    // every row has to come from the SAME circuit: change the build and a tick only stays if that mix still works with the new build
+    // (tried on a copy of the room: recapTableSim). Ticks used to all vanish on any change (c23: "losing my work"); when one goes, a
+    // toast says why. Rooms the copy can't try (plates, carts...) start again, and say so.
     { const sig = buildSig(r);
-      if (rt.sig !== undefined && sig !== rt.sig && rt.rows.some(Boolean)){ rt.rows = rt.rows.map(() => false); rt.obs = {}; rt.tested = new Set(); renderCard(); }
+      if (rt.sig !== undefined && sig !== rt.sig && (rt.rows.some(Boolean) || Object.keys(rt.bad || {}).length)){
+        const sim = rt.rows.some(Boolean) ? recapTableSim(r) : null, had = rt.rows.filter(Boolean).length;
+        rt.rows = rt.rows.map((v, i) => !!(v && sim && sim[i] && sim[i].ok)); rt.obs = {}; rt.bad = {}; rt.tested = new Set(); renderCard();
+        const lost = had - rt.rows.filter(Boolean).length;
+        if (lost && !S.simulating) showToast(sim ? `You changed the wires. ${lost === 1 ? 'One mix' : lost + ' mixes'} must be tested again.` : 'You changed the build. Test every mix again.'); }
       rt.sig = sig; }
     if (STABLE && r.out.some(([x,y]) => { const n = outLit(x,y) && shortcutAt(x, y); return n && n.t === 'rblock'; })){ if (!rt.cheatShown){ rt.cheatShown = true; plogEvent('cheat'); sfx.nope(); monkeySay(cheekyLine(r), 9000); } return; }
     const ins = r.inputs.map(([x,y]) => { const c = at(x,y); return !!c && (c.on || c.timer > 0); });
@@ -11002,6 +11070,7 @@ function checkAdventure(){
       if (!rt.rows[idx]){ rt.rows[idx] = true; sfx.row(); renderCard(); if (rt.rows.every(Boolean)) solveRoom(r); else monkeySay(r.inputs.length > 1 ? 'Yes! That one works. Try another mix of levers.' : ins.some(Boolean) ? 'Yes! Now try it the other way.' : 'Yes! Now flip it on again.', 4000); }
     }
     rt.obs = rt.obs || {}; rt.obs[idx] = got;
+    rt.bad = rt.bad || {}; if (!match && !rt.rows[idx] && !rt.bad[idx]){ rt.bad[idx] = true; renderCard(); } else if (match && rt.bad[idx]){ delete rt.bad[idx]; renderCard(); }   // (the red cross)
     if (rt.pendingTest){ rt.pendingTest = false; if (!match) plogEvent('wrong'); }
     if (!match && r.out.length === 1 && Object.keys(rt.obs).length === rt.rows.length && rt.rows.every((_, i) => rt.obs[i] === !r.fn(!!i)) && !rt.backShown){
       rt.backShown = true; rt.missShown = true; sfx.nope();
@@ -11837,7 +11906,7 @@ function advStart(given){
 }
 function stopAdventure(){ dlgCancel(true); if (A.youMark) A.youMark.visible = false; document.body.classList.remove("emptyHands"); if (A.openCine){ A.openCine = false; cineEnd(); }
   A.freeze = false; A.endSeq = null; A.countdown = null; $('#mapCard').hidden = true; despawnTroop(); musicSet(null); const ml = $('#mline'); if (ml) ml.hidden = true;
-  if (tut) { if (tut.marker) decorRoot.remove(tut.marker); tut = null; $('#tut').hidden = true; } if (A.on){ advSaveNow(); A.on = false; } $('#crystals').hidden = true; if (space.floor) setSpaceLevel(0); shake = 0; }
+  if (tut) { if (tut.marker) decorRoot.remove(tut.marker); tut = null; $('#tut').hidden = true; } if (A.on){ advSaveNow(); A.on = false; } recapTagsDrop(); RECAP.tagRoom = null; $('#crystals').hidden = true; if (space.floor) setSpaceLevel(0); shake = 0; }
 // Acts 3-5, between rooms: the hint lights the glowing trail to the beam, and says so (as Act 1's hint does)
 function laterTrail(text, met){ const c = met ? objectiveCell() : null; if (!c || !/beam/.test(text)) return text; forceTrail(c);
   return text.replace(/Follow the (tall )?beam of light to ([^.!]*)[.!]/, 'Follow the glowing trail on the ground to $2. It ends at the tall beam of light.').replace('(follow the beam)', '(follow the glowing trail)'); }
@@ -11879,6 +11948,11 @@ function advHint(){
     L.ghosts.forEach(gh => { const sp = textSprite('PUT IT HERE', {w:200, fs:30, bg:'#e8f6ff', ink:'#123a5a'}), im = sp.material.map.image, p = cellPos(gh.x, gh.y);
       sp.material.sizeAttenuation = false; sp.scale.set(.06*im.width/im.height, .06, 1); sp.position.set(p.x, p.y + 1.9, p.z); sp.userData.ghostTag = true; ghostRoot.add(sp); gh.tag = sp; });   // (1.9: high enough not to cover the ghost when you look down at it: c23)
     L.hintLevel = 3; syncGhosts(); L.hintLevel = 2;
+    // the ladder has two steps (the clue, then the next piece as a ghost; each piece you put in, the next press shows the next one). Pressed
+    // again with the same ghost still waiting, it used to say the same thing again (c13, c18: "Hint 3 repeats Hint 2"): now it says that's all
+    const gk = L.ghosts.map(g => [g.t, g.x, g.y].join()).join('|');
+    if (missing.length && gk === L.hintGhostKey){ showCard('Hint 2', 'That\'s all the hints!<br>Put the real piece on the ghost.<br>Then press Hint for the next one.<br>' + (A.act === UNI_ACT ? 'Or open the picture book. It shows the whole machine.' : 'Stuck? Tap the goal box. Reset this room.')); return; }
+    L.hintGhostKey = gk;
     showCard('Hint 2', !missing.length ? 'Everything\'s built! Try flipping the switches.' : showN >= 99 ? 'I\'ve drawn it for you in pale ghost shapes. Put the real thing on EACH ghost shape, then watch what happens!' : showN > 1 ? 'The pale ghost shapes show the next few pieces. Can you work out the rest?' : 'The pale ghost shows ONE piece. Put it where it says PUT IT HERE. Can you work out the rest?');
   }
 }
@@ -12852,7 +12926,8 @@ function eggGate(c, litFn, asLamp, firing){   // firing: the toy is going off ri
     const flipsIn = (seq, a) => { let f = 0; for (let i = Math.max(1, a); i < seq.length; i++) if (seq[i] !== seq[i - 1]) f++; return f; };
     // a clock: nothing touched, and the toy's input keeps flipping on its own (still flipping 6 s later: a counter that is
     // part-way through its count stops, a clock doesn't)
-    { const seq = run(120); if (flipsIn(seq, 60) >= 4) return {gate:'clock', n:sw.length}; }
+    // (a loop that burns its torch out flips too, in bursts: that is NOT a clock, so no "Tick Tock" while the card says "burnt out": c15)
+    { const ev0 = S.events.length, seq = run(120); if (flipsIn(seq, 60) >= 4 && !S.events.slice(ev0).some(e => e[0] === 'burn')) return {gate:'clock', n:sw.length}; }
     if (!sw.length) return null;
     // counting (Tom: "pull the pin exactly THREE times"): ONE press of a switch, and the circuit sends a few pulses by itself, then stops
     for (const s of sw){
@@ -14809,7 +14884,8 @@ function mayaCheck(r, rt){
       if (rt.ti >= r.targets.length) solveRoom(r); else monkeySay(`Yes! That says ${d.v}. Now make ${r.targets[rt.ti]}.`, 5000); }
     else if (!d.ok && rt.missV !== d.v + d.why){ rt.missV = d.v + d.why; const m = r.miss && r.miss(d.v, d); if (m){ sfx.nope(); monkeySay(m, 8000); } }
   } else if (r.check === 'tally'){
-    if (rt.tsig !== undefined && sig !== rt.tsig && rt.trow && Object.keys(rt.trow).length){ rt.trow = {}; renderCard(); }
+    if (rt.tsig !== undefined && sig !== rt.tsig && rt.trow && Object.keys(rt.trow).length){ rt.trow = {}; rt.recount = true; renderCard(); showToast('You changed the board. Count again: it must work for EVERY number.'); }   // (the ticks go, and the card says why: c23 read it as "losing my work")
+    if (rt.recount && Object.keys(rt.trow).length && (rt.recountT = (rt.recountT || 0) + 1) > 120){ rt.recount = false; rt.recountT = 0; renderCard(); }   // (the red note stays a couple of seconds after the first new tick)
     rt.tsig = sig; rt.trow = rt.trow || {};
     const n = mayaN(r), d = mayaRead(r);
     if (n !== rt.lastN || d.v !== rt.lastV || d.ok !== rt.lastOk){ rt.lastN = n; rt.lastV = d.v; rt.lastOk = d.ok; renderCard(); }
@@ -14881,7 +14957,7 @@ function mayaShows(r){ const d = mayaRead(r); return (r.binary ? mayaBitsHTML(d.
 function mayaCardHTML(r, rt){
   if (r.check === 'num') return `<h3>${r.binary ? 'Lamp code' : 'The stone says'}</h3><div class="note">${mayaShows(r)}</div><div class="note">Make: ${r.targets.map((t, i) => `<b style="font-size:18px;${i < (rt.ti || 0) ? 'color:#2a8a2a' : i === (rt.ti || 0) ? 'text-decoration:underline' : 'color:#888'}">${i < (rt.ti || 0) ? '&#10003;' : ''}${t}</b>`).join(' &middot; ')}</div>`;
   if (r.check === 'tally'){ const n = mayaN(r), tr = rt.trow || {};
-    return `<h3>Count them!</h3><div class="note">${r.count && r.count.sys === 'thermo' ? 'Balls' : 'Beans'}: <b style="font-size:20px">${n}</b> &nbsp; the board: ${mayaShows(r)}</div><div class="note">${r.rows.map(k => `<span style="font-size:17px;margin:0 3px;${tr[k] ? 'color:#2a8a2a;font-weight:700' : ''}">${tr[k] ? '&#10003;' : '&#9675;'}${k}</span>`).join('')}</div><div class="note" style="font-size:13px">+1 drops one in. ${mayaStart(r) ? 'BACK TO ' + mayaStart(r) : 'EMPTY'} starts again.</div>`; }
+    return `<h3>Count them!</h3><div class="note">${r.count && r.count.sys === 'thermo' ? 'Balls' : 'Beans'}: <b style="font-size:20px">${n}</b> &nbsp; the board: ${mayaShows(r)}</div><div class="note">${r.rows.map(k => `<span style="font-size:17px;margin:0 3px;${tr[k] ? 'color:#2a8a2a;font-weight:700' : ''}">${tr[k] ? '&#10003;' : '&#9675;'}${k}</span>`).join('')}</div>${rt.recount ? '<div class="note" style="font-size:13px;color:#b01e12"><b>New wires: count again!</b> The board must work for every number.</div>' : ''}<div class="note" style="font-size:13px">+1 drops one in. ${mayaStart(r) ? 'BACK TO ' + mayaStart(r) : 'EMPTY'} starts again.</div>`; }
   if (r.check === 'serve') return `<h3>The serve</h3><div class="note">Press the referee's button:<br>1. <b>BONNNG!</b> (the gong)<br>2. THEN <b>BOING!</b> (the ball flies)</div>`;
   if (r.check === 'goal'){ const ph = rt.phase || 0; return `<h3>Goal light</h3><div class="note">${ph ? '&#10003; It remembered the goal' : '&#9675; Stand on the plate, step off: does it stay on?'}<br>&#9675; RESET: does it stay off?</div>`; }
   if (r.check === 'sun'){ const f = rt.lastF; return `<h3>The sun window</h3><div class="note">The sun lines up with the window <b>2.4 s</b> after dawn.<br>The shutter must still be shut at 1.2 s.${f !== undefined ? `<br>Last try: ${f == null ? 'it never opened' : `it opened at <b>${(f/10).toFixed(1)} s</b>`}` : ''}</div>`; }
@@ -15065,7 +15141,7 @@ function courtDecor(g){
 const MAYA_SIGN = {401:'PLAY! Light dots and bars. Make 3, then 7, then 12.', 402:'Wire the last two cups. Then count the beans: 0 to 4!', 403:'Five dots become a BAR. Wire the bar cup. Count to 9!',
   404:'The SHELL means ZERO. It shines only when there are NO beans.', 405:'Twenty goes UP a level. 20 = a dot up top, a SHELL below.', 406:'Write the prices: 8, 13, 20, 33.',
   407:'PLAY! Lamp code: add up the ON lamps. Make 5, 10, 15.', 408:'Count on in lamp code: 4, 5, 6, 7!', 409:'The door opens on FIVE in lamp code. Only five!',
-  410:'Open the shutter just as the sun lines up. Not too early!', 411:'Gong FIRST. THEN the ball flies.', 412:'The GOAL light must REMEMBER the goal.', 413:'YOUR scoreboard: dots, a bar, and the shell. 0 to 5!', 414:'The monkeys\' lamp-code board says 2 is 3. Fix it!'};
+  410:'Open the shutter when the sun lines up. Not too early!', 411:'Gong FIRST. THEN the ball flies.', 412:'The GOAL light must REMEMBER the goal.', 413:'YOUR scoreboard: dots, a bar, and the shell. 0 to 5!', 414:'The monkeys\' lamp-code board says 2 is 3. Fix it!'};
 function mayaWallSpot(r, k){   // k = 0: the sign's spot; 1: the stela's (same wall, the other end)
   const face = OPP[sideOf(r, r.entry)], b = r.box, vert = face === 'W' || face === 'E', lo = vert ? b.y0 : b.x0, len = vert ? b.y1 - b.y0 : b.x1 - b.x0, exitHere = r.exit && sideOf(r, r.exit) === face;
   const along = exitHere ? (k ? lo + len - 2.5 : lo + 2.5) : (k ? lo + 2.5 : lo + 6);
@@ -15618,7 +15694,6 @@ function uniMesh(c, add, g, ghost){
       if (!out){ put(q, cbox(1, 1, .2), U.face, 0, .5, -.4); if (c.t === 'spiston') put(q, cbox(.8, .8, .04), U.slime, 0, .5, -.51); }
       else { put(q, cbox(.24, .24, .3), U.arm, 0, .5, -.2); }
       put(q, cbox(.3, .3, .02), out ? U.red : U.redOff, 0, .5, .505);   // a little lamp on its back: lit when it's pushed out
-      if (ghost){ const ar = arrowMesh(1.25); ar.material = U.arrow || (U.arrow = new THREE.MeshBasicMaterial({color:0xffc81a, side:THREE.DoubleSide})); ar.scale.setScalar(1.8); q.add(ar); }   // (in your hand: a big gold arrow shows which way it will push)
       if (c.tall) capWall();
       return true; }
     case 'phead': {
@@ -15634,7 +15709,6 @@ function uniMesh(c, add, g, ghost){
       put(q, cbox(.4, .08, .04), U.eye, 0, .3, .51);
       put(q, cbox(.26, .26, .04), c.out ? U.red : U.redOff, 0, .5, -.51);
       put(q, cbox(.12, .02, .5), U.stoneDark, 0, 1.01, -.05); put(q, cbox(.3, .02, .1), U.stoneDark, 0, 1.01, -.28);   // an arrow on top: the way the pulse goes
-      if (ghost){ const ar = arrowMesh(1.25); ar.material = U.arrow || (U.arrow = new THREE.MeshBasicMaterial({color:0xffc81a, side:THREE.DoubleSide})); ar.scale.setScalar(1.8); ar.rotation.z = Math.PI; q.add(ar); }   // (in your hand: a big gold arrow shows which way its eyes will look)
       if (c.out && !ghost) g.add(glow(M.glowRed || M.glowGold, 1.1, .5));
       if (c.tall) capWall();
       return true; }
@@ -15768,24 +15842,40 @@ function uniShove(x, y, dx, dy, popping){
   if (me){ const p = cellPos(nx, ny); P.x = p.x; P.z = p.z; }
   return true;
 }
-// ---- which way it faces (playtest sweep 2, U3: every tester put the pistons down backwards). Java's rule stays: a piston's face looks
-// back at YOU, so it pushes towards where you stand; an observer's face (its eyes) looks back at you too. In your hand, a big arrow on the
-// block shows the way. When one lands facing differently from the room's answer (or the hint's ghost) on that spot, the professor says
-// why, and a glowing square on the floor shows where to stand to put it down the right way round. ----
-function uniFaceSay(c, gh){
-  const r = A.rt && A.rt.room; if (!r || !c) return;
+// ---- which way it faces (playtest sweep 2, U3: every tester put the pistons down backwards; since the cold-return audit, every part
+// with a direction, in every act). Java's rules stay: a repeater points the way YOU look; a piston's face looks back at you, so it
+// pushes towards where you stand; an observer's face (its eyes) looks back at you too; a torch, lever or button hangs on the block
+// whose SIDE you tap. In your hand a big sky-blue arrow shows the way (faceArrow), or the block it will hang on lights up. When one
+// lands facing differently from the room's answer (or the hint's ghost) on that spot, the room's host (Barold in the temple, the
+// professor in the University...) says why in short lines, and a glowing square shows where to stand (or which block side to tap).
+// Returns true when it said something. ----
+const FACE_HANG = new Set(['torch', 'lever', 'button']);
+function faceSay(c, gh){
+  const r = A.rt && A.rt.room; if (!r || !c) return false;
   const want = (gh && gh.t === c.t ? gh : null) || (r.sol || []).find(q => q.x === c.x && q.y === c.y && q.t === c.t);
-  const obs = c.t === 'observer', name = obs ? 'An observer' : c.t === 'spiston' ? 'A sticky piston' : 'A piston';
-  if (!want || (want.dir || 0) === c.dir){ if (!A.uniFaceTold){ A.uniFaceTold = true; showToast(obs ? 'An observer\'s eyes look back at YOU. The arrow shows which way it will look.' : name + ' faces back at YOU: it pushes towards where you stand. The arrow shows the way.'); } uniStandMark(null); return; }
-  // where to stand: on the side it should push to (a piston), or where its eyes should look (an observer: the same side)
-  const d = want.dir || 0, [dx, dy] = DIRS[obs ? opp(d) : d], ok = (x, y) => passableCell(x, y) && !at(x, y) && !(roomOf(x, y) && roomOf(x, y) !== r);
+  const who = r.host || guideNow(), ok = (x, y) => passableCell(x, y) && !at(x, y) && !(roomOf(x, y) && roomOf(x, y) !== r);
+  if (FACE_HANG.has(c.t)){
+    const wa = want && 'attach' in want ? want.attach : -1, nm = recapName(c.t).toLowerCase();
+    if (!want || !('attach' in want) || wa === (c.attach ?? -1)){ uniStandMark(null); return false; }
+    const W = useWord(), Wc = W[0].toUpperCase() + W.slice(1), say = wa >= 0 ? [`That ${nm} must hang on a block.`, `Break it. ${Wc} the glowing block side.`] : [`That ${nm} goes on the floor.`, `Break it. Then ${W} the floor.`];
+    sfx.nope(); plogEvent('wrong'); uniProfTell(who, say);
+    if (wa >= 0){ const [dx, dy] = DIRS[wa]; uniStandMark(null, {x:c.x + dx, y:c.y + dy, d:opp(wa)}); } else uniStandMark(null);
+    return true;
+  }
+  const obs = c.t === 'observer', rep = c.t === 'repeater', name = obs ? 'An observer' : rep ? 'A repeater' : c.t === 'spiston' ? 'A sticky piston' : 'A piston';
+  if (!want || (want.dir || 0) === c.dir){ if (A.act === UNI_ACT && UNI_FACE.has(c.t) && !A.uniFaceTold){ A.uniFaceTold = true; showToast(obs ? 'An observer\'s eyes look back at YOU. The arrow shows which way it will look.' : name + ' faces back at YOU: it pushes towards where you stand. The arrow shows the way.'); } uniStandMark(null); return false; }
+  // where to stand: behind it (a repeater: you look along it; an observer: where its eyes should look), or on the side it should push to (a piston)
+  const d = want.dir || 0, [dx, dy] = DIRS[obs || rep ? opp(d) : d];
   const tries = [[1, 0], [2, 0], [3, 0], [2, 1], [2, -1], [3, 1], [3, -1]];   // straight out first; off to one side only from further away (looking at it from a corner, you can't tell which way it would face)
   let spot = null; for (const [k, o] of tries){ const x = c.x + dx*k + (dy ? o : 0), y = c.y + dy*k + (dx ? o : 0); if (ok(x, y)){ spot = [x, y]; break; } }
-  // the classroom's professor says it (their lesson; they gave the watch-me demo), in the box at the bottom (design guide 3), short lines
-  const who = r.host || guideNow(), say = obs ? ['Backwards! An observer\'s eyes look back at YOU.', 'Its eyes watch the side where you stand.', spot ? 'Break it. Stand on the glowing square. Try again.' : 'Break it. Stand where its eyes should look. Try again.']
-    : ['Backwards! ' + name + ' faces back at YOU.', 'It pushes towards where you are standing.', spot ? 'Break it. Stand on the glowing square. Try again.' : 'Break it. Stand where it should push to. Try again.'];
+  // the room's host says it (their lesson), in the box at the bottom (design guide 3), lines of 8 words or fewer
+  const go = spot ? 'Break it. Stand on the glowing square.' : null;
+  const say = rep ? ['Oops! That repeater points the wrong way.', 'It points the way YOU look.', go || 'Break it. Stand behind it. Look along the wire.']
+    : obs ? ['Backwards! An observer\'s eyes look back at YOU.', 'Its eyes watch the side where you stand.', go || 'Break it. Stand where its eyes should look.']
+    : ['Backwards! ' + name + ' faces back at YOU.', 'It pushes towards where you are standing.', go || 'Break it. Stand where it should push to.'];
   sfx.nope(); plogEvent('wrong'); uniProfTell(who, say);
   uniStandMark(spot);
+  return true;
 }
 // a professor tells you something while you build: a soft box (clicks in the world still build), the latest one replacing the last
 function uniProfTell(who, say){
@@ -15795,11 +15885,21 @@ function uniProfTell(who, say){
   const ml = $('#mline'); if (ml){ ml.hidden = false; ml.innerHTML = '<b>' + who + ':</b> '; ml.appendChild(document.createTextNode(say.join(' '))); }
   const lines = say.map(t => [who, t]); lines.soft = true; lines.profTell = true; dlgStart(lines);
 }
-function uniStandMark(spot){
-  if (A.uniStand){ fxRoot.remove(A.uniStand); A.uniStand = null; } if (!spot || S.simulating) return;
-  const m = new THREE.Mesh(cbox(1.02, .08, 1.02), new THREE.MeshBasicMaterial({color:0xffe14a, transparent:true, opacity:.6})); m.position.copy(cellPos(...spot)); m.position.y += .05; m.raycast = () => {}; fxRoot.add(m); A.uniStand = m; A.uniStandAt = spot;
-  const t = (A.clock || 0) + 20000; A.uniDue.push({at:t, any:true, fn:() => { if (A.uniStand === m) uniStandMark(null); }});
+// the glowing square: where to stand (spot), or the side of a block to tap (side: {x, y, d}, d = the way that side faces). Yellow, with a
+// STAND HERE / TAP HERE tag, and it pulses: never mixed up with the sky-blue facing arrow. Gone after 20 s, or when you leave the room.
+function uniStandMark(spot, side){
+  if (A.uniStand){ A.uniStand.traverse(o => { if (o.material && o.material.map) o.material.map.dispose(); }); fxRoot.remove(A.uniStand); A.uniStand = null; A.uniStandAt = null; } if ((!spot && !side) || S.simulating) return;
+  const g = new THREE.Group(), mat = new THREE.MeshBasicMaterial({color:0xffe14a, transparent:true, opacity:.6}), m = new THREE.Mesh(side ? cbox(1.02, 1.02, .08) : cbox(1.02, .08, 1.02), mat); m.raycast = () => {}; g.add(m);
+  const at0 = side ? [side.x, side.y] : spot, p = cellPos(...at0); g.position.copy(p);
+  if (side){ const [dx, dz] = DIRS[side.d]; m.position.set(dx*.53, .5, dz*.53); if (dx) m.rotation.y = Math.PI/2; } else m.position.y = .05;
+  const tg = textSprite(side ? 'TAP HERE' : 'STAND HERE', {w:150, fs:30, bg:'#ffe14a', ink:'#3a2a10', scale:1}), im = tg.material.map.image; tg.material.sizeAttenuation = false; tg.material.depthTest = false; tg.renderOrder = 997;
+  tg.scale.set(.075*im.width/im.height, .075, 1); tg.position.set(side ? DIRS[side.d][0]*.6 : 0, side ? 1.4 : 1.1, side ? DIRS[side.d][1]*.6 : 0); g.add(tg);
+  fxRoot.add(g); A.uniStand = g; A.uniStandAt = spot || null; A.uniStandSide = side || null; A.uniStandMat = mat; A.uniStandUntil = (A.clock || 0) + 20000; A.uniStandRoom = A.rt && A.rt.room ? A.rt.room.id : null;
 }
+// (every adventure frame: the square pulses; it goes after 20 s or when you leave its room)
+function uniStandFrame(){ if (!A.uniStand) return; const r = A.rt && A.rt.room;
+  if ((A.clock || 0) > A.uniStandUntil || !r || r.id !== A.uniStandRoom){ uniStandMark(null); return; }
+  if (A.uniStandMat) A.uniStandMat.opacity = reduceMotion ? .6 : .45 + .25*Math.sin((A.clock || 0)/180); }
 // the gaps in a dividing wall: anything solid there stands two blocks tall (no hopping over a hidden door)
 let UNI_TALL = new Set();
 function uniTallFix(){ if (!UNI_TALL.size) return; UNI_TALL.forEach(i => { const c = S.grid[i]; if (c) c.tall = SOLID.has(c.t) && c.t !== 'idoor'; }); for (const c of S.grid) if (c && c.tall && !UNI_TALL.has(c.y*NX + c.x)) c.tall = false; }
@@ -16076,7 +16176,7 @@ const UNI_SIGN = {501:'An AUTOMATIC door: it opens when you walk up, from BOTH s
   503:'ONE lever: ON pushes the block onto the gold square. OFF pulls it back.', 504:'A SECRET door: SHUT while the lever is OFF. The lever opens it.',
   505:'Catch Gloop! Shut the gate when Gloop is IN. Keep it shut.', 506:'Pick the pumpkins with a piston. No hands! Pick 3.',
   507:'A TNT cannon! Press FIRE. The back TNT goes BANG first, and throws the front TNT onto the target.',
-  508:'A bubble lift! Get up to the balcony. Put the right block at the bottom of the water tube.',
+  508:'A bubble lift! Get up to the balcony. Put the right block at the tube\'s bottom.',
   510:'A FLYING MACHINE! Build it on the white squares. Start it: a block in front of an observer\'s face. It flies to the gold line!'};
 // every classroom gets its picture-book stand by the door; the canonical layout is kept for the picture book
 UNI_ROOMS.forEach(r => {
@@ -16589,11 +16689,32 @@ function uniHallDecor(){
     const bm = new THREE.Mesh(new THREE.PlaneGeometry(3, 4), new THREE.MeshBasicMaterial({map:pixTex(portraitCanvas('', '', '', true))})); bm.position.set(34 - NX/2 + .5, dais + 6.4, nz - NY/2 + .5 + .01); bm.raycast = () => {}; decorRoot.add(bm); A.portraitB = bm; A.portraits.push(bm);
     Bx(3.6, .4, .3, U.gold, 34, dais + 8.6, nz); Bx(3.6, .4, .3, U.gold, 34, dais + 4.2, nz);
     const cur = new THREE.Mesh(cbox(3.4, 4.4, .12), wm(0xa8182a)); cur.position.set(34 - NX/2 + .5, dais + 6.4, nz - NY/2 + .5 + .1); cur.raycast = () => {}; decorRoot.add(cur); A.curtain = cur; cur.visible = !(A.uniBeats && A.uniBeats.has('gallery'));
-    const s = textSprite('THE GREAT HALL. Grand Master Guides of the Guild', {w:360, fs:22, bg:'#1a8a82', ink:'#ffe14a', scale:2.6, depth:true}); s.position.set(34 - NX/2 + .5, F + 6.2, T.y1 + 1.2 - NY/2 + .5); decorRoot.add(s); }   // (over the main door, outside: it names the hall from the Quad)
+    const s = textSprite('THE GREAT HALL. Grand Master Guides of the Guild', {w:360, fs:22, bg:'#1a8a82', ink:'#ffe14a', scale:2.6, depth:true}); s.position.set(34 - NX/2 + .5, F + 6.2, T.y1 + 1.2 - NY/2 + .5); decorRoot.add(s);
+    // the worn Temple Rules tablet from the temple (Act 1), hung by the gallery: when the Headmonkey says "Duke of B... The B is for
+    // BARRINGTON" he points at it and the camera looks, so the callback works for a child who saw the tablet hours ago (or never)
+    A.uniTablet = uniTabletMesh(); A.uniTablet.position.set(UNI_TABLET_X - NX/2 + .5, dais + 1.75, nz - NY/2 + .5 + .16); decorRoot.add(A.uniTablet); }   // (over the main door, outside: it names the hall from the Quad)
   // the confetti cannons on the dais
   A.cannons = [T.x0 + 6, T.x1 - 6].map(x => { const c = cellPos(x, T.y0 + 4), q = new THREE.Group(); q.position.set(c.x, dais, c.z); decorRoot.add(q); uniBox(q, .7, .5, .7, wm(0x7a3fbf), 0 + NX/2 - .5, .25, 0 + NY/2 - .5); const t = uniBox(q, .36, .9, .36, M.party || wm(0xffd84a), NX/2 - .5, .8, NY/2 - .5); t.rotation.z = (x < 34 ? -1 : 1)*.35; return q; });
   uniMerge(g);
 }
+// the Temple Rules tablet, as in the temple's secret room (a carved glyph slab), worn away after "Duke of B..."
+const UNI_TABLET_X = 31;
+function uniTabletMesh(){
+  const tab = new THREE.Group(), slab = new THREE.Mesh(cbox(1.6, 1.8, .3), M.glyph); slab.position.y = .9; tab.add(slab);
+  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 256; const x = cv.getContext('2d');
+  x.fillStyle = '#6e6a5c'; x.fillRect(0, 0, 256, 256); x.fillStyle = '#efe2b8'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  const line = (t, y, fs) => { x.font = `700 ${fs}px "Pixelify Sans", "Atkinson Hyperlegible", sans-serif`; x.fillText(t, 128, y, 240); };
+  line('THE TEMPLE RULES', 30, 26); line('carved by Bananahead,', 74, 22); line('Duke of B...', 112, 30);
+  x.fillStyle = '#4a463c'; for (let k = 0; k < 14; k++){ x.fillRect(150 + (k*37) % 90, 98 + (k*23) % 30, 8 + (k*5) % 14, 5 + (k*3) % 7); }   // the worn-away bit
+  x.fillStyle = '#d8cca0'; line('(the rest is worn away)', 150, 18); line('Rule 1: No farting in the temple.', 196, 16); line('Rule 2: See Rule 1.', 226, 16);
+  const tex = new THREE.CanvasTexture(cv), face = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 1.4), new THREE.MeshBasicMaterial({map:tex})); face.position.set(0, .95, .16); tab.add(face);
+  tab.traverse(o => { if (o.isMesh) o.raycast = () => {}; }); tab.userData.beatY = .95; tab.userData.text = 'THE TEMPLE RULES / carved by Bananahead, / Duke of B... / (the rest is worn away)';
+  return tab;
+}
+// the Headmonkey points at the tablet (his line about it)
+function uniPointTablet(on){ const m = A.headmonkey, t = A.uniTablet; if (!m || !t) return; A.uniPointing = on !== false;
+  if (!A.uniPointing){ if (m.userData.arms) m.userData.arms[1].rotation.x = 0; m.rotation.y = Math.atan2(P.x - m.position.x, P.z - m.position.z); return; }
+  const p = t.getWorldPosition(new THREE.Vector3()); m.rotation.y = Math.atan2(p.x - m.position.x, p.z - m.position.z); if (m.userData.arms) m.userData.arms[1].rotation.x = -2.3; }
 // ---- the Dinner Hall: long tables down the hall, the serving counter and the kitchen hatch (the pirates, gone legit), a fireplace,
 // banners and chandeliers under an oak roof ----
 function uniDinnerDecor(){
@@ -16896,7 +17017,7 @@ function uniGallery(){
   const T = UNI_TOP, e = UNI_FLOOR + 1, mid = cellPos(A.portraitX || Math.round((T.x0 + T.x1)/2), T.y0 + 6);
   A.uniFinale = {stage:'gallery', t:0};
   P.x = mid.x; P.z = mid.z; P.y = mid.y; P.yaw = 0; P.pitch = .25;
-  if (A.headmonkey){ A.headmonkey.position.copy(cellPos((A.portraitX || 34) - 3, T.y0 + 4)); A.headmonkey.userData.y0 = A.headmonkey.position.y; }
+  if (A.headmonkey){ A.headmonkey.position.copy(cellPos(UNI_TABLET_X - 2, T.y0 + 4)); A.headmonkey.userData.y0 = A.headmonkey.position.y; }   // (beside the Temple Rules tablet, not in front of it)
   if (A.monkey) A.monkey.position.copy(cellPos((A.portraitX || 34) + 2, T.y0 + 5));
   Object.entries(A.hosts || {}).filter(([who]) => /^Professor/.test(who)).forEach(([who, m], k) => { m.position.copy(cellPos([25, 28, 31, 37, 40, 43][k % 6], T.y0 + 5)); m.userData.y0 = m.position.y; });   // the professors line up along the front of the dais
   const seen = A.uniBeats.has('gallery');
@@ -16907,8 +17028,8 @@ function uniGallery(){
     [GUIDE, 'They\'ve all got a crack in their head. Just like... mine.'],
     ['Headmonkey', 'Hello, Barold. Barold BARRINGTON.'],
     [GUIDE, '...Never met him.'],
-    ['Headmonkey', 'I carved the Temple Rules. "Duke of B..." The B is for BARRINGTON.'],
-    ['Headmonkey', 'Barold. We know. Every Barrington for 4,000 years knows. All your professors are Barringtons too.'],
+    ['Headmonkey', 'I carved the Temple Rules. "Duke of B..." The B is for BARRINGTON.', () => uniPointTablet()],
+    ['Headmonkey', 'Barold. We know. Every Barrington for 4,000 years knows. All your professors are Barringtons too.', () => uniPointTablet(false)],
     [GUIDE, 'Then you know I\'m only Level 3! Every Barrington is Level 99! I was so embarrassed, I hid in a temple for 800 years.'],
     ['Headmonkey', 'In 4,000 years, NO Barrington ever got a visitor all the way through that temple. The main door has been stuck since Rule 1.'],
     ['Headmonkey', 'Nobody ever found the side door. Until YOUR visitor did.'],
@@ -16920,7 +17041,7 @@ function uniGallery(){
     ['Headmonkey', 'And the Guild has checked your promotions. Level 2: guide a visitor through fifteen rooms. Twelve rooms, a hallway, the stairs and a cupboard...'],
     ['Headmonkey', '*STAMP* APPROVED. Cupboards have doors.', () => { uniStamp(); showIdCard(2, 4000); }],
     ['Headmonkey', 'Level 3: show the visitor the way home, at the top of the temple. *STAMP* APPROVED. With honours.', () => { uniStamp(); showIdCard(3, 5000); }],
-    [GUIDE, 'OFFICIAL! I\'m OFFICIALLY Level 3! Did you all hear that? BAROLD BARRINGTON, LEVEL 3!']], () => { uniBeat('gallery'); A.uniFinale = null; uniGraduation(); }, i => i >= 12 && i <= 14 ? A.portraitB : undefined);
+    [GUIDE, 'OFFICIAL! I\'m OFFICIALLY Level 3! Did you all hear that? BAROLD BARRINGTON, LEVEL 3!']], () => { uniBeat('gallery'); A.uniFinale = null; uniGraduation(); }, i => i === 6 ? A.uniTablet : i >= 12 && i <= 14 ? A.portraitB : undefined);   // (line 6: the Temple Rules tablet)
 }
 function uniUnveil(){ if (A.curtain){ A.uniFinale && (A.uniFinale.drop = 1); A.curtain.userData.fall = 0; } sfx.chime(); if (typeof musicCue === 'function') try { musicCue('reveal'); } catch (e) {}
   if (A.portraitB) { const p = A.portraitB.position; P.yaw = Math.atan2(-(p.x - P.x), -(p.z - P.z)); P.pitch = .15; } }
@@ -17276,7 +17397,8 @@ const UNI_TEST = {
   hall(){ return {x0:UNI_TOP.x0, x1:UNI_TOP.x1, y0:UNI_TOP.y0, y1:UNI_TOP.y1, door:UNI_TOP.door, side:UNI_TOP.side, wall:S.walls[UNI_TOP.y0*NX + UNI_TOP.x0], roof:!!A.uniRoofs, tables:[23, 28, 38, 43].filter(x => S.noWalk[(UNI_TOP.dais + 6)*NX + x + 1]).length, candles:GLOW.list.filter(e => e.owner === A.uniHall).length, dais:floorAt(34, UNI_TOP.y0 + 2) - floorAt(34, UNI_TOP.y1 - 2)}; },
   places(){ const b = q => ({w:q.x1 - q.x0 - 1, h:q.y1 - q.y0 - 1}); return {quad:b(UNI_QUAD), lawn:b(UNI_LAWN), dinner:b(UNI_DINNER), lib:Object.assign(b(UNI_LIB), {wall:S.walls[UNI_LIB.y0*NX + UNI_LIB.x0]}), rooms:ROOMS.map(r => Object.assign(b(r.box), {id:r.id, wall:S.walls[r.box.y0*NX + r.box.x0], desks:r.desks || 0, pupils:r.pupils || 0, look:r.look, floorIn:[[0, 0], [10, 8]].every(p => { const [x, y] = apeP(r, p); return x > r.box.x0 && x < r.box.x1 && y > r.box.y0 && y < r.box.y1; })}))}; },
   gate(id){ const r = uniRoom(id), c = r && at(...r.entry); return c && c.t === 'door' ? (c.latched ? 'open' : 'shut') : 'none'; },
-  standMark(){ return A.uniStand ? A.uniStandAt : null; }, profLines(){ return A.uniProfLines || null; }, preview(){ hover(...centre()); let arrows = 0; previewRoot.traverse(o => { if (o.isMesh && o.material && o.material.color && o.material.color.getHex() === 0xffc81a) arrows++; }); return {kids:previewRoot.children.length, hover:hoverCell, sel:ITEMS[sel] && ITEMS[sel].id, arrows}; }, crumbs(){ return A.wf && A.wf.forced ? A.wf.crumbs.length : 0; }, place(){ return uniPlaceName(); },
+  tablet(){ const t = A.uniTablet; if (!t) return null; const p = t.getWorldPosition(new THREE.Vector3()); p.y += .95; const m = A.headmonkey; return {text:t.userData.text, onWall:!!t.parent, pointing:!!A.uniPointing, arm:m && m.userData.arms ? +m.userData.arms[1].rotation.x.toFixed(2) : null, looked:!!(BEAT.cur && BEAT.cur.target === t), seen:playerSees(p.x, p.y, p.z), line:DLG.on && DLG.q ? DLG.q[DLG.i][1] : ''}; },   // (test-university.js: the Barrington callback)
+  standMark(){ return A.uniStand ? A.uniStandAt || A.uniStandSide : null; }, profLines(){ return A.uniProfLines || null; }, preview(){ hover(...centre()); let arrows = 0; let hang = 0; previewRoot.traverse(o => { if (o.userData.faceArrow) arrows++; if (o.userData.hangOn) hang++; }); return {kids:previewRoot.children.length, hover:hoverCell, sel:ITEMS[sel] && ITEMS[sel].id, arrows, hang}; }, crumbs(){ return A.wf && A.wf.forced ? A.wf.crumbs.length : 0; }, place(){ return uniPlaceName(); },
   trail(){ const c = objectiveCell(), p = c && bfsPath(cellAtWorld(P.x, P.z), c); return {obj:c, len:p ? p.length : -1}; },
   portrait(){ return {curtain:!!(A.curtain && A.curtain.visible), barold:!!A.portraitB}; },
   puffer(){ const rg = A.reggie; return !!(rg && rg.userData.puffer); },
@@ -17439,7 +17561,7 @@ window.__game = {
     hintText(){ $('#btnHint').click(); return $('#whyText').textContent; },
     trailDots(){ return A.wf ? A.wf.crumbs.length : 0; },   // (the glowing hint trail's dots on screen: test-playtest.js)
     ghostYs(){ return ((L && L.ghosts) || []).filter(gh => gh.mesh && gh.mesh.visible).map(gh => gh.mesh.position.y); },   // (test-playtest.js: hint ghosts bob)
-    dbg(){ return {stable:S.stable, rt:A.rt && {room:A.rt.room && A.rt.room.id, rows:A.rt.rows, tested:[...(A.rt.tested||[])], prevKey:A.rt.prevKey}}; }
+    dbg(){ return {stable:S.stable, rt:A.rt && {room:A.rt.room && A.rt.room.id, rows:A.rt.rows, bad:Object.keys(A.rt.bad || {}).map(Number), tested:[...(A.rt.tested||[])], prevKey:A.rt.prevKey}}; }
   },
   place(t, x, y, o){ const ok = place(t, x, y); if (ok) runFx(200); if (ok && o){ const c = at(x,y); Object.assign(c, o); if (t==='repeater') c.buf = null; S.gridDirty = true; } syncVisuals(); return ok; },
   setLever(i, on){ const c = L.inputs[i]; if (c.on !== !!on) interact(c); },
@@ -17458,13 +17580,15 @@ window.__game = {
 };
 window.__game.whyMissing = () => { const out = new Set(); ROOMS.forEach(r => { const b = r.box; for (let x = b.x0; x <= b.x1; x++) for (let y = b.y0; y <= b.y1; y++){ const c = at(x, y); if (c && !WHY[c.t]) out.add(c.t); } }); return [...out]; };   // (test-recover.js: no empty What? cards)
 window.__game.aimPoint = () => aimPoint().map(Math.round);   // (test-recover.js: the aiming square follows an unlocked mouse)
+window.__game.ladderTops = () => ladderTops().map(({r, side, out}) => ({id:r.id, entry:r.entry, out, side:side.map(([x, y]) => S.walls[y*NX + x]), vines:[-1, 0, 1].map(o => { const [ex, ey] = r.entry, x = ex + out[0] + (out[0] ? 0 : o), y = ey + out[1] + (out[1] ? 0 : o); return S.ladder[y*NX + x]; }), sign:decorRoot.children.some(o => o.userData.ladderTop === r.id)}));   // (test-recover.js: rooms 9 and 21's drop)
+window.__game.lookOf = (x, y) => { const c = at(x, y); if (!c) return null; const m = buildMesh(c); let wisp = false, charred = false; m.traverse(o => { if (o.userData.burntWisp) wisp = true; if (o.material === M.charred) charred = true; }); return {t:c.t, burnt:c.burnt || 0, wisp, charred, smokeGreen:M.glowSmoke.map === M.glowGreen.map}; };   // (test-recover.js: a burnt-out torch looks burnt out)
 window.__game.ghostTags = () => ghostRoot.children.filter(o => o.userData.ghostTag && o.visible).length;   // (test-recover.js: Hint 2's PUT IT HERE tags)
 // QA hooks: "Where was I?", Reset this room (test-recover.js)
 window.__game.recap = {
   card(id){ const r = id ? ROOMS.find(q => q.id === id) : A.rt && A.rt.room; return r ? recapFor(r) : null; }, lines(id){ const c = this.card(id); return c ? recapAllLines(c) : []; },
   show(why){ return recapShow(why || 'asked'); }, due(){ return RECAP.due; }, last(){ return RECAP.last; }, shownN(){ return RECAP.shownN; }, calm(){ return recapCalm(); },
   idle(ms){ RECAP.skew = (RECAP.skew || 0) + ms; }, input(){ recapInput(); }, hidden(ms){ RECAP.hiddenAt = recapNow() - ms; document.dispatchEvent(new Event('visibilitychange')); },
-  sign(id){ const r = ROOMS.find(q => q.id === id); return r ? roomSignText(r) : ''; }, tags(){ return (RECAP.tags || []).filter(t => t.parent).map(t => t.userData.text); }, split:recapSplit, words:recapWords, restart(){ return roomRestart(); }, GAP:RECAP.GAP,
+  sign(id){ const r = ROOMS.find(q => q.id === id); return r ? roomSignText(r) : ''; }, tags(){ return (RECAP.tags || []).filter(t => t.parent).map(t => t.userData.text); }, tagsShown(){ return (RECAP.tags || []).filter(t => t.parent && t.visible).length; }, split:recapSplit, words:recapWords, restart(){ return roomRestart(); }, GAP:RECAP.GAP, MAX:RECAP_MAX, chopped(){ return RECAP_CHOPPED.splice(0); }, tagsFor(id){ const r = ROOMS.find(q => q.id === id); if (!r) return []; recapTags(r); const t = this.tags(); recapTagsDrop(); RECAP.tagRoom = null; return t; },
   rooms(){ return ROOMS.map(r => ({id:r.id, name:r.name, check:r.check, win:String(r.win || ''), hello:r.hello || '', why:(r.why || []).map(w => w.say || ''), goal:String(r.goal || ""), hint:String(r.hint || ''), nudge:String(r.nudge || ''), sign:roomSignText(r), play:!!r.play, loose:(r.loose || []).length, sol:(r.sol || []).length, only:r.only || null, box:r.box})); }
 };
 window.__game.qa = { plog(){ return PLOG; }, sess(){ return PSESS; }, report:plogReportAll, flags:plogFlags, touch(){ plogTouch(); plogSave(); }, bonk(){ bonk(); }, shot:qaShot, problem:problemReport,
@@ -17554,7 +17678,7 @@ window.__game.opening = {
   dlg(){ return DLG.on ? {who:DLG.q[DLG.i][0], text:DLG.q[DLG.i][1], soft:dlgSoft()} : null; },
   glove(){ if (!A.glove) return null; A.glove.updateMatrixWorld(true); const f = A.glove.userData.fist.getWorldPosition(new THREE.Vector3()), o = A.glove.getWorldPosition(new THREE.Vector3()); return {fist:[f.x, f.y, f.z], base:[o.x, o.y, o.z], lamp:TRAP.lamp, gear:TRAP.gear, cog:A.cog ? [A.cog.position.x, A.cog.position.y, A.cog.position.z] : null, cell:c => cellPos(c[0], c[1])}; },
   cellXZ(x, y){ const c = cellPos(x, y); return [c.x, c.y, c.z]; },
-  leadSpot(id){ return leadSpot(ROOMS.find(q => q.id === id)); }, solveRoom(id){ solveRoom(ROOMS.find(q => q.id === id)); }, runOn:RUN_ON, waitIn:WAIT_IN,
+  leadSpot(id){ return leadSpot(ROOMS.find(q => q.id === id)); }, solveRoom(id){ solveRoom(ROOMS.find(q => q.id === id)); }, runOn:RUN_ON, waitIn:WAIT_IN, waitNext:WAIT_NEXT, putBarold(x, y){ const m = A.monkey; if (!m) return false; const c = cellPos(x, y); m.position.set(c.x, floorAt(x, y), c.z); m.userData.path = null; m.userData.y0 = floorAt(x, y); return true; },
   bonkZone, punch(){ return A.punchAt ? Object.assign({}, A.punchAt) : null; }, pow(){ const e = document.querySelector('#pow'); return !!e && e.classList.contains('go'); }, drop(x, y, h){ const c = cellPos(x, y); P.x = c.x; P.z = c.z; P.y = h; P.vy = 0; },
   aimCell(x, y){ const c = cellPos(x, y), dx = c.x - P.x, dz = c.z - P.z; P.yaw = Math.atan2(-dx, -dz); P.pitch = Math.atan2(floorAt(x, y) + .02 - (P.y + EYE), Math.hypot(dx, dz)); stepFP(0); },
   me(){ return {x:P.x, y:P.y, z:P.z, cell:cellAtWorld(P.x, P.z), vy:P.vy}; }, setY(y){ P.y = y; P.vy = 0; },
