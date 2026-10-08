@@ -1978,7 +1978,7 @@ function setWorld(nx, ny, mode){
     cellGroups = new Array(NX*NY).fill(null); cellKeys = new Array(NX*NY).fill('');
   }
   S.walls = new Uint8Array(NX*NY); S.wallKind = new Uint8Array(NX*NY); S.elev = new Float32Array(NX*NY); S.pit = new Uint8Array(NX*NY);
-  S.up = null; S.upCol = null; S.upDirty = true; S.noWalk = null;   // stacked blocks: the sandbox yard only (sbYard)
+  S.up = null; S.upCol = null; S.upDirty = true; S.noWalk = null; S.wallWalk = null;   // stacked blocks: the sandbox yard only (sbYard)
   buildFloorDecor(mode === 'lab');
 }
 
@@ -2598,7 +2598,8 @@ function topAt(px, pz){
   const [x,y] = cellAtWorld(px, pz);
   if (!inb(x,y)) return S.mode === 'adventure' ? 9 : 0;
   const f = floorAt(x, y);
-  const w = S.walls[y*NX+x]; if (w) return f + 9; // temple walls can't be climbed
+  const w = S.walls[y*NX+x]; if (w){ if (!S.wallWalk) return f + 9;   // temple walls can't be climbed
+    const ww = S.wallWalk[y*NX + x]; return ww ? f + w + (ww === 2 && pz - (y - NY/2) < .5 ? .5 : 0) : f + w + 9; }   // the Maya pyramid: its stairs (a half step on each one's upper half, like Minecraft stairs) and its top are walkable; every other wall there stays solid well above its top
   if (S.lava && S.lava[y*NX + x]) return -60;
   if (S.noWalk && S.noWalk[y*NX + x]) return f + 9;   // the University: a slimes-only flap (you can't squeeze through)
   const c = at(x,y), ut = S.upCol ? S.upCol[y*NX + x] : 0; if (!c) return f + ut;   // ut: blocks stacked here (free build)
@@ -2662,7 +2663,7 @@ function stepFP(dt){
     else P.climbing = false;
     // on ice: whoosh downhill
     if (S.slide && S.slide[li] >= 0){ const [sx, sy] = DIRS[S.slide[li]]; P.x += sx*7*s; P.z += sy*7*s; if (!P.sliding){ P.sliding = true; sfx.boing(); showToast('WHEEEEEE!'); } } else P.sliding = false;
-    if (P.ground && !S.deck[li] && !S.pit[li] && S.slide[li] < 0 && !S.ladder[li]) P.safe = [lx, ly];
+    if (P.ground && !S.deck[li] && !S.pit[li] && S.slide[li] < 0 && !S.ladder[li] && !S.walls[li]) P.safe = [lx, ly];   // (never on top of a wall: the Maya pyramid)
   }
   knockFrame(s);   // blasted: shoved away from the bang (never through a wall)
   const x0 = P.x, z0 = P.z;
@@ -4364,7 +4365,7 @@ const SECRETS = [
   {slot:26, from:23, name:'The Diary', disc:'secret3', prize:'launcher',
    lore:'THE MONKEY ENGINEERS\' DIARY. Day 1: invented the wire. Day 2: invented the grumpy torch. Day 3: stuck a torch on GLASS. Nothing happened for three weeks. Day 4: we fed a torch\'s power straight back into its OWN block. It flickered so fast it BURNT OUT. Day 5: we slowed the loop down with a repeater... ON, OFF, ON, OFF, forever! We called it a CLOCK. Then we needed a lie down.'},
   {slot:27, from:22, dx:2, name:'The Rules', disc:'secret1', prize:'airhorn',
-   lore:'THE TEMPLE RULES, carved by Bananahead, Duke of Barrington. Rule 1: No farting in the temple. Rule 2: See Rule 1. (Rule 1 was broken 4,000 years ago. We are still very sorry.) Ancient tip: a lever is just a switch. The light switch in YOUR house is a lever too!'},
+   lore:'THE TEMPLE RULES, carved by Bananahead, Duke of B... (the rest is worn away). Rule 1: No farting in the temple. Rule 2: See Rule 1. (Rule 1 was broken 4,000 years ago. We are still very sorry.) Ancient tip: a lever is just a switch. The light switch in YOUR house is a lever too!'},
   {slot:28, from:21, name:'The Fact Stone', disc:'secret2', prize:'bananacannon',
    lore:'A FACT, carved by a very bored monkey: real computers have BILLIONS of tiny switches called transistors. Each one is like your grumpy torch, but smaller than a speck of dust! Your phone has more switches than there are bananas in the whole jungle.'}
 ];
@@ -4920,7 +4921,7 @@ function funFrame(dt){
   // meeting the Captain
   const cap = A.captain;
   if (!A.funMet && cap && !A.funIntroT && !DLG.on){ const d = Math.hypot(cap.position.x - P.x, cap.position.z - P.z);
-    if (d < 8){ A.funIntroT = 1; P.yaw = Math.atan2(-(cap.position.x - P.x), -(cap.position.z - P.z)); P.pitch = -.05; dlgStart(FUN_INTRO(), () => { A.funMet = true; A.funMetAt = A.clock || 0; advSaveSoon(); renderCard(); funHostTo(); welcomeTrail(); }); } }
+    if (d < 8){ A.funIntroT = 1; P.yaw = Math.atan2(-(cap.position.x - P.x), -(cap.position.z - P.z)); P.pitch = -.05; dlgStart(FUN_INTRO(), () => { A.funMet = true; A.funMetAt = A.clock || 0; advSaveSoon(); renderCard(); hostWalk(A.captain); funHostTo(); welcomeTrail(); }); } }
   // the Captain waits outside the next ride
   const r = A.rt && A.rt.room; if (A.funMet && r !== A.funHostRoom && !DLG.on){ A.funHostRoom = r; funHostTo(); }
   funBeatsFrame();
@@ -4953,7 +4954,7 @@ function funHostTo(){
   if (!r){ const s = cellPos(GT.station[0] - 3, GT.station[1]); m.position.copy(s); m.userData.y0 = m.position.y; return; }
   if (r.id === FUN_LAST && !A.gRode){ const s = cellPos(GT.station[0] - 3, GT.station[1]); m.position.copy(s); m.userData.y0 = m.position.y; return; }
   const d = r.entry, [ix, iy] = entryOf(r), ox = 2*d[0] - ix, oy = 2*d[1] - iy, sx = Math.sign(d[0] - ix), sy = Math.sign(d[1] - iy);
-  m.position.copy(cellPos(ox + (sy ? 2 : 0), oy + (sx ? 2 : 0))); m.userData.y0 = m.position.y;
+  hostPlace(m, [ox + (sy ? 2 : 0), oy + (sx ? 2 : 0)]);
 }
 function funSolved(r){
   A.funSolvedAt = A.clock || 0;
@@ -5833,7 +5834,7 @@ function apeFrame(dt){
   [A.zest, A.greg, A.general, A.digby].forEach(m => { if (!m) return; const u = m.userData; if (u.hop > 0){ u.hop = Math.max(0, u.hop - dt*.004); m.position.y = (m.userData.y0 ?? (m.userData.y0 = m.position.y)) + Math.sin(u.hop*Math.PI)*.25; } });
   // meeting Dr Zest
   if (!A.apeMet && A.zest && !A.apeIntroT && !DLG.on){ const d = Math.hypot(A.zest.position.x - P.x, A.zest.position.z - P.z);
-    if (d < 8){ A.apeIntroT = 1; P.yaw = Math.atan2(-(A.zest.position.x - P.x), -(A.zest.position.z - P.z)); P.pitch = -.05; dlgStart(APE_INTRO(), () => { A.apeMet = true; advSaveSoon(); renderCard(); apeHostsTo(); welcomeTrail(); }); } }
+    if (d < 8){ A.apeIntroT = 1; P.yaw = Math.atan2(-(A.zest.position.x - P.x), -(A.zest.position.z - P.z)); P.pitch = -.05; dlgStart(APE_INTRO(), () => { A.apeMet = true; advSaveSoon(); renderCard(); hostWalk(A.zest); hostWalk(A.greg); apeHostsTo(); welcomeTrail(); }); } }
   { const [ex, ey] = cellAtWorld(P.x, P.z); if (ex >= APE_END.x0 && ex <= APE_END.x1 && ey >= APE_END.y0 && ey <= APE_END.y1 && A.room && A.room.id){ A.room = 'hub'; enterArea(null, 'hub'); } }   // the cavern and the desert are their own place
   // Dr Zest (and Greg) wait for you outside the next test
   const r = A.rt && A.rt.room; if (A.apeMet && r !== A.apeHostRoom && !DLG.on){ A.apeHostRoom = r; if (r) apeHostsTo(r); }
@@ -5845,8 +5846,8 @@ function apeCineEnd(){ if (!A.apeCine) return; A.apeCine = null; cineEnd(); subt
 function apeHostsTo(r){
   r = r || ROOMS.find(q => !A.solved.has(q.id)); if (!r || !A.zest) return;
   const d = r.entry, [ix, iy] = entryOf(r), ox = 2*d[0] - ix, oy = 2*d[1] - iy, sx = Math.sign(d[0] - ix), sy = Math.sign(d[1] - iy);
-  const host = r.host === 'Dr Zest' ? A.zest : (A.digby || A.zest); host.position.copy(cellPos(ox + (sy ? 2 : 0), oy + (sx ? 2 : 0))); host.userData.y0 = host.position.y;
-  if (A.greg){ A.greg.position.copy(cellPos(ox - (sy ? 2 : 0), oy - (sx ? 2 : 0))); A.greg.userData.y0 = A.greg.position.y; }
+  const host = r.host === 'Dr Zest' ? A.zest : (A.digby || A.zest); hostPlace(host, [ox + (sy ? 2 : 0), oy + (sx ? 2 : 0)]);
+  if (A.greg) hostPlace(A.greg, [ox - (sy ? 2 : 0), oy - (sx ? 2 : 0)]);
 }
 // ---- the story between the tests: the museum (Barold finds out he's a skeleton), Sir Reginald's radio, the General, Greg, the hosts' "next one will get you" ----
 const ZEST_AFTER = ['...It used the levers. Write that down. No. Don\'t write that down.', 'Beginner\'s luck. The NEXT test is impossible.', 'I have crossed out IMPOSSIBLE and written VERY IMPOSSIBLE.', 'Note: specimen pressed buttons. Do NOT let it near the big red one.', 'Specimen has passed. AGAIN. Fetch the bigger clipboard.', 'Note: specimen smells faintly of whoopee cushion.'];
@@ -9895,6 +9896,49 @@ function forceTrail(c){ if (!c) return; const W = A.wf || (A.wf = {key:'', best:
 // after an act's welcome (Acts 2-5): the glowing trail to the first room lays itself, once, no Hint press (sweep 2 A1/C1: Max won't press Hint;
 // the Maya's first room was never found in 50 actions). It goes when you get there, like the Hint's trail.
 function welcomeTrail(){ const c = objectiveCell(); if (c){ forceTrail(c); A.welcomeTrail = c.join(); } }
+// ---- the host WALKS you to the first room (Tom's open question, decided 8 Oct): after an act's welcome (the Captain, Dr Zest and Greg, the
+// Scribe, the Headmonkey) the host walks ahead to the first room's door, like Barold in Act 1, on top of the self-laying trail. Real paths
+// only (bfsPath: never through walls, never teleports). Ahead of you and you've fallen behind? He stops and waits, facing you, but never in
+// a doorway or a one-block gap (he'd be in your way); a big talk (not a soft box) stops him too. At the door he stands beside it, never in
+// it. The act's own "host waits by the next door" code goes through hostPlace, so it moves his goal while he's walking, not him. ----
+const HOST_GAP = 7, HOST_SPEED = 3.2;
+function hostWalk(m){ if (!m) return; A.hostWalks = (A.hostWalks || []).filter(w => w.m !== m); A.hostWalks.push({m, to:null, path:null, age:1e9, ph:0, act:A.act, t:0}); }
+function hostPlace(m, cell){ if (!m || !cell) return; const w = (A.hostWalks || []).find(q => q.m === m); if (w){ if (!w.to || w.to.join() !== cell.join()){ w.to = cell.slice(); w.path = null; } return; }
+  m.position.copy(cellPos(...cell)); m.userData.y0 = m.position.y; }
+// a doorway or a one-block gap: blocked on both sides across the way through (or a room's own door cell)
+function inDoorway(x, y){ const bl = (x, y) => !passableCell(x, y); return (bl(x - 1, y) && bl(x + 1, y)) || (bl(x, y - 1) && bl(x, y + 1)) || ROOMS.some(r => r.entry && r.entry[0] === x && r.entry[1] === y); }
+// where a host waits by a room's door: beside it, outside, on real floor, never in a doorway (skip: cells already taken)
+function doorSideSpots(r){
+  const d = r.entry, [ix, iy] = entryOf(r), ox = 2*d[0] - ix, oy = 2*d[1] - iy, sx = Math.sign(d[0] - ix), sy = Math.sign(d[1] - iy), out = [];
+  for (const k of [2, 3, 1]) for (const s of [1, -1]) for (const o of [0, 1]){ const x = ox + (sy ? k*s : 0) + sx*o, y = oy + (sx ? k*s : 0) + sy*o; if (passableCell(x, y) && !at(x, y) && !roomOf(x, y) && !inDoorway(x, y) && !out.some(c => c[0] === x && c[1] === y)) out.push([x, y]); }
+  return out;
+}
+function hostWalkFrame(dt){
+  const L = A.hostWalks; if (!L || !L.length) return;
+  for (let i = L.length - 1; i >= 0; i--){
+    const w = L[i], m = w.m, u = m.userData;
+    if (!A.on || !m.parent || A.act !== w.act){ L.splice(i, 1); continue; }   // (an act change)
+    w.t += dt; if (!w.to) continue;
+    if (w.t > 180000){ const c = cellPos(...w.to); if (!playerSees(c.x, c.y + 1, c.z) && !playerSees(m.position.x, m.position.y + 1, m.position.z)){ m.position.copy(c); u.y0 = c.y; L.splice(i, 1); continue; } }   // (three minutes and you never came: he goes on round the back, out of sight)
+    const [mx, my] = cellAtWorld(m.position.x, m.position.z), face = () => { m.rotation.y = Math.atan2(P.x - m.position.x, P.z - m.position.z); };
+    const settle = () => { const fl = floorAtWorld(m.position.x, m.position.z); u.y0 = fl; if (!(u.hop > 0)) m.position.y = fl; };
+    if (mx === w.to[0] && my === w.to[1]){ const c = cellPos(...w.to); m.position.x = c.x; m.position.z = c.z; settle(); face(); L.splice(i, 1); A.hostArrived = (A.hostArrived || 0) + 1; continue; }
+    const tc = cellPos(...w.to), d = Math.hypot(m.position.x - P.x, m.position.z - P.z), ahead = Math.hypot(m.position.x - tc.x, m.position.z - tc.z) < Math.hypot(P.x - tc.x, P.z - tc.z);
+    const hold = (DLG.on && !dlgSoft()) || CINE.on || (ahead && d > HOST_GAP);
+    if (hold && !inDoorway(mx, my)){ w.waiting = true; settle(); face(); continue; }   // you've fallen behind (or someone's talking): he waits for you, but never in a doorway
+    w.waiting = false; w.age += dt;
+    if (!w.path || !w.path.length || w.age > 1500){ w.age = 0; w.path = bfsPath([mx, my], w.to); }
+    if (!w.path || !w.path.length){ settle(); face(); w.stuck = (w.stuck || 0) + dt;   // no way through right now: he waits where he is
+      if (w.stuck > 4000 && !playerSees(tc.x, tc.y + 1, tc.z) && !playerSees(m.position.x, m.position.y + 1, m.position.z)){ m.position.x = tc.x; m.position.z = tc.z; settle(); L.splice(i, 1); }   // (still no way after a while: he goes round the back, out of your sight, never popping in front of you)
+      continue; }
+    w.stuck = 0;
+    const tgt = w.path[0], dx = tgt.x - m.position.x, dz = tgt.z - m.position.z, dd = Math.hypot(dx, dz);
+    if (dd < .12){ w.path.shift(); continue; }
+    const k = Math.min(1, HOST_SPEED*dt/1000/dd); m.position.x += dx*k; m.position.z += dz*k; m.rotation.y = Math.atan2(dx, dz);
+    w.ph += dt*.014; const fl = floorAtWorld(m.position.x, m.position.z); u.y0 = fl; if (!(u.hop > 0)) m.position.y = fl + (reduceMotion ? 0 : Math.abs(Math.sin(w.ph))*.08);
+    if (u.arms && !reduceMotion){ u.arms[0].rotation.x = Math.sin(w.ph)*.5; u.arms[1].rotation.x = -Math.sin(w.ph)*.5; }
+  }
+}
 // the sky view in Acts 3-5: a YOU marker over your head (sweep 2 C4: "rooms from the sky, but not me")
 function youMarkFrame(){
   const on = A.on && A.act >= FUN_ACT && !inFP() && !!L && !$('#hud').hidden && S.mode === 'adventure';
@@ -10500,6 +10544,7 @@ function advFrame(dt, now){
   else if (A.act === MAYA_ACT) mayaFrame(dt);
   else if (A.act === UNI_ACT) uniFrame(dt);
   else { plazaSecretsFrame(); notesFrame(dt); smokeFrame(dt); jungleFrame(dt); doorTrapFrame(dt); thiefFrame(dt); introFrame(dt); reggieFrame(dt); lavaFrame(dt); secretsFrame(); }
+  hostWalkFrame(dt);   // (after the act's frame: a host walking you to the first room faces the way he walks)
   if (A.crown && !reduceMotion) A.crown.userData.gem.rotation.y += dt*.001;
   launcherPlayer(dt); lookUpFrame(dt);
   tutFrame(dt); openingFrame(dt);
@@ -13990,6 +14035,7 @@ const ACH_LIST = [
   {id:'secrets', cat:'explore', name:'Secret Squirrel', line:'You found EVERY hidden room!', clue:'Find every hidden room (and the cracked shrine).', icon:'door', near:c => ACH_SECRETS.some(d => c.disc.has(d)), n:c => [ACH_SECRETS.filter(d => c.disc.has(d)).length, ACH_SECRETS.length]},
   {id:'crystals', cat:'explore', name:'Crystal Clear', line:'Shiny!', clue:'Collect every crystal in the temple.', icon:'crystal', near:c => c.crystals.size > 0, n:c => [TEMPLE_ROOMS.filter(r => c.crystals.has(r.id)).length, TEMPLE_ROOMS.length]},
   {id:'launched', cat:'explore', name:'Top of the Temple', line:'3... 2... 1... LIFT OFF!', clue:'Fix the Crystal Skull\'s machines and launch.', icon:'crystal', near:c => solvedN(c) >= 20},
+  {id:'pyramidtop', cat:'explore', name:'Top of the World', line:'You can see the WHOLE city from up here!', clue:'Climb the stairs of the big pyramid in the Maya city.', icon:'crystal', near:c => [...c.solved].some(id => id > 400 && id < 500)},   // the Maya pyramid's stairs (mayaTopFrame)
   {id:'mapback', cat:'explore', name:'Map Back', line:'Give it BACK, you cheeky monkey!', clue:'Someone sneaky has your map...', icon:'map', near:c => c.launched},
   {id:'act2', cat:'explore', name:'Visitor Sticker', line:'Welcome, curious hairless creature!', clue:'Fly on to the next planet.', icon:'map', near:c => c.launched},   // the Ape Planet (Act 2)
   {id:'act3', cat:'explore', name:'Roll Up!', line:'The seaside funfair!', icon:'map', when:() => false},
@@ -14764,6 +14810,8 @@ function mayaCardHTML(r, rt){
 // great terrace at the top: the ball court ----
 const MAYA_SPAWN = [34, 182], MAYA_SHIP = [52, 182];
 const MAYA_TEMPLE = {x0:22, x1:46, y0:140, y1:160, cx:34};   // the new temple: a stepped pyramid in the middle of the plaza, stairs facing south
+const MAYA_STAIRS = {y0:154, y1:164};   // its walkable stairs (x cx-1..cx+1): y1 is the step at the foot (in the plaza), y0 the highest; the flat summit (12 up) starts at y0 - 1
+const mayaShrineCell = (x, y) => Math.abs(x - MAYA_TEMPLE.cx) <= 3 && y >= 146 && y <= 150;   // the shrine on top (its 7 x 5 house): solid
 const MAYA_TOP = {x0:2, x1:67, y0:20, y1:62};                // the great terrace: the ball court
 const COURT = {x0:10, x1:46, y0:28, y1:50, ringN:[28, 28], ringS:[28, 50]};
 // plaster white, temple red, limestone, Maya blue (wall kinds 18..21); plaster floors (terrain top 7)
@@ -14803,8 +14851,19 @@ function buildMaya(save){
   for (let x = 0; x < ADV_W; x++){ setWall(x, ADV_H-1, 4, 4); setWall(x, 0, 6, 4); }
   for (let y = 0; y < ADV_H; y++){ setWall(0, y, 4, 4); setWall(ADV_W-1, y, 4, 4); }
   // the new temple: a stepped pyramid, painted red with blue bands, white stairs up the front (south)
-  { const T = MAYA_TEMPLE; for (let x = T.x0; x <= T.x1; x++) for (let y = T.y0; y <= T.y1; y++){ const ring = Math.min(x - T.x0, T.x1 - x, y - T.y0, T.y1 - y), h = Math.min(12, 2 + Math.floor(ring*1.5)), stair = Math.abs(x - T.cx) <= 1 && y > T.y1 - 8;
-    setWall(x, y, stair ? Math.max(1, Math.min(12, Math.round((T.y1 - y + 1)*12/8))) : h, stair ? MAYA_WALL.plaster : ring % 2 && h < 12 ? MAYA_WALL.blue : MAYA_WALL.red); } }
+  { const T = MAYA_TEMPLE; for (let x = T.x0; x <= T.x1; x++) for (let y = T.y0; y <= T.y1; y++){ const ring = Math.min(x - T.x0, T.x1 - x, y - T.y0, T.y1 - y), h = Math.min(12, 2 + Math.floor(ring*1.5));
+    setWall(x, y, h, ring % 2 && h < 12 ? MAYA_WALL.blue : MAYA_WALL.red); }
+    // the white stairs up the front (Tom's question, decided 8 Oct: they look like stairs, so they ARE stairs): one block up per step with a
+    // half step on each (Minecraft stairs), so you walk up without jumping. They stand out from the face into the plaza, with a white rail
+    // either side (no stepping off), up to the flat top round the shrine. The top is walled in by the shrine and the steep tiers: the only
+    // way off is back down the stairs (no shortcut to anywhere). The reward up there: mayaTopFrame.
+    S.wallWalk = new Uint8Array(NX*NY);
+    for (let x = T.x0; x <= T.x1; x++) for (let y = T.y0; y <= T.y1; y++){ const i = y*NX + x; if (S.walls[i] >= 12 && !mayaShrineCell(x, y)) S.wallWalk[i] = 1; }
+    for (let y = MAYA_STAIRS.y0; y <= MAYA_STAIRS.y1; y++){ const top = 1 + (MAYA_STAIRS.y1 - y);
+      for (let dx = -1; dx <= 1; dx++){ const i = y*NX + T.cx + dx; setWall(T.cx + dx, y, top, MAYA_WALL.plaster); S.wallWalk[i] = 2; }
+      [-2, 2].forEach(dx => { const i = y*NX + T.cx + dx; setWall(T.cx + dx, y, Math.max(S.walls[i], top + 1), S.walls[i] > top + 1 ? S.wallKind[i] : MAYA_WALL.plaster); S.wallWalk[i] = 0; }); }
+    for (let dx = -1; dx <= 1; dx++){ const i = (MAYA_STAIRS.y1 + 1)*NX + T.cx + dx; S.elev[i] = 1; S.fkind[i] = 7; }   // the bottom step: half a block up from the plaza
+  }
   // white houses with thatched roofs round the plaza; market stalls are decor
   MAYA_HOUSES.forEach(([x, y, w, h]) => { for (let dx = 0; dx < w; dx++) for (let dy = 0; dy < h; dy++) setWall(x + dx, y + dy, 2, MAYA_WALL.plaster); });
   // the ball court: two long sloping walls with a stone ring on each (decor on top), the ends open
@@ -14865,6 +14924,11 @@ function buildMayaDecor(){
     add(7, 3, 5, M.mred, 0, 1.5, 0, sh); add(1.6, 2.2, .2, wm(0x1a0e08), 0, 1.1, 2.51, sh); add(7.4, .4, 5.4, M.plaster, 0, 3.2, 0, sh);
     add(5, 2.2, .6, wm(0xe8c23a), 0, 4.5, 0, sh); add(3.2, 1.2, .62, wm(0x2a8a5a), 0, 4.4, 0, sh); add(1.2, .6, .64, M.mred, 0, 5.3, 0, sh);   // the roof comb
     A.mayaShrine = sh; }
+  // the stairs' half steps (the upper half of each step, as on a Minecraft stair: what you step up onto)
+  for (let y = MAYA_STAIRS.y0; y <= MAYA_STAIRS.y1; y++) for (let dx = -1; dx <= 1; dx++){ const c = cellPos(MAYA_TEMPLE.cx + dx, y), top = c.y + S.walls[y*NX + MAYA_TEMPLE.cx + dx]; add(1, .5, .5, M.plaster, c.x, top + .25, c.z - .25); }
+  // a big sparkly crystal floating at the top of the stairs (you can see it from the plaza: something to climb up for)
+  { const c = cellPos(MAYA_TEMPLE.cx, MAYA_STAIRS.y0 - 2), m = new THREE.Mesh(new THREE.OctahedronGeometry(.45), crystalMat); m.position.set(c.x, c.y + 12 + 1.3, c.z); m.userData.y0 = m.position.y; m.userData.live = true; m.raycast = () => {};
+    m.add(glow(new THREE.SpriteMaterial({map:M.glowGold.map, color:0xd08aff, blending:THREE.AdditiveBlending, depthWrite:false, transparent:true}), 2.2, 0)); m.visible = !A.mayaBeats.has('top'); g.add(m); A.mayaTopGem = m; }
   // the market: stalls with cacao pods and piles of beans, maize cobs (cacao beans were money!)
   MAYA_MARKET.forEach(([x, y], k) => { const s = new THREE.Group(), c = cellPos(x, y); s.position.set(c.x, 0, c.z); g.add(s);
     add(2.2, .8, 1.2, wm(0x8a6a3a), 0, .4, 0, s); [-.9, .9].forEach(dx => add(.12, 2.2, .12, wm(0x6a4a2a), dx, 1.1, .5, s)); add(2.6, .14, 1.6, wm(k % 2 ? 0x2a8a8a : 0xc23a22), 0, 2.2, .2, s);
@@ -15049,7 +15113,7 @@ function mayaFrame(dt){
     if (t > MAYA_LAND().length*2.6 + .4) mayaCineEnd(); return; }
   if (!A.mayaMet && !A.mayaLanded){ A.mayaLanded = true; A.mayaCine = {t:0, i:-1}; cineStart(); return; }
   if (mayaCutFrame(dt) || sunsetFrame(dt)) return;
-  mayaStelaeFrame(false); mayaBeatsFrame(); matchFrame(dt); sunWindowFrame();
+  mayaStelaeFrame(false); mayaBeatsFrame(); matchFrame(dt); sunWindowFrame(); mayaTopFrame(dt);
   const look = m => { if (m && m.parent) m.rotation.y = Math.atan2(P.x - m.position.x, P.z - m.position.z); };
   look(A.scribe); look(A.stargazer); look(A.courtCap); look(A.banana);
   if (A.scribe && !reduceMotion){ const arm = A.scribe.userData.arms[0]; arm.rotation.z = A.mayaMet ? 0 : -2.4 + Math.sin(now*.012)*.4; }   // waving hello
@@ -15058,7 +15122,7 @@ function mayaFrame(dt){
   [A.scribe, A.stargazer, A.courtCap, A.banana].forEach(m => { if (!m) return; const u = m.userData; if (u.hop > 0){ u.hop = Math.max(0, u.hop - dt*.004); m.position.y = (u.y0 ?? (u.y0 = m.position.y)) + Math.sin(u.hop*Math.PI)*.25; } });
   // meeting the Scribe
   if (!A.mayaMet && A.scribe && !A.mayaIntroT && !DLG.on){ const d = Math.hypot(A.scribe.position.x - P.x, A.scribe.position.z - P.z);
-    if (d < 8){ A.mayaIntroT = 1; P.yaw = Math.atan2(-(A.scribe.position.x - P.x), -(A.scribe.position.z - P.z)); P.pitch = -.05; dlgStart(MAYA_INTRO(), () => { A.mayaMet = true; A.mayaMetAt = A.clock || 0; advSaveSoon(); renderCard(); mayaHostsTo(); welcomeTrail(); }); } }
+    if (d < 8){ A.mayaIntroT = 1; P.yaw = Math.atan2(-(A.scribe.position.x - P.x), -(A.scribe.position.z - P.z)); P.pitch = -.05; dlgStart(MAYA_INTRO(), () => { A.mayaMet = true; A.mayaMetAt = A.clock || 0; advSaveSoon(); renderCard(); hostWalk(A.scribe); mayaHostsTo(); welcomeTrail(); }); } }
   { const [ex, ey] = cellAtWorld(P.x, P.z); if (ex >= MAYA_TOP.x0 && ex <= MAYA_TOP.x1 && ey >= MAYA_TOP.y0 && ey <= MAYA_TOP.y1 && A.room && A.room.id){ A.room = 'hub'; enterArea(null, 'hub'); } }
   const r = A.rt && A.rt.room; if (A.mayaMet && r !== A.mayaHostRoom && !DLG.on){ A.mayaHostRoom = r; if (r) mayaHostsTo(r); }
   if (A.matchWon && !A.mayaDone && !A.sunset && !DLG.on && !CINE.on) sunsetStart();   // (after a reload between the match and the sunset)
@@ -15083,13 +15147,23 @@ function sunWindowFrame(){
   const lineUp = shown && Math.abs(t - 24) <= 4 && outLit(...r.out[0]);
   u.beam.visible = lineUp; if (lineUp){ const a = u.sun.position, b = u.mark.position, len = a.distanceTo(b); u.beam.scale.set(1, 1, len); u.beam.position.copy(a).lerp(b, .5); u.beam.lookAt(b); if (!u.dinged){ u.dinged = true; sfx.chime(); } } else u.dinged = false;
 }
+// the top of the pyramid (decided 8 Oct): the crystal bursts into sparkles, "Top of the World", and Barold calls up from the bottom: turn
+// round, the whole city is below you (no camera grab: you might still be holding forward). Once (a saved beat). The way down is the way up.
+function mayaTopFrame(dt){
+  const gem = A.mayaTopGem; if (gem && gem.visible && !reduceMotion){ gem.rotation.y += dt*.002; gem.position.y = gem.userData.y0 + Math.sin((A.clock || 0)*.003)*.15; }
+  if (!A.on || !inFP() || CINE.on || A.mayaBeats.has('top') || !S.wallWalk) return;
+  const [x, y] = cellAtWorld(P.x, P.z); if (!inb(x, y) || S.wallWalk[y*NX + x] !== 1 || !P.ground || P.y < 12) return;
+  mayaBeat('top'); A.mayaTopAt = A.clock || 0; sfx.chime(); if (gem){ burst(gem.position.clone(), 0xd08aff, 24); confetti3D(gem.position.clone()); gem.visible = false; }
+  ach('pyramidtop');
+  baroldTell(['You made it to the TOP! Turn around and look: the WHOLE city!', 'I\'ll wait down here. Last time I climbed stairs, my leg fell off.']);
+}
 function mayaCineEnd(){ if (!A.mayaCine) return; A.mayaCine = null; cineEnd(); subtitle(null, ''); }
 function mayaSkip(){ if (A.mayaCine){ mayaCineEnd(); return true; } if (A.mayaCut){ A.mayaCut = null; cineEnd(); subtitle(null, ''); mayaCourtParts(); return true; } if (A.sunset && !A.sunset.done){ A.sunset.t = 1e9; return true; } return false; }
 // the host stands just outside the next room's door (never on a puzzle cell)
 function mayaHostsTo(r){
   r = r || ROOMS.find(q => !A.solved.has(q.id)); if (!r) return;
   const d = r.entry, [ix, iy] = entryOf(r), ox = 2*d[0] - ix, oy = 2*d[1] - iy, sx = Math.sign(d[0] - ix), sy = Math.sign(d[1] - iy);
-  const host = A.hosts && A.hosts[r.host]; if (!host) return; host.position.copy(cellPos(ox + (sy ? 2 : 0), oy + (sx ? 2 : 0))); host.userData.y0 = host.position.y;
+  const host = A.hosts && A.hosts[r.host]; if (!host) return; hostPlace(host, [ox + (sy ? 2 : 0), oy + (sx ? 2 : 0)]);
 }
 const MAYA_AFTER = {Scribe:['You count like a scribe!', 'Our builders will want to hear about this.', 'Dots and bars. You have it now.'],
   Bananahead:['I\'m writing that down. In lamp code.', 'Can you teach the other monkeys? They\'re... trying.'],
@@ -15336,6 +15410,7 @@ function mayaCardSVG(k){
 }
 // ---- test hooks (window.__game.maya) ----
 const MAYA_TEST = {
+  topGem(){ return !!(A.mayaTopGem && A.mayaTopGem.visible); },
   met(){ return !!A.mayaMet; }, introLen(){ return MAYA_INTRO().length; }, intro(){ return MAYA_INTRO().concat(MAYA_WALK()).map(l => l[1]).join(' '); }, done(){ return !!A.mayaDone; }, cine(){ return !!A.mayaCine; }, cut(){ return !!A.mayaCut; }, beats(){ return [...(A.mayaBeats || [])]; },
   scribeCell(){ return A.scribe ? cellAtWorld(A.scribe.position.x, A.scribe.position.z) : null; }, demo(){ return DLG.on && DLG.why ? DLG.why.id : 0; },
   count(id){ return mayaN(mayaRoom(id)); }, setCount(id, n){ mayaSetCount(mayaRoom(id), n); return mayaN(mayaRoom(id)); }, add(id){ return mayaAdd(mayaRoom(id)); },
@@ -15624,10 +15699,19 @@ function uniFaceSay(c, gh){
   const d = want.dir || 0, [dx, dy] = DIRS[obs ? opp(d) : d], ok = (x, y) => passableCell(x, y) && !at(x, y) && !(roomOf(x, y) && roomOf(x, y) !== r);
   const tries = [[1, 0], [2, 0], [3, 0], [2, 1], [2, -1], [3, 1], [3, -1]];   // straight out first; off to one side only from further away (looking at it from a corner, you can't tell which way it would face)
   let spot = null; for (const [k, o] of tries){ const x = c.x + dx*k + (dy ? o : 0), y = c.y + dy*k + (dx ? o : 0); if (ok(x, y)){ spot = [x, y]; break; } }
-  sfx.nope(); plogEvent('wrong');
-  monkeySay(obs ? 'Backwards! An observer\'s eyes look back at YOU when you put it down. Break it, stand ' + (spot ? 'on the glowing square' : 'where its eyes should look') + ', look at the spot, and put it down again.'
-    : 'Backwards! ' + name + ' faces back at YOU when you put it down: it pushes towards where you stand. Break it, stand ' + (spot ? 'on the glowing square' : 'on the side it should push to') + ', look at the spot, and put it down again.', 11000);
+  // the classroom's professor says it (their lesson; they gave the watch-me demo), in the box at the bottom (design guide 3), short lines
+  const who = r.host || guideNow(), say = obs ? ['Backwards! An observer\'s eyes look back at YOU.', 'Its eyes watch the side where you stand.', spot ? 'Break it. Stand on the glowing square. Try again.' : 'Break it. Stand where its eyes should look. Try again.']
+    : ['Backwards! ' + name + ' faces back at YOU.', 'It pushes towards where you are standing.', spot ? 'Break it. Stand on the glowing square. Try again.' : 'Break it. Stand where it should push to. Try again.'];
+  sfx.nope(); plogEvent('wrong'); uniProfTell(who, say);
   uniStandMark(spot);
+}
+// a professor tells you something while you build: a soft box (clicks in the world still build), the latest one replacing the last
+function uniProfTell(who, say){
+  A.uniProfLines = {who, say: say.slice()};
+  if (!A.on){ feed('say', who + ': ' + say.join(' ')); return; }
+  DLG.wait = DLG.wait.filter(w => !w[0].profTell); if (DLG.on && DLG.q && DLG.q.profTell) dlgCancel();
+  const ml = $('#mline'); if (ml){ ml.hidden = false; ml.innerHTML = '<b>' + who + ':</b> '; ml.appendChild(document.createTextNode(say.join(' '))); }
+  const lines = say.map(t => [who, t]); lines.soft = true; lines.profTell = true; dlgStart(lines);
 }
 function uniStandMark(spot){
   if (A.uniStand){ fxRoot.remove(A.uniStand); A.uniStand = null; } if (!spot || S.simulating) return;
@@ -16672,7 +16756,7 @@ function uniFrame(dt){
   Object.values(A.hosts || {}).forEach(m => { const u = m.userData; if (u.hop > 0){ u.hop = Math.max(0, u.hop - dt*.004); m.position.y = (u.y0 ?? (u.y0 = m.position.y)) + Math.sin(u.hop*Math.PI)*.25; } });
   // meeting the Headmonkey
   if (!A.uniMet && A.headmonkey && !A.uniIntroT && !DLG.on){ const d = Math.hypot(A.headmonkey.position.x - P.x, A.headmonkey.position.z - P.z);
-    if (d < 8){ A.uniIntroT = 1; P.yaw = Math.atan2(-(A.headmonkey.position.x - P.x), -(A.headmonkey.position.z - P.z)); P.pitch = -.05; dlgStart(UNI_INTRO(), () => { A.uniMet = true; advSaveSoon(); renderCard(); uniHostsTo(); }); } }
+    if (d < 8){ A.uniIntroT = 1; P.yaw = Math.atan2(-(A.headmonkey.position.x - P.x), -(A.headmonkey.position.z - P.z)); P.pitch = -.05; dlgStart(UNI_INTRO(), () => { A.uniMet = true; advSaveSoon(); renderCard(); uniHostsTo(); uniHeadWalk(); }); } }
   { const [ex, ey] = cellAtWorld(P.x, P.z); if (A.room && A.room.id && !ROOMS.some(q => ex >= q.box.x0 - 1 && ex <= q.box.x1 + 1 && ey >= q.box.y0 - 1 && ey <= q.box.y1 + 1)){ A.room = 'hub'; enterArea(null, 'hub'); } }   // out of the classroom (past its doorway): the castle's own card
   const r = A.rt && A.rt.room; if (A.uniMet && r !== A.uniHostRoom && !DLG.on){ A.uniHostRoom = r; if (r) uniHostIn(r); else uniHostsTo(); }   // in a classroom: its professor is in there with you; out in the castle: the next one waits by its door
   if (A.uniMet && !A.uniFinale && !A.uniEnd && !DLG.on && !(r && !A.solved.has(r.id))){ const c = objectiveCell(), k = c && c.join(); if (k && k !== A.uniTrailFor){ A.uniTrailFor = k; forceTrail(c); } }   // the castle is big: the glowing trail lays itself to the next classroom (no Hint press needed: playtest sweep 2's proposal 1)
@@ -16694,6 +16778,12 @@ function uniHostsTo(r){
   const d = r.entry, [ix, iy] = entryOf(r), ox = 2*d[0] - ix, oy = 2*d[1] - iy, sx = Math.sign(d[0] - ix), sy = Math.sign(d[1] - iy);
   const host = A.hosts && A.hosts[r.host]; if (!host) return; const spot = [[ox + (sy ? 2 : 0), oy + (sx ? 2 : 0)], [ox - (sy ? 2 : 0), oy - (sx ? 2 : 0)], [ox + sx, oy + sy], [ox, oy]].find(([x, y]) => passableCell(x, y)) || [ox, oy];   // (beside the door, never in a wall)
   host.position.copy(cellPos(...spot)); host.userData.y0 = host.position.y;
+}
+// after his welcome the Headmonkey walks you to the first classroom himself, and waits beside its door (the professor is already there)
+function uniHeadWalk(){
+  const r = ROOMS.find(q => !A.solved.has(q.id)), m = A.headmonkey; if (!r || !m) return;
+  const prof = A.hosts && A.hosts[r.host], pc = prof && cellAtWorld(prof.position.x, prof.position.z), spot = doorSideSpots(r).find(c => !pc || Math.abs(c[0] - pc[0]) + Math.abs(c[1] - pc[1]) >= 2);
+  if (spot){ hostWalk(m); hostPlace(m, spot); }
 }
 const UNI_AFTER = {'Professor Capuchin':['Top marks! Doors are my favourite. After bananas.'], 'Professor Howler':['HOOOWL! That means "well done".'],
   'Professor Lemur':['Brilliant. And I\'m still not a monkey.', 'A lemur would be proud. I AM proud.'], 'Professor Gorilla':['*rumbly burp* That means I\'m happy. VERY happy.', 'BOOM! Sorry. I just like saying it. BOOM.'], 'Professor Orangutan':['Lovely. I\'ll make pumpkin soup.'], 'Sir Reginald':['Splendid flying. Did I mention...? Top marks. *blub*'], 'Professor Gibbon':['WHOOP WHOOP! That\'s gibbon for "brilliant".']};
@@ -16735,6 +16825,7 @@ function uniGallery(){
     [GUIDE, 'They\'ve all got a crack in their head. Just like... mine.'],
     ['Headmonkey', 'Hello, Barold. Barold BARRINGTON.'],
     [GUIDE, '...Never met him.'],
+    ['Headmonkey', 'I carved the Temple Rules. "Duke of B..." The B is for BARRINGTON.'],
     ['Headmonkey', 'Barold. We know. Every Barrington for 4,000 years knows. All your professors are Barringtons too.'],
     [GUIDE, 'Then you know I\'m only Level 3! Every Barrington is Level 99! I was so embarrassed, I hid in a temple for 800 years.'],
     ['Headmonkey', 'In 4,000 years, NO Barrington ever got a visitor all the way through that temple. The main door has been stuck since Rule 1.'],
@@ -16747,7 +16838,7 @@ function uniGallery(){
     ['Headmonkey', 'And the Guild has checked your promotions. Level 2: guide a visitor through fifteen rooms. Twelve rooms, a hallway, the stairs and a cupboard...'],
     ['Headmonkey', '*STAMP* APPROVED. Cupboards have doors.', () => { uniStamp(); showIdCard(2, 4000); }],
     ['Headmonkey', 'Level 3: show the visitor the way home, at the top of the temple. *STAMP* APPROVED. With honours.', () => { uniStamp(); showIdCard(3, 5000); }],
-    [GUIDE, 'OFFICIAL! I\'m OFFICIALLY Level 3! Did you all hear that? BAROLD BARRINGTON, LEVEL 3!']], () => { uniBeat('gallery'); A.uniFinale = null; uniGraduation(); }, i => i >= 11 && i <= 13 ? A.portraitB : undefined);
+    [GUIDE, 'OFFICIAL! I\'m OFFICIALLY Level 3! Did you all hear that? BAROLD BARRINGTON, LEVEL 3!']], () => { uniBeat('gallery'); A.uniFinale = null; uniGraduation(); }, i => i >= 12 && i <= 14 ? A.portraitB : undefined);
 }
 function uniUnveil(){ if (A.curtain){ A.uniFinale && (A.uniFinale.drop = 1); A.curtain.userData.fall = 0; } sfx.chime(); if (typeof musicCue === 'function') try { musicCue('reveal'); } catch (e) {}
   if (A.portraitB) { const p = A.portraitB.position; P.yaw = Math.atan2(-(p.x - P.x), -(p.z - P.z)); P.pitch = .15; } }
@@ -17103,7 +17194,7 @@ const UNI_TEST = {
   hall(){ return {x0:UNI_TOP.x0, x1:UNI_TOP.x1, y0:UNI_TOP.y0, y1:UNI_TOP.y1, door:UNI_TOP.door, side:UNI_TOP.side, wall:S.walls[UNI_TOP.y0*NX + UNI_TOP.x0], roof:!!A.uniRoofs, tables:[23, 28, 38, 43].filter(x => S.noWalk[(UNI_TOP.dais + 6)*NX + x + 1]).length, candles:GLOW.list.filter(e => e.owner === A.uniHall).length, dais:floorAt(34, UNI_TOP.y0 + 2) - floorAt(34, UNI_TOP.y1 - 2)}; },
   places(){ const b = q => ({w:q.x1 - q.x0 - 1, h:q.y1 - q.y0 - 1}); return {quad:b(UNI_QUAD), lawn:b(UNI_LAWN), dinner:b(UNI_DINNER), lib:Object.assign(b(UNI_LIB), {wall:S.walls[UNI_LIB.y0*NX + UNI_LIB.x0]}), rooms:ROOMS.map(r => Object.assign(b(r.box), {id:r.id, wall:S.walls[r.box.y0*NX + r.box.x0], desks:r.desks || 0, pupils:r.pupils || 0, look:r.look, floorIn:[[0, 0], [10, 8]].every(p => { const [x, y] = apeP(r, p); return x > r.box.x0 && x < r.box.x1 && y > r.box.y0 && y < r.box.y1; })}))}; },
   gate(id){ const r = uniRoom(id), c = r && at(...r.entry); return c && c.t === 'door' ? (c.latched ? 'open' : 'shut') : 'none'; },
-  standMark(){ return A.uniStand ? A.uniStandAt : null; }, preview(){ hover(...centre()); let arrows = 0; previewRoot.traverse(o => { if (o.isMesh && o.material && o.material.color && o.material.color.getHex() === 0xffc81a) arrows++; }); return {kids:previewRoot.children.length, hover:hoverCell, sel:ITEMS[sel] && ITEMS[sel].id, arrows}; }, crumbs(){ return A.wf && A.wf.forced ? A.wf.crumbs.length : 0; }, place(){ return uniPlaceName(); },
+  standMark(){ return A.uniStand ? A.uniStandAt : null; }, profLines(){ return A.uniProfLines || null; }, preview(){ hover(...centre()); let arrows = 0; previewRoot.traverse(o => { if (o.isMesh && o.material && o.material.color && o.material.color.getHex() === 0xffc81a) arrows++; }); return {kids:previewRoot.children.length, hover:hoverCell, sel:ITEMS[sel] && ITEMS[sel].id, arrows}; }, crumbs(){ return A.wf && A.wf.forced ? A.wf.crumbs.length : 0; }, place(){ return uniPlaceName(); },
   trail(){ const c = objectiveCell(), p = c && bfsPath(cellAtWorld(P.x, P.z), c); return {obj:c, len:p ? p.length : -1}; },
   portrait(){ return {curtain:!!(A.curtain && A.curtain.visible), barold:!!A.portraitB}; },
   puffer(){ const rg = A.reggie; return !!(rg && rg.userData.puffer); },
@@ -17166,6 +17257,9 @@ window.__game = {
   adv: {
     start(fresh){ if (fresh){ slotWipe(slotCur(true), true); if (kvGet(KEY_PREFIX + 'tut') === '1') slotTutSet(); } startAdventure(); },   // (older scripts still set the old 'tutorial done' key)
     tp(x, y){ const c = cellPos(x, y); P.fling = null; P.x = c.x; P.z = c.z; P.y = c.y; stepFP(0); advFrame(0, 0); },
+    walkDir(yaw, ms){ P.yaw = yaw; keys.w = true; for (let t = 0; t < ms; t += 16){ stepFP(16); advFrame(16, t); } keys.w = false; }, pos(){ return {x:P.x, y:P.y, z:P.z, cell:cellAtWorld(P.x, P.z), ground:!!P.ground}; }, tpUp(x, y){ const c = cellPos(x, y); P.fling = null; P.x = c.x; P.z = c.z; P.y = heightAt(c.x, c.z); P.vy = 0; P.ground = true; stepFP(0); advFrame(0, 0); },   // (onto something you can stand on: the Maya pyramid's top)
+    hostWalks(){ return (A.hostWalks || []).map(w => ({who:bubbleWho(w.m), cell:cellAtWorld(w.m.position.x, w.m.position.z), to:w.to, waiting:!!w.waiting})); }, hostArrived(){ return A.hostArrived || 0; },
+    hostCell(who){ const m = A.hosts && A.hosts[who]; return m ? cellAtWorld(m.position.x, m.position.z) : null; }, doorway(x, y){ return inDoorway(x, y); }, firstRoom(){ const r = ROOMS.find(q => !A.solved.has(q.id)); return r ? {id:r.id, entry:r.entry, host:r.host} : null; },
     room(){ return A.rt && A.rt.room ? A.rt.room.id : A.room; },
     playerY(){ return P.y; }, flinging(){ return !!P.fling; }, pitch(){ return P.pitch; },
     cellNear(x, z){ return cellAtWorld(x, z); }, robotScale(){ const f = fx.find(q => q.kind === 'robot'); return f ? f.g.scale.x : 0; }, troopFlying(){ return TROOP.list.filter(m => m.userData.fly).length; }, itemName(id){ return (ITEMS.find(i => i.id === id) || {}).name; },
