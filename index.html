@@ -2038,7 +2038,7 @@ function blueprintDone(){ return !L || L.ghosts.every(ghostFilled); }
 const ghostShown = gh => !!L && (L.hintLevel >= 3 || (L.hintLevel >= 2 && gh.key));
 function syncGhosts(){
   if (!L) return;
-  L.ghosts.forEach(gh => { if (gh.mesh) gh.mesh.visible = ghostShown(gh) && !ghostFilled(gh); });
+  L.ghosts.forEach(gh => { if (gh.mesh) gh.mesh.visible = ghostShown(gh) && !ghostFilled(gh); if (gh.tag) gh.tag.visible = !!(gh.mesh && gh.mesh.visible); });
 }
 function clearWorld(){
   S.grid.fill(null); S.gridDirty = true; S.lastSnap = ''; S.stable = false;
@@ -2788,6 +2788,7 @@ function pan(dx, dy){
   { const lim = camLim(11); cam.target.x = Math.max(-lim, Math.min(lim, cam.target.x)); cam.target.z = Math.max(-lim, Math.min(lim, cam.target.z)); }
 }
 const centre = () => { const r = canvas.getBoundingClientRect(); return [r.left + r.width/2, r.top + r.height/2]; };
+let mouseAt = null; const aimPoint = () => !locked && !padMode && !lastTouch && mouseAt ? mouseAt : centre();   // a mouse with no pointer lock (refused, or a browser without it) builds where you CLICK, so the aiming square follows the mouse too (cold-return testers: the square sat in the middle while their clicks went elsewhere)
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 canvas.addEventListener('pointerdown', e => {
   ac();
@@ -2818,6 +2819,7 @@ canvas.addEventListener('pointerdown', e => {
 });
 canvas.addEventListener('pointermove', e => {
   if (inFP() && locked){ look(e.movementX || 0, e.movementY || 0, 0.0025); return; }
+  if (e.pointerType === 'mouse') mouseAt = [e.clientX, e.clientY];
   if (!ptrs.has(e.pointerId)){ if (e.pointerType === 'mouse' && !inFP()) hover(e.clientX, e.clientY); return; }
   ptrs.set(e.pointerId, {x:e.clientX, y:e.clientY});
   if (!gest) return;
@@ -2934,6 +2936,7 @@ function place(item, x, y, clicked){
   // the hint wanted it stuck on a block, or facing another way: say how to aim it (the rules stay Minecraft's)
   if (gh && gh.t === p.t && ['torch','lever','button'].includes(p.t) && (gh.attach ?? -1) !== p.attach) showToast((gh.attach ?? -1) < 0 ? 'Tap the FLOOR to stand it up on its own.' : 'To stick it on the block, tap the SIDE of the block.');
   else if (gh && gh.t === 'repeater' && p.t === 'repeater' && (gh.dir || 0) !== p.dir) showToast('A repeater points the way YOU look. Stand behind it and look along the wire.');
+  else if (A.on && gh && gh.t === p.t && (!('dir' in gh) || (gh.dir || 0) === p.dir)) showToast('Yes! That piece goes there.');   // (c19 broke a right piece: nothing said it was right)
   if (A.on && A.act === UNI_ACT && UNI_FACE.has(p.t)) uniFaceSay(c, gh);   // the University: a piston or observer that landed backwards says why (playtest sweep 2, U3)
   if (L && L.def.kind === 'free'){ S.freePlaced = (S.freePlaced || 0) + 1; if (S.freePlaced === 60 && !S.backupNudged){ S.backupNudged = true; let t = 0; try { t = +localStorage.getItem(KEY_PREFIX + 'backedUp') || 0; } catch (e) {} if (Date.now() - t > 3*864e5) showToast('Building something great? Ask a grown-up to save a backup file: Menu, then Grown-ups.'); } }
   return true;
@@ -3065,7 +3068,7 @@ const WHY = {
   lamp:c => `<b>Lamp</b>: lights up when power touches it. Dust must point at it.<br>It is <b>${c.lit ? 'ON' : 'OFF'}</b>.`,
   stone:c => `<b>Stone block</b>: power can go into it. A torch stuck on its side will notice!<br>It has <b>${c.powered ? 'power going into it' : 'no power'}</b>.`,
   torch:c => { const ea = effAttach(c); return ea < 0 ? `<b>Redstone torch</b> standing on the ground. It's always ON.` : `<b>Redstone torch</b>: a grumpy guard. When its block gets power, it switches OFF. No power? It's ON.<br>Its block ${nb(c, ea).powered ? '<b>has power</b>, so it is <b>OFF</b>' : '<b>has no power</b>, so it is <b>ON</b>'}.`; },
-  repeater:c => `<b>Repeater</b>: gives a tired signal a fresh start at 15. It only sends power one way, where the arrow points. Tap it to make it slower.<br>Delay: <b>${c.delay}</b>.`,
+  repeater:c => `<b>Repeater</b>: gives a tired signal a fresh start at 15. It only sends power one way, where the arrow points. It points the way YOU look when you put it down. Tap it to make it slower.<br>Delay: <b>${c.delay}</b>.`,
   rblock:c => `<b>Redstone block</b>: always ON. Power that never stops.`,
   tnt:c => `<b>Boom Block</b> (that's TNT!): give it power and run!`,
   fart:c => `<b>Whoopee cushion</b>: give it power and... you know.`,
@@ -3075,7 +3078,17 @@ const WHY = {
   disco:c => `<b>Disco ball</b>: give it power and it's a PARTY.`,
   crackwall:c => `<b>A cracked old wall</b>. It looks like a good BANG would bring it down...`,
   lantern:c => `<b>Lantern</b>: just a light, not redstone. Handy when it's too dark to see.`,
-  plate:c => `<b>Pressure plate</b>: switches on when anyone stands on it: you, a monkey, a Minecraft mob. It stays down for a second after they step off.`
+  plate:c => `<b>Pressure plate</b>: switches on when anyone stands on it: you, a monkey, a Minecraft mob. It stays down for a second after they step off.`,
+  // (these had no words: tapping them with What? showed an empty card. Cold-return tester c10 tapped a gold rail.)
+  prail:c => `<b>Gold rail</b> (a powered rail): with power it pushes the cart along. With NO power it is a brake: the cart stops.<br>It is <b>${c.lit ? 'ON' : 'OFF: a brake'}</b>.`,
+  rail:c => `<b>Rail</b>: plain track for the cart. It needs no power.`,
+  drail:c => `<b>Detector rail</b>: makes power while a cart is on it, like a pressure plate.`,
+  door:c => `<b>Door</b>: opens when power goes into it.<br>It is <b>${c.lit || c.latched ? 'open' : 'shut'}</b>.`,
+  glass:c => `<b>Glass</b>: you can see through it. Power can NOT go into glass.`,
+  bridge:c => `<b>Bridge</b>: comes up out of the quicksand while it has power.<br>It is <b>${c.lit ? 'up' : 'down'}</b>.`,
+  firework:c => `<b>Firework</b>: give it power and it goes BANG in the sky!`,
+  gong:c => `<b>Gong</b>: give it power and it goes BONG!`,
+  vein:c => `<b>Gold vein</b>: give it power and it cracks open!`,
 };
 function explain(c){
   if (!c){ showCard('Grass', 'Just grass. Build something on it!'); return; }
@@ -4059,7 +4072,7 @@ function frame(now){
   menuSceneFrame(now);
   pollPad(dt);
   tipClock += dt; if (tipClock > 250){ tipClock = 0; if (!$('#hud').hidden) updateTip(); }
-  if (inFP()){ stepFP(dt); if (!lastTouch || padMode){ if (aimDue()){ const [cx,cy] = centre(); hover(cx, cy); } } else if (outline.visible){ outline.visible = false; previewRoot.clear(); previewKey = ''; } }
+  if (inFP()){ stepFP(dt); if (!lastTouch || padMode){ if (aimDue()){ const [cx,cy] = aimPoint(); hover(cx, cy); } } else if (outline.visible){ outline.visible = false; previewRoot.clear(); previewKey = ''; } }
   else { setFov(TOP_FOV); keyMoveOverhead(dt); }
   advFrame(dt, now); sprayFrame(dt);
   runFx(dt); sbFrame(dt); achFrame(dt);
@@ -4182,9 +4195,9 @@ const TEMPLE_ROOMS = [
     walls:[[4,1,1],[4,3,1],[1,4,1],[3,4,1],[4,4,1]],
     fixed:[K('lever',8,6), K('dispenser',2,4), K('gate',4,2,{dir:1})],
     troop:{kinds:['tamarin'], n:20, pen:[1,1,3,3], lure:[2,2], start:[5,1,9,7], warmup:1, labels:[['BANANA MACHINE', 2, 4], ['GATE', 4, 2]]},
-    goal:'Open the gate AND fire the bananas, to tempt the tamarins into the pen. Then shut the gate!',
+    goal:'Open the gate. Fire the bananas. Tempt the tamarins into the pen. Then shut the gate!',
     hello:'A tamarin! Tamarins LOVE bananas. Open the gate and fire the bananas into the pen. Tempt it in!',
-    hint:'One lever has to do BOTH jobs: open the gate AND fire the banana machine. Run dust from the lever to the banana machine, and split it off to the gate too.',
+    hint:'One lever does BOTH jobs. It opens the gate AND fires the banana machine. Wire the lever to the banana machine. Split the wire off to the gate too. The gate is small and wooden.',
     win:'All penned in! One lever, two machines. Power can split and go lots of places at once.',
     mc:'In Minecraft, hold wheat and cows follow you. Lead them into a fenced pen and shut the gate: that\'s how a farm starts!',
     sol:[D(7,6),D(6,6),D(5,6),D(4,6),D(3,6),D(2,6),D(2,5),...col(6,5,2),D(5,2)] },
@@ -4515,7 +4528,7 @@ const FUN_ROOMS = [
     fixed:[K('plate',2,2),K('plate',2,6),K('stone',4,4),K('stone',7,4),K('button',7,5,{attach:0}),K('lamp',8,3)],
     goal:'Two treasure chests, two plates. If anyone steps on EITHER plate, the alarm lamp must come on and STAY on after they step off. Only the button turns it off.',
     hello:'Our treasure. I mean, our completely normal prizes. Build an alarm that REMEMBERS if anyone touched them. Not that there\'s treasure. There\'s NO treasure.',
-    hint:'It\'s the High Striker\'s memory: two grumpy torches, each one\'s power holding the OTHER one\'s block. Then join BOTH plates\' wires into the first block.',
+    hint:'Build a memory, like the High Striker. Use two blocks, each with a grumpy torch. Each torch powers the OTHER block. Then wire BOTH plates into the first block.',
     win:'Memory AND an OR! Either plate sets the alarm, and the two torches hold it on until the button. That\'s how a real burglar alarm remembers.',
     mc:'A Minecraft alarm: plates joined into one wire (OR) that sets an RS latch. A button resets it.',
     naive:[D(2,3),D(2,4),D(3,4),D(2,5),K('torch',5,4,{attach:3}),D(6,4),K('torch',7,3,{attach:2})],
@@ -5471,7 +5484,7 @@ const APE_ROOMS = [
     fixed:XOR_FIXED, naive:XOR_OUT,
     goal:'The way out! The door light must be on when exactly ONE key is on. Both keys: it stays off. Every part is here. The wires are not.',
     hello:'Test 9. The Two-Key Door. One key opens it. TWO keys keep it shut. The creature will NEVER escape. Probably.',
-    hint:'Each half needs the OTHER lever\'s wire running into its last stone block. Then run each half\'s torch into the lamp.',
+    hint:'Each lever has its own row. Wire each lever into the OTHER row\'s last block. Then wire the two torches by the lamp into it.',
     tired:'Both keys light it? Then each half needs to know about the OTHER key. Run each lever\'s wire to the far half\'s stone block.',
     win:'The door light works! Each half watches the OTHER key. You built XOR yourself. Dr Zest has fainted. (She\'s fine.)',
     mc:'Minecraft XOR, built your own way. Two-way light switches work just like this.',
@@ -5536,7 +5549,7 @@ const APE_ROOMS = [
     carts:[[1,2]], launch:[1,1], platform:[5,2], station:[9,2],
     goal:'The cart must STOP at the platform (the middle) for the passengers. Then send it on to the end. Right now it zooms straight past!',
     hello:'Power runs along gold rails, from one to the next: up to 8 of them! So the platform rail gets power too. And nobody can get on.',
-    hint:'Power passes from one gold rail to the next, up to 8 of them. The platform rail must have NO power, so it brakes. Swap the gold rails either side of it for plain ones. Then give it power and tap the cart to send it on.',
+    hint:'Power jumps from gold rail to gold rail, up to 8. A gold rail with NO power is a brake. The platform rail needs no power. Break the gold rails on both sides of it. Put plain rails there instead. Then power it and tap the cart.',
     past:'WHOOSH! Straight past the platform. The power ran along the gold rails into the platform rail. Stop it getting there!',
     stopLine:'It stopped! Passengers on. Now send it on: power the platform rail, then tap the cart.',
     win:'Stop... and GO! Power runs along up to 8 gold rails, so you split the line to make a brake just where you wanted.',
@@ -7817,16 +7830,18 @@ function roomSignText(r){
   } catch (e) { return ''; }
 }
 const recapName = t => ((ITEMS.find(i => i.id === t) || {}).name || t);
-const recapOutWord = t => OUT_WORD[t] || ({firework:'firework', disco:'disco ball', gate:'gate', bridge:'bridge', launcher:'Bounce Pad', note:'note block'})[t] || recapName(t).toLowerCase();
+const recapOutWord = t => OUT_WORD[t] || ({firework:'firework', disco:'disco ball', gate:'gate', dispenser:'banana machine', bridge:'bridge', launcher:'Bounce Pad', note:'note block'})[t] || recapName(t).toLowerCase();
 const recapPl = (n, w) => n === 1 ? w : /s$/.test(w) ? w : w + 's';
 const recapIn = (r, x, y) => { const b = r.box; return x > b.x0 && x < b.x1 && y > b.y0 && y < b.y1; };
 // your parts in the room, against how the room starts (its loose parts)
+const RECAP_MINE = new Set(ITEMS.map(i => i.id));   // (a grown pumpkin or a piston's pushed-out head is the room's, not yours)
 function recapBuilt(r){
   const start = new Map((A.solved.has(r.id) ? [] : r.loose || []).map(f => [f.x + ',' + f.y, f.t])), b = r.box; let added = 0;
-  for (let x = b.x0 + 1; x < b.x1; x++) for (let y = b.y0 + 1; y < b.y1; y++){ const c = at(x, y); if (!c || c.locked) continue; const k = x + ',' + y;
+  for (let x = b.x0 + 1; x < b.x1; x++) for (let y = b.y0 + 1; y < b.y1; y++){ const c = at(x, y); if (!c || c.locked || !RECAP_MINE.has(c.t)) continue; const k = x + ',' + y;
     if (start.get(k) === c.t){ start.delete(k); continue; } added++; }
-  const sol = new Map((r.sol || []).filter(g => g.t !== 'air').map(g => [g.x + ',' + g.y, g.t])); let onSol = 0;
-  for (let x = b.x0 + 1; x < b.x1; x++) for (let y = b.y0 + 1; y < b.y1; y++){ const c = at(x, y); if (c && !c.locked && sol.get(x + ',' + y) === c.t && !(r.loose || []).some(f => f.x === x && f.y === y && f.t === c.t)) onSol++; }
+  const sol = new Map((r.sol || []).filter(g => g.t !== 'air').map(g => [g.x + ',' + g.y, g])); let onSol = 0;
+  const same = (c, g) => g && g.t === c.t && (!('dir' in g) || g.dir === c.dir) && (!('attach' in g) || g.attach === c.attach);   // (an observer or piston facing the wrong way is NOT on track: c30)
+  for (let x = b.x0 + 1; x < b.x1; x++) for (let y = b.y0 + 1; y < b.y1; y++){ const c = at(x, y); if (c && !c.locked && same(c, sol.get(x + ',' + y)) && !(r.loose || []).some(f => f.x === x && f.y === y && f.t === c.t)) onSol++; }
   return {added, removed:start.size, onSol};
 }
 // dust that isn't joined to anything that could ever power it (not a switch that's off: a real gap)
@@ -7854,7 +7869,7 @@ function recapTableSim(r){
       const ins = rowInputs(m, n); r.inputs.forEach(([x, y], k) => { at(x, y).on = ins[k]; });
       for (let t = 0; t < 60; t++) step();
       const want = [].concat(r.fn(...ins)).map(Boolean), got = r.out.map(([x, y]) => outLit(x, y));
-      works.push({ins, ok:want.every((w, i) => w === got[i]), want:want[0], got:got[0]});
+      works.push({ins, ok:want.every((w, i) => w === got[i]), want:want[0], got:got[0], tired:ranOutIn(r) && r.out.some(([x, y]) => DIRS.some(([dx, dy]) => { const n = at(x + dx, y + dy); return n && n.t === 'dust' && n.pw === 0; }))});   // (the power faded out right before the output)
     }
   } finally {
     S.simulating = false;
@@ -7863,11 +7878,23 @@ function recapTableSim(r){
   }
   return works;
 }
+// your dust right beside an output, but bent away or running on past it (its END doesn't point in), with or without power yet
+function recapPastOut(r){
+  for (const [x, y] of r.out || []){ if (outLit(x, y)) continue; for (let d = 0; d < 4; d++){ const n = at(x + DIRS[d][0], y + DIRS[d][1]);
+    if (n && n.t === 'dust' && !n.locked && !n.pts[opp(d)] && DIRS.some((_, e) => n.pts[e])) return at(x, y); } }
+  return null;
+}
 // what's wrong with the build right now, in one short line (or '')
 function recapWrong(r, rt){
+  // one of your parts is in the right spot but faces the wrong way (c13, c14: the lighthouse's repeater; 504-506's pistons)
+  { const f = (r.sol || []).find(g => 'dir' in g && g.t !== 'air' && (c => c && !c.locked && c.t === g.t && c.dir !== g.dir)(at(g.x, g.y)));
+    if (f) return `The ${recapName(f.t).toLowerCase()} faces the wrong way.`;
+    // a torch standing on the floor where the answer's torch hangs on a block's side (c17 clicked the floor twice)
+    const t = (r.sol || []).find(g => g.t === 'torch' && 'attach' in g && g.attach >= 0 && (c => c && !c.locked && c.t === 'torch' && c.attach !== g.attach)(at(g.x, g.y)));
+    if (t) return 'That torch must hang on the side of a block.'; }
   const own = ownPowerIn(r); if (own) return `Your own ${recapName(own.t)} doesn't count here. Take it away.`;
   const wire = ['lit', 'pulse', 'boom', 'coop', 'together', 'each', 'pen', 'launch'].includes(r.check);
-  if (wire){ const past = alongsideOut(r); if (past) return `A wire runs PAST the ${recapOutWord(past.t)}. Point its END in.`; }
+  if (wire){ const past = alongsideOut(r) || recapPastOut(r); if (past){ const w = recapOutWord(past.t), t = `A wire runs PAST the ${w}. Point its END in.`; return recapWords(t) <= 10 ? t : `A wire runs PAST the ${w}. Point it IN.`; } }
   if (wire && A.act === 1 && ranOutIn(r)) return 'The wire is too long. The power runs out.';
   if (typeof burntIn === 'function' && burntIn(r.box)) return 'A torch burnt out! That loop flips too fast.';
   if (!r.direct && r.check === 'lit' && r.out.some(([x, y]) => outLit(x, y) && shortcutAt(x, y))) return 'Power is jammed right next to it. Use a wire.';
@@ -7901,27 +7928,42 @@ function recapFor(r){
     next = !built.added ? `Wire the ${lv ? 'lever' : 'button'} to the ${ow} with dust.` : lv ? 'Flip the lever ON, then OFF, then ON.' : `Press the button ${r.count - n} more ${r.count - n === 1 ? 'time' : 'times'}.`;
   } else if (ck === 'together'){ next = 'Press the button. ALL the fireworks must go together.';
   } else if (ck === 'each'){ const n = (rt.seen || new Set()).size; if (n){ tried = true; done.push(`Dance plates working: ${n} of ${r.inputs.length}.`); } next = n ? 'Stand on the next plate, all by itself.' : 'Wire every plate to the disco ball.';
-  } else if (ck === 'pen'){ const n = rt.inPen || 0, all = r.troop ? r.troop.n : 1; if (n){ tried = true; done.push(`Tamarins in the pen: ${n}.`); } next = n >= all ? 'Now shut the gate!' : 'Get the tamarins into the pen.';
+  } else if (ck === 'pen'){ const n = rt.inPen || 0, all = r.troop ? r.troop.n : 1; if (n){ tried = true; done.push(`Tamarins in the pen: ${n}.`); }
+    // which of the two jobs is done (the gate open, the banana machine firing): the card says which one is still missing
+    const isT = t => (r.out || []).filter(([x, y]) => { const c = at(x, y); return c && c.t === t; }), gateOn = isT('gate').some(([x, y]) => outLit(x, y)), fireOn = isT('dispenser').some(([x, y]) => outLit(x, y));
+    if (gateOn) done.push('The gate is open.'); if (fireOn) done.push('The banana machine is firing.');
+    next = n >= all ? 'Now shut the gate!' : gateOn && fireOn ? 'Wait for a tamarin to go into the pen.' : fireOn ? 'The gate is SHUT. Get power INTO the gate too.' : gateOn ? 'Now get power INTO the banana machine too.'
+      : 'Wire the lever to the gate. Wire it to the banana machine too.';   // (sentences of 8 words or fewer: the retest's early reader couldn't read a 9-word line)
   } else if (ck === 'launch'){ const n = Math.min(rt.launches || 0, r.launches); if (n){ tried = true; done.push(`Launches: ${n} of ${r.launches}.`); } next = 'Make the Bounce Pad fire by itself.';
   } else if (ck === 'table'){
     const sim = recapTableSim(r), n = (rt.rows || []).filter(Boolean).length, all = 1 << ((r.inputs || []).length);
     if (n){ tried = true; done.push(`Mixes tested and working: ${n} of ${all}.`); }
     if (sim){ const ok = sim.filter(w => w.ok).length;
       if (!r.play && ok < all && !wrong && !untouched && !onTrack){ const bad = sim.find(w => !w.ok), on = bad.ins.map(Boolean), what = on.every(v => v) ? `all ${swWord} ON` : on.every(v => !v) ? `all ${swWord} OFF` : on.length === 2 ? `just ${on[0] ? 'the first' : 'the second'} ${swWord.slice(0, -1)} ON` : 'some mixes';
-        wrong = `With ${what}, the ${ow} is wrong.`; }
-      next = !r.play && ok < all ? (built.added ? 'Fix the wires. Then test every mix.' : 'Build the missing part. Then test every mix.') : n < all ? `Try every mix of the ${swWord}. Watch the ${ow}.` : 'Test every mix again.';
+        wrong = sim.some(w => !w.ok && w.tired) ? 'The wire is too long. The power runs out.' : `With ${what}, the ${ow} is wrong.`; }
+      next = !r.play && ok < all ? (onTrack ? 'Keep building. Then test every mix.' : built.added ? 'Fix the wires. Then test every mix.' : need > 2 ? 'Build the missing parts. Then test every mix.' : 'Build the missing part. Then test every mix.') : n < all ? `Try every mix of the ${swWord}. Watch the ${ow}.` : 'Test every mix again.';
     } else {
       const ins = (r.inputs || []).map(([x, y]) => pressedAt(x, y)), want = [].concat(r.fn ? r.fn(...ins) : []).map(Boolean), got = (r.out || []).map(([x, y]) => outLit(x, y));
       if (!r.play && !wrong && want.length && built.added && !onTrack && !want.every((w, i) => w === got[i])) wrong = `Right now the ${ow} should be ${want[0] ? 'ON' : 'OFF'}. It is ${got[0] ? 'ON' : 'OFF'}.`;
       next = n < all ? `Try every mix of the ${swWord}. Watch the ${ow}.` : 'Test every mix again.';
     }
   } else if (ck === 'latch'){ const ph = rt.phase || 0; if (ph){ tried = true; done.push('It remembered ON.'); } next = ph ? 'Now press RESET. Does it stay OFF?' : 'Step on the plate, then off. Does it stay ON?';
+    // wires but no torches yet: it can't remember anything (c18 had both plates wired straight to the lamp)
+    if (!ph && built.added && (r.sol || []).some(g => g.t === 'torch')){ let torches = 0; const b = r.box; for (let x = b.x0 + 1; x < b.x1; x++) for (let y = b.y0 + 1; y < b.y1; y++){ const c = at(x, y); if (c && !c.locked && c.t === 'torch') torches++; }
+      if (!torches) next = 'Add two grumpy torches. They make the memory.'; }
   } else if (ck === 'count'){ if (rt.lastDings !== undefined){ tried = true; done.push(`Last try: ${rt.lastDings} ${recapPl(rt.lastDings, 'ding')}. Want ${r.count}.`); } next = 'Press the button ONCE. Count the dings.';
   } else if (ck === 'runclock'){ if (rt.runSeen){ tried = true; done.push('RIDE lever ON: they flash.'); } next = rt.runSeen ? 'Now RIDE lever OFF: they must stay dark.' : 'Flip the RIDE lever ON. Watch the skeletons.';
   } else if (ck === 'stopclock'){ if (rt.calmSeen){ tried = true; done.push('Lever ON: it stays calm.'); } next = rt.calmSeen ? 'Now lever OFF: it must flicker again.' : 'Flip the lever ON. The lamp must stay calm.';
   } else if (ck === 'clock' || ck === 'alt'){ next = built.added ? 'Watch the lamps. Do they flash by themselves?' : 'Build a loop that flips by itself.';
+    if (built.added) done.push(rt.ha && rt.ha.length >= 2 ? 'The lamp is flashing! Keep it going.' : 'The lamp is not flashing yet.');   // (c14 couldn't tell)
   } else if (ck === 'order' || ck === 'seq'){ next = 'Press it once. Watch what goes first.';
   } else if (CART_CHECKS.has(ck)){ if (rt.stopped){ tried = true; done.push('The cart stopped at the platform.'); } next = 'Flip the start lever ON. Watch the cart.';
+    // Stop That Cart!: what the platform rail is doing now, the room's whole rule (testers c10-c12 never learnt it from the card)
+    if (ck === 'stopgo' && r.platformAt){ const pc = at(...r.platformAt);
+      if (rt.stopped) next = 'Now give the platform rail power. Then tap the cart.';
+      else if (pc && pc.t === 'prail' && pc.lit){ done.push('The platform rail has power: the cart zooms past.'); next = 'A gold rail with NO power is a brake. Break the gold rails beside it.'; }   // (the retest: "Cut its power" didn't say how)
+      else if (pc && pc.t === 'prail'){ done.push('The platform rail has no power. It is a brake!'); }
+      else if (pc){ wrong = 'The platform rail must be GOLD, with no power.'; } }
   } else if (MAYA_CHECKS.has(ck)){
     if (ck === 'num'){ const ti = rt.ti || 0; if (ti){ tried = true; done.push(`Made so far: ${r.targets.slice(0, ti).join(', ')}.`); } next = `Make ${r.targets[Math.min(ti, r.targets.length - 1)]} on the stone.`; }
     else if (ck === 'tally'){ const tr = Object.keys(rt.trow || {}).filter(k => rt.trow[k]); if (tr.length){ tried = true; done.push(`Counted right: ${tr.join(', ')}.`); } next = 'Press +1. Does the board say the count?'; }
@@ -7940,8 +7982,12 @@ function recapFor(r){
     else if (ck === 'cannon'){ if (rt.last){ tried = true; done.push('You fired it once.'); } next = 'Press FIRE. The BACK TNT must go first.'; }
     else if (ck === 'dingdong'){ if (rt.last){ tried = true; done.push('You pressed the doorbell.'); } next = 'Press the doorbell. DING... then DONG.'; }
   } else next = 'Try it, then watch what happens.';
-  if (!built.added && !built.removed && !tried) done.unshift(r.play || !need ? 'Nothing tried yet.' : 'Nothing built yet.');
-  if (wrong) next = next && !/^(Fix|Build)/.test(next) ? 'Fix that first. Then ' + next[0].toLowerCase() + next.slice(1) : next;
+  if (!built.added && !built.removed && !tried) done.unshift(r.play || !need ? 'Nothing tried yet.' : need > 2 && need <= 30 ? `Nothing built yet. It needs about ${need} parts.` : 'Nothing built yet.');
+  if (/faces the wrong way/.test(wrong)) next = /repeater/.test(wrong) ? 'Break it. Stand behind it and look along the wire.' : /observer|piston/.test(wrong) ? 'Break it. Stand where its face should look.' : 'Break it. Put it back from another side.';   // (c30: "which side?")
+  else if (/hang on the side/.test(wrong)) next = 'Break it. Then click the SIDE of the block.';
+  else if (/burnt out/.test(wrong)){ let rep = false; const b = r.box; for (let x = b.x0 + 1; x < b.x1 && !rep; x++) for (let y = b.y0 + 1; y < b.y1; y++){ const c = at(x, y); if (c && c.t === 'repeater'){ rep = true; break; } }
+    next = rep ? 'Tap the repeater to make it slower.' : 'Put a slow repeater in the loop.'; }   // (c15 read "flips too fast" and made the loop longer)
+  else if (wrong) next = next && !/^(Fix|Build)/.test(next) ? 'Fix that first. Then ' + next[0].toLowerCase() + next.slice(1) : next;
   if (typeof unfound === 'function' && unfound(r).length){ wrong = ''; next = 'First walk over the glowing part to pick it up.'; }   // (a part you haven't found yet: that comes first)
   return {head, goal, done, wrong, next};
 }
@@ -7951,7 +7997,7 @@ function recapHTML(c){
   const L2 = (cls, ico, txt) => `<div class="rcLine ${cls}"><span class="rcIco" aria-hidden="true">${ico}</span><span>${escH(txt)}</span></div>`;
   return `<div class="recap"><div class="rcHead">${escH(c.head)}</div>`
     + `<div class="rcLbl">The goal</div>${c.goal.map(t => L2('rcGoal', '&#9733;', t)).join('')}`
-    + `<div class="rcLbl">Done</div>${c.done.map(t => L2('rcDone', '&#10003;', t)).join('')}`
+    + `<div class="rcLbl">Done</div>${c.done.map(t => /^Nothing/.test(t) ? L2('rcNone', '&#8226;', t) : L2('rcDone', '&#10003;', t)).join('')}`
     + (c.wrong ? `<div class="rcLbl">Oops</div>${L2('rcWrong', '&#10007;', c.wrong)}` : '')
     + `<div class="rcLbl">Next</div>${recapSplit(c.next, 10).map(t => L2('rcNext', '&#10140;', t)).join('')}</div>`;
 }
@@ -7959,7 +8005,33 @@ function recapShow(why){
   const r = A.rt && A.rt.room; if (!r || r.heart) return false;
   const c = recapFor(r); RECAP.last = {why, room:r.id, card:c}; RECAP.shownN++; RECAP.due = null;
   showCard('Where was I?', recapHTML(c)); feed('recap', recapAllLines(c).join(' | '));
+  recapFit(); recapTags(r);
   return true;
+}
+// a card that would need scrolling drops its little headings (The goal / Done / Next) so every line fits above Got it! (c09: Got it!
+// sat over the Next line on a short screen, and nobody scrolls)
+function recapFit(){ const w = $('#why'), rc = w.querySelector('.recap'); if (w.hidden || !rc) return; rc.classList.remove('rcTight'); if (typeof fitCard === 'function') fitCard();
+  if (w.scrollHeight > w.clientHeight + 2){ rc.classList.add('rcTight'); if (typeof fitCard === 'function') fitCard(); } }
+// ...and the room's own switches and outputs get name tags for a little while (LEVER, LAMP...), seen through walls: a child coming
+// back doesn't remember where the lever was, or that the dark box under the lightning bolt IS the lamp (cold-return testers c01-c04)
+const RECAP_TAG_IN = new Set(['lever', 'button', 'plate']), RECAP_TAG_OUT = new Set(['lamp', 'door', 'gate', 'dispenser', 'tnt', 'fart', 'firework', 'disco', 'bridge', 'launcher', 'note', 'idoor']);
+function recapTagsDrop(){ (RECAP.tags || []).forEach(t => { decorRoot.remove(t); t.material.map.dispose(); t.material.dispose(); }); RECAP.tags = []; RECAP.tagT = 0; }
+function recapTags(r){
+  recapTagsDrop(); if (A.solved.has(r.id)) return;
+  const named = new Set(((r.troop && r.troop.labels) || []).map(([, x, y]) => x + ',' + y)), seen = new Set();
+  const tag = (x, y, word, high) => { const k = x + ',' + y; if (named.has(k) || seen.has(k)) return; seen.add(k);
+    const sp = textSprite(word.toUpperCase(), {w:150, fs:34, bg:'#fff6c8', ink:'#3a2a10', scale:1.15}), p = cellPos(x, y);
+    const im = sp.material.map.image; sp.material.sizeAttenuation = false; sp.scale.set(.08*im.width/im.height, .08, 1);   // the same size near or far: the lever at the far end of the room is as easy to read as the lamp beside you
+    sp.position.set(p.x, p.y + (high ? 2.1 : 1.3), p.z); sp.userData.text = word.toUpperCase(); decorRoot.add(sp); RECAP.tags.push(sp); };
+  (r.inputs || []).forEach(([x, y]) => { const c = at(x, y); if (c && RECAP_TAG_IN.has(c.t)) tag(x, y, recapName(c.t)); });
+  (r.out || []).forEach(([x, y]) => { const c = at(x, y); if (c && RECAP_TAG_OUT.has(c.t)) tag(x, y, recapOutWord(c.t), true); });   // (over the lightning bolt)
+  // cart rooms: where the cart starts, where it must stop, where it ends (c10 never found room 215's platform or its start lever)
+  if (r.launchAt){ const c = at(...r.launchAt); if (c && RECAP_TAG_IN.has(c.t)) tag(...r.launchAt, 'start ' + recapName(c.t)); }
+  if (r.platformAt) tag(...r.platformAt, 'platform'); if (r.stationAt) tag(...r.stationAt, 'end');
+  // University classrooms keep their switch and their door in their own fields (c25 never found 504's book lever or its gap)
+  if (r.leverAtW){ const c = at(...r.leverAtW); if (c && RECAP_TAG_IN.has(c.t)) tag(...r.leverAtW, c.label ? c.label.toLowerCase() : recapName(c.t)); }
+  if (r.doorAtW) tag(...r.doorAtW, r.check === 'secret' ? 'the gap' : 'door', true);
+  RECAP.tagT = 1e9; RECAP.tagRoom = r.id;   // shown from the card on, until you leave the room or finish it
 }
 // is now a calm moment? (no card, no talk box, no cutscene, no tutorial, no ride, no menu)
 function recapCalm(){
@@ -7975,14 +8047,14 @@ function recapFrame(dt){
   const now = recapNow();
   { const gb = $('#goalBox'), inR = !!(A.on && A.rt && A.rt.room && !A.rt.heart); if (gb.classList.contains('inRoom') !== inR) gb.classList.toggle('inRoom', inR); }
   if (A.on && P && (Math.abs(P.x - (RECAP.px || 0)) + Math.abs(P.z - (RECAP.pz || 0)) > .05)){ if (RECAP.px !== undefined && !A.freeze && !CINE.on) recapInput(); RECAP.px = P.x; RECAP.pz = P.z; }
+  if (RECAP.tags && RECAP.tags.length){ const r0 = A.rt && A.rt.room; RECAP.tags.forEach(t => { t.visible = viewFP; }); if (!r0 || r0.id !== RECAP.tagRoom || A.solved.has(r0.id)) recapTagsDrop(); else if ($('#why').hidden && (RECAP.tagT -= dt) <= 0) recapTagsDrop(); }
   if (!RECAP.due) return;
   const r = A.rt && A.rt.room, late = now - RECAP.dueAt;
   if (RECAP.due === 'load'){
     if (late > RECAP.LOAD_MS){ RECAP.due = null; return; }
     if (!r){ return; }
     if (A.solved.has(r.id)){ RECAP.due = null; return; }
-    const b = recapBuilt(r), L2 = PLOG.rooms[r.id];
-    if (!b.added && !b.removed && !(L2 && L2.visits >= 2)){ RECAP.due = null; return; }   // a room you hadn't started: its own hello does the job
+    if (RECAP.loadRoom !== r.id){ RECAP.due = null; return; }   // only the room you were standing in when you stopped (not one you walk into next)
   } else {
     if (late > 120000 || !r){ RECAP.due = null; return; }   // (came back somewhere else: the goal panel and the trail say where to go)
     if (A.solved.has(r.id)){ RECAP.due = null; return; }
@@ -7992,7 +8064,8 @@ function recapFrame(dt){
 }
 // Continue / reload: the room you were in
 { const base = advStart; advStart = function(given){ const s = given || advLoad(); base(given); if (RECAP.restart){ RECAP.restart = false; RECAP.due = null; return; }
-  RECAP.due = s && s.player && ((s.cells && s.cells.length) || (s.solved && s.solved.length)) ? 'load' : null; RECAP.dueAt = recapNow(); RECAP.lastInput = recapNow(); }; }
+  RECAP.due = s && s.player && ((s.cells && s.cells.length) || (s.solved && s.solved.length)) ? 'load' : null; RECAP.dueAt = recapNow(); RECAP.lastInput = recapNow();
+  RECAP.loadRoom = null; try { const lr = s && s.player && roomOf(...cellAtWorld(s.player.x, s.player.z)); RECAP.loadRoom = lr ? lr.id : null; } catch (e) {} }; }
 
 /* ---- Reset this room: the room goes back to how a fresh load of it starts (its own parts back, yours gone, its levers as they were,
    anything pushed, moved or blown up put back), and you stand at its door. Done by rebuilding the act from the save minus this room, so
@@ -8011,6 +8084,7 @@ function roomRestart(){
   s.cellsAct = A.act || 1; s.layout = LAYOUT;
   const [ex, ey] = entryOf(r), c = cellPos(ex, ey); s.player = {x:+c.x.toFixed(2), z:+c.z.toFixed(2), yaw:+P.yaw.toFixed(2)};
   const cards = CARDQ.slice(); RECAP.restart = true;
+  if (TROOP.room) despawnTroop();   // (the act's decor is rebuilt: the room's animals and their name tags come back with it on the way in)
   advWrite(s); startAdventure(s);
   cards.forEach(q => { if (!CARDQ.some(z => z[0] === q[0] && z[1] === q[1])) CARDQ.push(q); });   // (a card waiting its turn is never lost)
   P.x = c.x; P.z = c.z; P.y = floorAt(ex, ey); P.vy = 0; P.fling = null; stepFP(0);   // (the act's start checks would send you to its spawn: you stay at this room's door)
@@ -8032,8 +8106,10 @@ function roomRestart(){
 #goalBox.open.inRoom .gBtns{display:flex}
 #goalBox .gBtns .btn{font-size:15px;padding:8px 12px;min-height:44px;min-width:44px}
 .recap .rcHead{font-weight:700;margin-bottom:4px}
-.recap .rcLbl{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-top:6px;opacity:.8}
-.recap .rcLine{display:flex;gap:8px;align-items:baseline;font-size:17px;line-height:1.3}
+.recap .rcLbl{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-top:3px;opacity:.8}
+.recap .rcLine{display:flex;gap:8px;align-items:baseline;font-size:16px;line-height:1.22}
+#why:has(.recap) #whyOk{position:sticky;bottom:0;z-index:1;box-shadow:0 -6px 8px #fff8d8}
+.recap.rcTight .rcLbl{display:none} .recap.rcTight .rcLine{font-size:15px;line-height:1.18} .recap.rcTight .rcHead{margin-bottom:1px}
 .recap .rcIco{flex:0 0 18px;font-weight:700;text-align:center}
 .recap .rcDone .rcIco{color:#2a8a2a} .recap .rcWrong .rcIco{color:#c0302a} .recap .rcNext .rcIco{color:#7a4a20} .recap .rcGoal .rcIco{color:#c08a00}
 .recap .rcWrong{font-weight:700}`;
@@ -10593,6 +10669,9 @@ function hubCardFrame(dt){
 const roomNum = r => r.ship ? `Skull machine ${r.ship} of ${SHIP_ROOMS.length}` : (r.zone === 'fun' || r.zone === 'ghost') ? `Ride ${ROOMS.indexOf(r) + 1} of ${ROOMS.length}` : r.host ? `${r.zone === 'mine' ? 'Mine room' : r.id > 500 ? 'Classroom' : r.id > 400 ? 'Room' : 'Test'} ${ROOMS.indexOf(r) + 1} of ${ROOMS.length}` : `Room ${r.id} of ${ROOMS.length}`;   // the funfair counts rides 1-20, not 101-120
 function enterArea(r, where){
   advSaveSoon();   // autosave on the way between rooms
+  { const pr = A.rt && A.rt.room;   // walked OUT of a room you were busy in, without finishing it (cold-return testers backed out by mistake and didn't notice)
+    if (pr && pr !== r && ROOMS.includes(pr) && !pr.ship && !A.solved.has(pr.id) && !A.freeze && (recapBuilt(pr).added || (A.clock || 0) - (A.rt.inAt || 0) > 15000))
+      showToast(`You walked out of ${pr.name}! Its door is behind you.`); }
   if (DLG.on && (DLG.why || (DLG.hello && !(r && r.id === DLG.hello)))) dlgCancel();   // walked out of a demo (or a ride's hello): stop it, give the view back
   if (r) zoneTitle(r.zone);
   if (r && r.zone === 'sky' && !A.flungDone && A.metBarold){ A.flungDone = true; setTimeout(catapultBarold, 2500); } else if (where === 'hall') zoneTitle('hall');
@@ -10606,7 +10685,7 @@ function enterArea(r, where){
     const cap = (r.zone === 'fun' || !!r.host) && !r.whisper, capHello = cap && !demo && !A.solved.has(r.id) && !(A.helloSeen && A.helloSeen.has(r.id));
     if (!A.solved.has(r.id) && !demo && !cap){ A.toldHello = A.toldHello || new Set(); if (A.toldHello.has(r.id) || A.act !== 1) monkeySay(r.hello, 9000); else { A.toldHello.add(r.id); baroldTell(r.hello, r.id); } }   // the first time: in the dialogue box (you can't miss it looking at your feet); after that, a bubble
     A.whyAt = demo || capHello ? {r, t:(A.clock || 0) + 900, hello:!demo} : null;
-    A.rt = {room:r, tested:new Set(), rows:new Array(r.inputs ? 1 << r.inputs.length : 0).fill(false), pulses:0, prevOut:false, prevKey:null, tired:false};
+    A.rt = {room:r, inAt:A.clock || 0, tested:new Set(), rows:new Array(r.inputs ? 1 << r.inputs.length : 0).fill(false), pulses:0, prevOut:false, prevKey:null, tired:false};
     if (r.inputs) A.rt.prevKey = r.inputs.map(([x,y]) => { const c = at(x,y); return !!c && (c.on || c.timer > 0); }).join();
     L.ghosts = []; L.hintLevel = 0; while (ghostRoot.children.length) ghostRoot.remove(ghostRoot.children[0]);
     makeBolts(r);
@@ -11796,8 +11875,11 @@ function advHint(){
     L.hintPieces = Math.min(missing.length, (L.hintPieces || 0) + 1);
     L.ghosts = missing.slice(0, showN).map(g => Object.assign({key:true}, g));
     L.ghosts.forEach(gh => { const m = buildMesh(Object.assign({lit:gh.t==='torch', delay:1, dir:gh.dir||0, attach:gh.attach ?? -1, pw:15}, gh), true); m.position.copy(cellPos(gh.x, gh.y)); ghostRoot.add(m); gh.mesh = m; });
+    // a tag over the hint's ghost piece: testers kept mixing it up with the pale square that shows where YOUR next piece would go
+    L.ghosts.forEach(gh => { const sp = textSprite('PUT IT HERE', {w:200, fs:30, bg:'#e8f6ff', ink:'#123a5a'}), im = sp.material.map.image, p = cellPos(gh.x, gh.y);
+      sp.material.sizeAttenuation = false; sp.scale.set(.06*im.width/im.height, .06, 1); sp.position.set(p.x, p.y + 1.9, p.z); sp.userData.ghostTag = true; ghostRoot.add(sp); gh.tag = sp; });   // (1.9: high enough not to cover the ghost when you look down at it: c23)
     L.hintLevel = 3; syncGhosts(); L.hintLevel = 2;
-    showCard('Hint 2', !missing.length ? 'Everything\'s built! Try flipping the switches.' : showN >= 99 ? 'I\'ve drawn it for you in pale ghost shapes. Put the real thing on EACH ghost shape, then watch what happens!' : showN > 1 ? 'The pale ghost shapes show the next few pieces. Can you work out the rest?' : 'The pale ghost shape shows ONE piece of one way to do it. Can you work out the rest?');
+    showCard('Hint 2', !missing.length ? 'Everything\'s built! Try flipping the switches.' : showN >= 99 ? 'I\'ve drawn it for you in pale ghost shapes. Put the real thing on EACH ghost shape, then watch what happens!' : showN > 1 ? 'The pale ghost shapes show the next few pieces. Can you work out the rest?' : 'The pale ghost shows ONE piece. Put it where it says PUT IT HERE. Can you work out the rest?');
   }
 }
 /* ---- hints you can find, and that stay put ----
@@ -14638,7 +14720,7 @@ const MAYA_ROOMS = [
     trays:[{k:'dot', cups:[[7,3], [5,3], [3,3], [1,3]]}, {k:'bar', cups:[[9,3]]}], chute:[0,3], add:[1,5], empty:[2,5],
     goal:'YOUR scoreboard, in Maya numbers. Each goal drops a ball in your tray. Dots, the bar, and the shell for NOTHING. First to FIVE wins. Count 0 to 5.',
     hello:'Job three: your scoreboard. You write it in OUR numbers, of course. Everything is here except the wires.',
-    hint:'Wire each cup to its own lamp. Then the shell: a block with a grumpy torch, switched off by the FIRST dot cup AND the bar cup.',
+    hint:'Wire each cup to its own lamp. The shell needs a block with a grumpy torch. Wire the FIRST dot cup into that block. Wire the bar cup into it too.',
     miss:(n, d) => d.why === 'both' ? 'A shell with something else? The shell is only for NOTHING. Both trays have to switch it off.' : d.why === 'noshell' ? 'Nothing on the board! Nothing is written with the SHELL.' : null,
     win:'Your scoreboard works, from nothing to five! Job three done. The monkeys look worried.',
     mc:'A real scoreboard: plates count, wires carry, a NOR gate makes the zero. Try it in Minecraft!',
@@ -17282,8 +17364,8 @@ window.__game = {
     door(id){ const r = ROOMS.find(q => q.id === id); const d = r.exit && at(...r.exit); return d ? !!(d.latched || d.lit) : !wallAt(...r.toilet); },
     cell(x, y){ const c = at(x, y); return c ? {t:c.t, lit:c.lit, on:c.on, pw:c.pw, attach:c.attach, dir:c.dir, open:c.open} : null; },
     wall(x, y){ return wallAt(x, y); }, elevAt(x, y){ return floorAt(x, y); }, slideAt(x, y){ const v = S.slide[y*NX + x]; return S.ladder[y*NX + x] ? 'L' : v >= 0 ? 'v<>^'[[3,1,0,2].indexOf(v)] || v : ' '; },
-    troop(){ return {n:TROOP.list.length, room:TROOP.room && TROOP.room.id, inPen:A.rt && A.rt.inPen, launches:A.rt && A.rt.launches, hand:A.rt && A.rt.handLaunches, danceUntil:TROOP.danceUntil || 0, kinds:TROOP.list.map(m => m.userData.kind)}; },
-    get rooms(){ return ROOMS.map(r => ({journey:r.journey || JOURNEY[r.id], id:r.id, name:r.name, check:r.check, count:r.count, inputs:r.inputs || [], out:r.out || [], exit:r.exit, toilet:r.toilet, entry:r.entry, box:r.box, sol:r.sol, naive:r.naive, after:r.after, tntAt:r.tntAt, quick:r.quick, fixed:r.fixed, loose:r.loose, gate:r.gate, play:!!r.play, why:r.why || null, playBeat:r.playBeat || null})); },
+    troop(){ return {n:TROOP.list.length, shown:TROOP.list.filter(m => m.parent).length, tags:TROOP.labels.filter(l => l.parent).map(l => l.userData.text || '?'), room:TROOP.room && TROOP.room.id, inPen:A.rt && A.rt.inPen, launches:A.rt && A.rt.launches, hand:A.rt && A.rt.handLaunches, danceUntil:TROOP.danceUntil || 0, kinds:TROOP.list.map(m => m.userData.kind)}; },
+    get rooms(){ return ROOMS.map(r => ({launchAt:r.launchAt, platformAt:r.platformAt, journey:r.journey || JOURNEY[r.id], id:r.id, name:r.name, check:r.check, count:r.count, inputs:r.inputs || [], out:r.out || [], exit:r.exit, toilet:r.toilet, entry:r.entry, box:r.box, sol:r.sol, naive:r.naive, after:r.after, tntAt:r.tntAt, quick:r.quick, fixed:r.fixed, loose:r.loose, gate:r.gate, play:!!r.play, why:r.why || null, playBeat:r.playBeat || null})); },
     entryCell(id){ return entryOf(ROOMS.find(r => r.id === id)); },
     visAudit(id, pitch){ return visAudit(ROOMS.find(r => r.id === id), pitch); }, peeks(){ return (A.peeks || []).map(s2 => [s2.userData.x, s2.userData.y]); }, peekTime(id){ const r = ROOMS.find(q => q.id === id); roomPeek(r); let worst = 0; while (A.peekJob){ const t0 = performance.now(); A.rt = A.rt || {}; const rt0 = A.rt.room; A.rt.room = r; peekJobFrame(); A.rt.room = rt0; worst = Math.max(worst, performance.now() - t0); } return worst; }, peekBusy(){ return !!A.peekJob; }, gapSparks(){ return (A.gapSparks || []).slice(); }, sparkEnds(){ return (A.sparkEnds || []).slice(); },
     heart: {entry:HEART.entry, levers:HEART.levers, sol:HEART.sol},
@@ -17374,12 +17456,15 @@ window.__game = {
   unlockAll(){ LESSONS.forEach(l => { if (!progress.done[l.id]) progress.done[l.id] = 1; }); refreshHotbar(); },
   clearProgress(){ progress = {done:{}}; saveProgress(); refreshHotbar(); }
 };
+window.__game.whyMissing = () => { const out = new Set(); ROOMS.forEach(r => { const b = r.box; for (let x = b.x0; x <= b.x1; x++) for (let y = b.y0; y <= b.y1; y++){ const c = at(x, y); if (c && !WHY[c.t]) out.add(c.t); } }); return [...out]; };   // (test-recover.js: no empty What? cards)
+window.__game.aimPoint = () => aimPoint().map(Math.round);   // (test-recover.js: the aiming square follows an unlocked mouse)
+window.__game.ghostTags = () => ghostRoot.children.filter(o => o.userData.ghostTag && o.visible).length;   // (test-recover.js: Hint 2's PUT IT HERE tags)
 // QA hooks: "Where was I?", Reset this room (test-recover.js)
 window.__game.recap = {
   card(id){ const r = id ? ROOMS.find(q => q.id === id) : A.rt && A.rt.room; return r ? recapFor(r) : null; }, lines(id){ const c = this.card(id); return c ? recapAllLines(c) : []; },
   show(why){ return recapShow(why || 'asked'); }, due(){ return RECAP.due; }, last(){ return RECAP.last; }, shownN(){ return RECAP.shownN; }, calm(){ return recapCalm(); },
   idle(ms){ RECAP.skew = (RECAP.skew || 0) + ms; }, input(){ recapInput(); }, hidden(ms){ RECAP.hiddenAt = recapNow() - ms; document.dispatchEvent(new Event('visibilitychange')); },
-  sign(id){ const r = ROOMS.find(q => q.id === id); return r ? roomSignText(r) : ''; }, split:recapSplit, words:recapWords, restart(){ return roomRestart(); }, GAP:RECAP.GAP,
+  sign(id){ const r = ROOMS.find(q => q.id === id); return r ? roomSignText(r) : ''; }, tags(){ return (RECAP.tags || []).filter(t => t.parent).map(t => t.userData.text); }, split:recapSplit, words:recapWords, restart(){ return roomRestart(); }, GAP:RECAP.GAP,
   rooms(){ return ROOMS.map(r => ({id:r.id, name:r.name, check:r.check, win:String(r.win || ''), hello:r.hello || '', why:(r.why || []).map(w => w.say || ''), goal:String(r.goal || ""), hint:String(r.hint || ''), nudge:String(r.nudge || ''), sign:roomSignText(r), play:!!r.play, loose:(r.loose || []).length, sol:(r.sol || []).length, only:r.only || null, box:r.box})); }
 };
 window.__game.qa = { plog(){ return PLOG; }, sess(){ return PSESS; }, report:plogReportAll, flags:plogFlags, touch(){ plogTouch(); plogSave(); }, bonk(){ bonk(); }, shot:qaShot, problem:problemReport,
