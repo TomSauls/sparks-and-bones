@@ -3084,6 +3084,17 @@ function explain(c){
 
 /* hover preview (mouse only) */
 let hoverCell = null, hoverClicked = null, previewKey = '';
+// (perf, docs/tvos-plan.md) the aim ray is the costliest thing in a frame on a slow machine. While the camera, the world and
+// the item in hand all stay the same, it's cast every other frame: the outline under the crosshair is at most one frame late
+const AIM = {m:new Float64Array(19), tick:-1, sel:-1, skipped:true, n:0};
+function aimDue(){
+  const e = camera.matrixWorld.elements, p = camera.position, m = AIM.m; let same = AIM.tick === S.tick && AIM.sel === sel && !S.gridDirty;
+  for (let i = 0; i < 16; i++) if (m[i] !== e[i]){ same = false; m[i] = e[i]; }
+  if (m[16] !== p.x || m[17] !== p.y || m[18] !== p.z){ same = false; m[16] = p.x; m[17] = p.y; m[18] = p.z; }
+  AIM.tick = S.tick; AIM.sel = sel;
+  if (same && !AIM.skipped){ AIM.skipped = true; AIM.n++; return false; }
+  AIM.skipped = false; return true;
+}
 const previewRoot = new THREE.Group(); world.add(previewRoot);
 const outline = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1.02,1.02,1.02).translate(0,.5,0)), new THREE.LineBasicMaterial({color:0x111111, transparent:true, opacity:.7}));
 outline.visible = false; world.add(outline);
@@ -3582,6 +3593,23 @@ function slotPut(rec, asId){   // a save from the server (or a copy kept to one 
 }
 function slotKeptName(n){ const used = new Set(slotIdx().slots.map(e => e.name)); for (let k = 2; ; k++){ const nm = slotClean(n).slice(0, 27) + ` (${k})`; if (!used.has(nm)) return nm; } }
 let syncBusy = false, syncTimer = 0, syncLast = null, syncRetry = 0;
+// ---- iCloud: the Apple apps (iPhone/iPad and Apple TV) share saves through the family's iCloud (docs/tvos-plan.md, "Shared saves").
+// The app gives the page window.__nativeSaves (list/get/put/del over iCloud key-value storage, apple/SparksAndBones/Web/icloud-saves.js);
+// the same syncWith pass as the cloud server decides: newest wins, and a game further along is never swapped for one that isn't (both
+// are kept). What comes back is checked exactly like the server's answers. In a browser there is no __nativeSaves: nothing happens.
+const NATIVE_SAVES = {
+  on(){ const n = window.__nativeSaves; return !!n && ['list', 'get', 'put', 'del'].every(k => typeof n[k] === 'function'); },
+  async list(){ const r = await window.__nativeSaves.list(); return Array.isArray(r) ? r.slice(0, 200).map(syncMeta).filter(Boolean) : []; },
+  async get(id){ if (!SLOT_ID.test(id)) return null; const r = await window.__nativeSaves.get(id); return r == null ? null : syncRec(r, id); },
+  put(slot, keepalive, base){ return window.__nativeSaves.put(slot, base || 0); },
+  del(id, deletedAt){ return window.__nativeSaves.del(id, deletedAt); }
+};
+let nativeTimer = 0, nativeRetry = 0;
+function nativeSyncSoon(ms){ try { if (!NATIVE_SAVES.on()) return; } catch (e) { return; }   // (a save during start-up, before these lines have run)
+  clearTimeout(nativeTimer);
+  nativeTimer = setTimeout(async function go(){ if (syncBusy){ nativeTimer = setTimeout(go, 400); return; }
+    const out = await syncWith(NATIVE_SAVES); if (out && /^(older)$/.test(out.err || '') && nativeRetry++ < 3) nativeSyncSoon(1500); else if (out && !out.err) nativeRetry = 0; }, ms == null ? 3000 : ms); }
+window.__nativeSavesChanged = () => nativeSyncSoon(300);   // another device changed iCloud
 // one pass over every save: each goes whichever way is newer, except that a game further along is never swapped for one that isn't (both are kept)
 async function syncWith(R){
   if (!R || syncBusy) return null; syncBusy = true; const out = {up:0, down:0, gone:0, kept:[]};
@@ -3619,8 +3647,8 @@ async function syncWith(R){
   if (out.kept.length){ const msg = `Two different games were both called "${out.kept[0]}". I kept both, so nothing is lost! Look in Saves.`; if (!$('#hud').hidden) showToast(msg); else { menuMsg = msg; if (!$('#menu').hidden) buildTiles(); } }
   return out;
 }
-function syncSoon(ms){ if (!REMOTE.cfg()) return; clearTimeout(syncTimer); syncTimer = setTimeout(() => syncWith(REMOTE), ms == null ? 4000 : ms); }
-function syncFlush(){ if (!REMOTE.cfg()) return; for (const e of slotIdx().slots) if (e.synced !== e.updatedAt) REMOTE.put(slotRecord(e), true, e.synced || 0).catch(() => {}); }   // leaving: send what's new, no waiting for answers
+function syncSoon(ms){ nativeSyncSoon(ms); if (!REMOTE.cfg()) return; clearTimeout(syncTimer); syncTimer = setTimeout(() => syncWith(REMOTE), ms == null ? 4000 : ms); }
+function syncFlush(){ if (NATIVE_SAVES.on()) syncWith(NATIVE_SAVES); if (!REMOTE.cfg()) return; for (const e of slotIdx().slots) if (e.synced !== e.updatedAt) REMOTE.put(slotRecord(e), true, e.synced || 0).catch(() => {}); }   // leaving: send what's new, no waiting for answers
 
 (async () => {
   try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}   // ask the browser not to tidy our save away
@@ -4030,7 +4058,7 @@ function frame(now){
   menuSceneFrame(now);
   pollPad(dt);
   tipClock += dt; if (tipClock > 250){ tipClock = 0; if (!$('#hud').hidden) updateTip(); }
-  if (inFP()){ stepFP(dt); if (!lastTouch || padMode){ const [cx,cy] = centre(); hover(cx, cy); } else if (outline.visible){ outline.visible = false; previewRoot.clear(); previewKey = ''; } }
+  if (inFP()){ stepFP(dt); if (!lastTouch || padMode){ if (aimDue()){ const [cx,cy] = centre(); hover(cx, cy); } } else if (outline.visible){ outline.visible = false; previewRoot.clear(); previewKey = ''; } }
   else { setFov(TOP_FOV); keyMoveOverhead(dt); }
   advFrame(dt, now); sprayFrame(dt);
   runFx(dt); sbFrame(dt); achFrame(dt);
@@ -7557,7 +7585,7 @@ function notesFrame(dt){
   if (!A.noteMeshes || !A.noteMeshes.length) return;
   const [px, py] = cellAtWorld(P.x, P.z), now = performance.now();
   A.noteMeshes = A.noteMeshes.filter(m => {
-    if (!reduceMotion){ m.rotation.y += dt*.002; m.position.y = floorAt(...m.userData.cell) + .55 + Math.sin(now*.003 + m.userData.room)*.08; }
+    if (!reduceMotion){ m.rotation.y += dt*.002; m.position.y = floorAt(...m.userData.cell) + .55 + Math.sin(now*.003 + (typeof m.userData.room === 'number' ? m.userData.room : 7))*.08; }   // (the Temple Manual's pages are 'm1'/'m2': a text phase made their height NaN, so they were invisible)
     const [x, y] = m.userData.cell;
     if (Math.hypot(m.position.x - P.x, m.position.z - P.z) > 1.6 || Math.abs(P.y - floorAt(x, y)) > 1.2) return true;   // walk up to it (on any floor height)
     A.notes.add(m.userData.room); decorRoot.remove(m); sfx.xp();
@@ -17446,6 +17474,7 @@ function cullZones(){
 // round each room's edge: the lowest wall top (a camera above it can see in) and the gaps in the walls (doorways);
 // and how high the solid stuff (raised floor + wall) reaches in every cell, for the line-of-sight checks
 function cullTops(){
+  CULL.topsN = (CULL.topsN || 0) + 1;
   const n = NX*NY; if (!CULL.solid || CULL.solid.length !== n) CULL.solid = new Float32Array(n);
   for (let i = 0; i < n; i++) CULL.solid[i] = (S.pit[i] ? -50 : S.elev[i]) + (S.walls[i] && S.wallKind[i] !== 9 ? S.walls[i] : 0);
   CULL.zones.forEach(Z => { const b = Z.b; let lo = Infinity, flo = Infinity; Z.open.length = 0; Z.rim = [];
@@ -17563,16 +17592,25 @@ function perfBegin(){
   CULL.hid.length = 0; CULL.n++;
   const play = S.mode === 'adventure' && A.on && !A.launching && !A.launched && scene.fog && scene.fog.far < 400;
   // (the Ape Planet's ringed planet and moons hang ~310 away, past the fog: keep them in view)
-  const far = play ? Math.max(40, scene.fog.far + 2, A.act === APE_ACT && A.apeSky && A.apeSky.parent ? 330 : 0) : 600; if (camera.far !== far){ camera.far = far; camera.updateProjectionMatrix(); }
+  const far = play ? Math.ceil(Math.max(40, scene.fog.far + 2, A.act === APE_ACT && A.apeSky && A.apeSky.parent ? 330 : 0) / 8) * 8 : 600; if (camera.far !== far){ camera.far = far; camera.updateProjectionMatrix(); }   // (the far plane in steps of 8: the fog eases a little every frame, and a far plane that kept moving made the room culling start over every frame)
   scene.updateMatrixWorld(); camera.updateMatrixWorld();
   CULL.fr.setFromProjectionMatrix(CULL.m.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
   if (cullActive()) perfCull();
   batchBegin([cellRoot, decorRoot, fxRoot, SBX.root, upRoot, MENU3D.g]);
 }
+// (perf) which rooms the camera can see into only changes when the camera, the view or the walls do: the last answer is
+// reused while all three are exactly the same (the walls' heights and gaps are re-read every 20 frames, which counts as a change)
+const CULLC = {m:new Float64Array(32), fp:null, tops:-1, ok:false, reused:0};
+function cullSame(){
+  const a = camera.matrixWorld.elements, b = camera.projectionMatrix.elements, m = CULLC.m; let same = CULLC.ok && CULLC.fp === viewFP && CULLC.tops === CULL.topsN;
+  for (let i = 0; i < 16; i++){ if (m[i] !== a[i]){ same = false; m[i] = a[i]; } if (m[16 + i] !== b[i]){ same = false; m[16 + i] = b[i]; } }
+  CULLC.fp = viewFP; CULLC.tops = CULL.topsN; CULLC.ok = true; if (same) CULLC.reused++; return same;
+}
 function perfCull(){
   cullZones(); if (CULL.n % 20 === 0) cullTops();
   const cx = camera.position.x, cy = camera.position.y, cz = camera.position.z, vis = CULL.vis; let any = false;
-  for (let k = 0; k < CULL.zones.length; k++){ const Z = CULL.zones[k]; Z.vis = Z.none || cullSees(Z, cx, cy, cz, viewFP); vis[k + 1] = Z.vis ? 1 : 0; if (!Z.vis) any = true; }
+  if (cullSame()){ for (let k = 0; k < CULL.zones.length; k++) if (!CULL.zones[k].vis){ any = true; break; } }
+  else for (let k = 0; k < CULL.zones.length; k++){ const Z = CULL.zones[k]; Z.vis = Z.none || cullSees(Z, cx, cy, cz, viewFP); vis[k + 1] = Z.vis ? 1 : 0; if (!Z.vis) any = true; }
   if (!any) return;
   const zone = CULL.zone;
   for (const g of cellRoot.children){ const i = g.userData.idx; if (i === undefined || !g.visible) continue; const z = zone[i]; if (z && !vis[z] && cullZoneOf(g) === z) cullHide(g); }
@@ -17617,7 +17655,7 @@ window.__game.perf = {
     return {blocks, faces, inst, tinst}; },
   zoneAt(x, y){ cullZones(); return CULL.zone[y*NX + x]; },
   visibleCount(){ let before = 0, after = 0; scene.traverse(o => { if (o.visible) before++; }); renderer.render(scene, camera); scene.traverse(o => { if (o.visible) after++; }); return {before, after}; },
-  cull(off){ CULL.off = !!off; }, batch(off){ BATCH.off = !!off; }, cullMs(n){ n = n || 20; const t0 = performance.now(); for (let i = 0; i < n; i++){ perfBegin(); perfEnd(); } return (performance.now() - t0)/n; }, zones(){ return CULL.zones.map(Z => ({vis:Z.vis, top:Z.top, open:Z.open.length/3})); },
+  cull(off){ CULL.off = !!off; }, aimStats(){ return {skipped:AIM.n}; }, cullStats(){ return {reused:CULLC.reused}; }, cullFresh(){ CULLC.ok = false; }, batch(off){ BATCH.off = !!off; }, cullMs(n){ n = n || 20; const t0 = performance.now(); for (let i = 0; i < n; i++){ perfBegin(); perfEnd(); } return (performance.now() - t0)/n; }, zones(){ return CULL.zones.map(Z => ({vis:Z.vis, top:Z.top, open:Z.open.length/3})); },
   // free build: set off the big Mega toys at once (robot on a goldfish, the holy banana, MEGA SHEEP)
   mega(fish, holy){ const f = at(...fish), h = at(...holy); if (f) robotMega(f, 3); if (h) holyMega(h, 3); megaSheep(); return {robot:!!SBX.robot, holy:!!SBX.holyMega, sheep:!!SBX.megaSheep}; }
 };
