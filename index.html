@@ -63,6 +63,15 @@ button{font-family:inherit;}
 #goalBox.open{max-height:calc(100vh - 200px);overflow-y:auto;}
 #goalBox:not(.open) #mline{display:none;}
 #goalBox::after{content:'';}
+#spotTags{position:absolute;inset:0;pointer-events:none;overflow:hidden;}
+#spotTags .spotTag{position:absolute;left:0;top:0;display:flex;align-items:center;gap:4px;padding:3px 8px;font-size:15px;font-weight:700;line-height:1.1;white-space:nowrap;border:3px solid;pointer-events:none;box-shadow:0 2px 0 rgba(0,0,0,.35);}
+#spotTags .spotTag[hidden]{display:none;}
+#spotTags .spotTag.put{background:#d6ffe6;color:#0d4a28;border-color:#0d4a28;}
+#spotTags .spotTag.tap,#spotTags .spotTag.stand{background:#ffe14a;color:#3a2a10;border-color:#3a2a10;}
+#spotTags .spotTag b{font-size:13px;}
+body.cine #spotTags{display:none;}
+#goalBox,#hintStrip{touch-action:none;}   /* a drag over them turns the view (dragThrough) */
+#goalBox.open.scrolls{touch-action:pan-y;}
 #zoneTitle{position:fixed;left:0;right:0;top:32%;text-align:center;pointer-events:none;z-index:30;opacity:0;color:#fff;text-shadow:0 3px 0 #000,0 0 12px rgba(0,0,0,.6);}
 #zoneTitle .zt{font-family:var(--f-display);font-size:clamp(28px,6vw,54px);font-weight:700;letter-spacing:.02em;}
 #zoneTitle .zs{font-size:clamp(16px,3vw,24px);opacity:.9;margin-top:4px;}
@@ -131,6 +140,7 @@ body.cine #objArrow{display:none;}
 #itemName.show{opacity:1;}
 #itemName.rest{opacity:.95;font-size:17px;text-shadow:2px 2px 0 var(--shade);}
 #itemName small{display:block;font-size:17px;font-weight:500;}
+#itemName.rest small{font-size:15px;}
 #tip{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;max-width:calc(100vw - 32px);padding:6px 12px;background:rgba(20,20,20,.62);color:#fff;font-size:17px;text-shadow:1px 1px 0 #000;border:2px solid rgba(255,255,255,.25);}
 #tip b{color:#ffe36b;font-weight:700;}
 #tip span{white-space:nowrap;}
@@ -528,6 +538,7 @@ body:has(#touchPad:not([hidden])) #itemCard{ bottom:calc(252px + env(safe-area-i
     <div id="objArrow" hidden><svg viewBox="0 0 24 24" class="px"><path d="M12 2l9 11h-6v9H9v-9H3z" fill="#ffd84a" stroke="#5a3a00" stroke-width="1.5"/></svg></div>
     <div id="crystals" class="panel" hidden><svg viewBox="0 0 16 16" class="px"><path d="M8 1l5 5-5 9-5-9z" fill="#c75cff" stroke="#3a0d50" stroke-width="1"/><path d="M8 1l2 5-2 9-2-9z" fill="#e3a8ff"/></svg><span id="crystalCount">0</span></div>
   </div>
+  <div id="spotTags" aria-hidden="true"></div>
   <div id="toast" class="panel" role="status" aria-live="polite"></div>
   <div id="hintPoint" hidden aria-hidden="true"><b>&#9650;</b><span></span></div>
   <div id="dlg" class="panel" hidden role="dialog" aria-live="polite"><b id="dlgWho"></b><span id="dlgTxt"></span><span id="dlgMore" hidden aria-label="next"><svg viewBox="0 0 9 6" shape-rendering="crispEdges" aria-hidden="true"><path fill="#2b1a0c" d="M0 0h9v2H8v1H7v1H6v1H5v1H4V5H3V4H2V3H1V2H0z"/><path fill="#ffd84a" d="M1 1h7v1H7v1H6v1H5v1H4V4H3V3H2V2H1z"/><path fill="#fff6c0" d="M1 1h3v1H2v1H1z"/></svg></span></div>
@@ -1804,7 +1815,7 @@ function buildMesh(c, ghost){
     case 'lamp': add(G.cube, c.lit ? M.lampOn : M.lampOff); if (c.lit && !ghost) g.add(glow(M.glowGold, 2.6, .5)); break;
     case 'dust': {
       const mat = dustMats[ghost ? 15 : c.pw];
-      if ((S.slow || S.numbers) && !ghost) g.add(numSprite(c.pw));
+      if ((S.slow || S.numbers) && !ghost && (c.pw || dustRanOut(c))) g.add(numSprite(c.pw));   // (a 0 only where the power ran out, beside a dust that still has some: re-run 2's c06 saw "lots of 0 boxes" on a long dead wire)
       if (ghost || c.isDot) add(cbox(ghost ? .62 : .46, .02, ghost ? .62 : .46), mat, 0, .012, 0);
       else {
         add(cbox(.3, .02, .3), mat, 0, .012, 0);
@@ -1852,8 +1863,9 @@ function buildMesh(c, ghost){
       mk(-.08); mk(.05 + c.delay*.09);
       break; }
   }
-  if (ghost) ghostify(g);
-  if (ghost && FACE_PARTS.has(c.t)) g.add(faceArrow(c));   // (in your hand, and on a hint's ghost: the way it will face)
+  if (ghost) ghostify(g, ghost === 'hint');
+  if (ghost && FACE_PARTS.has(c.t)) g.add(faceArrow(c, ghost === 'hint'));   // (in your hand, and on a hint's ghost: the way it will face)
+  if (ghost === 'hint'){ const o = new THREE.LineSegments(HINT_EDGES || (HINT_EDGES = new THREE.EdgesGeometry(new THREE.BoxGeometry(1.04, 1.04, 1.04).translate(0, .52, 0))), HINT_LINE || (HINT_LINE = new THREE.LineBasicMaterial({color:HINT_COL}))); o.raycast = () => {}; o.userData.hintBox = true; g.add(o); g.userData.hintGhost = true; }   // (a mint box round the hint's ghost)
   return g;
 }
 // ---- which way it will face: a big sky-blue arrow over every part with a direction, in your hand (the preview) and on a hint's ghost
@@ -1861,24 +1873,36 @@ function buildMesh(c, ghost){
 // square (c30 took the University's gold arrow for the professor's glowing square). A repeater: the way the power goes; a piston:
 // the way it pushes; an observer: the way its eyes look. ----
 const FACE_PARTS = new Set(['repeater', 'piston', 'spiston', 'observer']), FACE_COL = 0x38d8ff;
-let FACE_MAT = null;
-function faceArrow(c){
+// the facing rule, under the name of the part in your hand while you hold it (sentences of 8 words or fewer)
+const FACE_HOLD = {repeater:'It points the way you look. See the blue arrow.', piston:'It pushes towards you. See the blue arrow.', spiston:'It pushes towards you. See the blue arrow.', observer:'Its eyes look back at you. See the blue arrow.'};
+let FACE_MAT = null, HINT_FACE_MAT = null;
+// the hint's ghost and the aiming preview must never look alike (the cold-return audit: c02, c08, c15, c29 took one for the other): the
+// preview (where YOUR next piece goes) is pale and still, with a sky-blue facing arrow; the hint's ghost is MINT green, pulses and bobs,
+// has a mint box round it, a mint facing arrow, and a PUT IT HERE label beside it
+const HINT_COL = 0x3ce07a, HINT_TINT = new THREE.Color(0x9dffc4);
+var HINT_EDGES = null, HINT_LINE = null;
+function faceArrow(c, hint){
   const g = new THREE.Group(), low = c.t === 'repeater', ar = arrowMesh(low ? .55 : 1.25);
-  ar.material = FACE_MAT || (FACE_MAT = new THREE.MeshBasicMaterial({color:FACE_COL, side:THREE.DoubleSide}));
+  ar.material = hint ? HINT_FACE_MAT || (HINT_FACE_MAT = new THREE.MeshBasicMaterial({color:HINT_COL, side:THREE.DoubleSide, transparent:true, opacity:.85})) : FACE_MAT || (FACE_MAT = new THREE.MeshBasicMaterial({color:FACE_COL, side:THREE.DoubleSide}));
+  if (hint) g.userData.hintArrow = true;
   ar.scale.setScalar(low ? 1.6 : 1.8); g.add(ar); g.rotation.y = -(c.dir || 0)*Math.PI/2 + (c.t === 'observer' ? Math.PI : 0); g.userData.faceArrow = true;
   return g;
 }
-const ghostCache = new Map(), ghostMats = [];
-function ghostify(g){
+const ghostCache = new Map(), ghostMats = [], hintMats = [];
+function ghostify(g, hint){
   g.traverse(o => {
     if (o.isSprite){ o.visible = false; return; }
     if (!o.isMesh) return;
-    const conv = m => { let gm = ghostCache.get(m.uuid); if (!gm){ gm = m.clone(); gm.transparent = true; gm.opacity = .5; gm.depthWrite = false; gm.alphaTest = .05; ghostCache.set(m.uuid, gm); ghostMats.push(gm); } return gm; };
+    const conv = m => { const key = (hint ? 'h' : '') + m.uuid; let gm = ghostCache.get(key); if (!gm){ gm = m.clone(); gm.transparent = true; gm.opacity = .5; gm.depthWrite = false; gm.alphaTest = .05;
+      if (hint && gm.color){ gm.color.lerp(HINT_TINT, .6); gm.needsUpdate = true; }   // (mint: the hint's colour)
+      ghostCache.set(key, gm); (hint ? hintMats : ghostMats).push(gm); } return gm; };
     o.material = Array.isArray(o.material) ? o.material.map(conv) : conv(o.material);
     o.raycast = () => {};
   });
 }
 const numMats = [];
+// a dust with no power, right beside a dust that still has some: where the power ran out (the one 0 worth showing)
+function dustRanOut(c){ for (let d = 0; d < 4; d++){ const n = nb(c, d); if (n && n.t === 'dust' && n.pw > 0) return true; } return false; }
 function numSprite(n){
   if (!numMats[n]){
     const c = document.createElement('canvas'); c.width = c.height = 32; const g = c.getContext('2d');
@@ -2005,7 +2029,7 @@ let cellGroups = new Array(NX*NY).fill(null), cellKeys = new Array(NX*NY).fill('
 function vkey(c){
   if (UNI_PARTS.has(c.t) || c.tall) return uniKey(c);
   switch (c.t){
-    case 'dust': return 'd'+c.ptsMask+'_'+c.pw+((S.slow || S.numbers)?'x':'')+dustPlugs(c).map(p => p ? (p === 2 ? 2 : 1) : 0).join('');
+    case 'dust': return 'd'+c.ptsMask+'_'+c.pw+((S.slow || S.numbers)?'x' + (c.pw ? '' : dustRanOut(c) ? 'e' : 'n'):'')+dustPlugs(c).map(p => p ? (p === 2 ? 2 : 1) : 0).join('');
     case 'lever': return 'l'+c.on+effAttach(c);
     case 'button': return 'b'+(c.timer>0)+effAttach(c);
     case 'lamp': return 'L'+c.lit;
@@ -2109,7 +2133,7 @@ function loadLesson(n, fresh){
   L.ghosts = L.ghosts.filter(gh => { if (!gh.locked) return true; setCell(gh.x, gh.y, makeCell(gh.t, gh.x, gh.y, gh)); if (gh.label){ const s = labelSprite(gh.label, true); s.position.copy(cellPos(gh.x,gh.y)); s.position.y = 1.2; labelRoot.add(s); } return false; });
   if (def.payoff === 'boom'){ const [x,y] = def.payoffAt; L.payCell = makeCell('tnt', x, y, {locked:true}); setCell(x, y, L.payCell); }
   if (def.kind === 'memory') L.mem = 0;
-  L.ghosts.forEach(gh => { const m = buildMesh(Object.assign({lit:gh.t==='torch', delay:gh.delay||1, dir:gh.dir||0, attach:gh.attach ?? -1, pw:15}, gh), true); m.position.copy(cellPos(gh.x, gh.y)); ghostRoot.add(m); gh.mesh = m; });
+  L.ghosts.forEach(gh => { const m = buildMesh(Object.assign({lit:gh.t==='torch', delay:gh.delay||1, dir:gh.dir||0, attach:gh.attach ?? -1, pw:15}, gh), 'hint'); m.position.copy(cellPos(gh.x, gh.y)); ghostRoot.add(m); gh.mesh = m; });
   if (def.kind === 'table') L.rows = new Array(1 << def.inputs.length).fill(false);
   L.hintLevel = 0; L.tested = new Set(); L.bad = new Set();
   const special = L.ghosts.filter(g => g.t !== 'dust');
@@ -2186,7 +2210,9 @@ function showCard(head, html){
   w.classList.add('arming'); const armT = cardArmT; setTimeout(() => { if (cardArmT === armT) w.classList.remove('arming'); }, CARD_ARM_MS);   // every button on it (answers, Back to the menu...) waits too
   if (quiz && locked) try { document.exitPointerLock(); } catch (_) {}   // let the mouse reach the answers
 }
-function closeCard(){ if (!cardArmed() || $('#why').hidden) return false; $('#why').hidden = true; sfx.click(); tapQuiet(); return true; }
+function closeCard(){ if (!cardArmed() || $('#why').hidden) return false; const head = $('#whyHead').textContent; $('#why').hidden = true; sfx.click(); tapQuiet();
+  if (asking && (head === 'What is this?' || head === 'Grass')) toggleAsk(false);   // the What? tool goes off once its card is read (re-run 2's c12: "? What?" stayed lit after Got it!)
+  return true; }
 // playtest sweep B7: the taps that close a talk box or a card often come in threes. For 0.3 s after one closes, taps on the world do nothing
 const TAPQ = {until:0};
 function tapQuiet(){ TAPQ.until = performance.now() + 300; }
@@ -2427,7 +2453,7 @@ function renderCard(){
     if (r.check === 'together'){ card.hidden = true; card.innerHTML = ''; return; }
     if (r.check === 'each'){ const n = (rt.seen || new Set()).size; card.innerHTML = `<h3>Dance plates: ${n} / ${r.inputs.length}</h3>${DISCO_LAYERS.map((nm, k) => `<div class="step${k < n ? ' on' : ''}">${k < n ? '&#10003;' : '&#9675;'} ${nm}</div>`).join('')}<div class="note">Stand on each plate by itself.</div>`; return; }
     if (r.check === 'pulse'){ card.innerHTML = `<h3>Parps</h3><div class="blinks">${[...Array(r.count)].map((_, i) => `<span style="font-size:24px">${i < rt.pulses ? '&#10003;' : '&#9675;'}</span>`).join('')}</div>${r.need === 'lever' ? '<div class="note">Lever ON, OFF, ON</div>' : ''}`; return; }
-    if (r.check === 'latch'){ const ph = rt.phase || 0, many = r.inputs.length > 2; card.innerHTML = `<h3>Memory test</h3><div class="note">${ph ? '&#10003; It remembered ON' : '&#9675; ' + (r.setText || 'Step on the plate, step off: does it stay ringing?')}<br>&#9675; Reset: does it stay OFF?${many ? `<br>Plates that work: ${(rt.setsOk || new Set()).size} / ${r.inputs.length - 1}` : ''}</div>`; return; }
+    if (r.check === 'latch'){ const ph = rt.phase || 0, many = r.inputs.length > 2; card.innerHTML = `<h3>Memory test</h3><div class="note">${ph ? '&#10003; It remembered ON' : '&#9675; ' + (r.setText || 'Step on the plate, then off. Does it stay ON?')}<br>&#9675; Reset: does it stay OFF?${many ? `<br>Plates that work: ${(rt.setsOk || new Set()).size} / ${r.inputs.length - 1}` : ''}</div>`; return; }
     if (r.check === 'count'){ card.innerHTML = `<h3>Dings: ${rt.counting ? rt.dings : (rt.lastDings ?? '?')} (want ${r.count})</h3><div class="note">Press the button ONCE and count. ${[...Array(r.count)].map(() => '&#128276;').join(' ')}</div>`; return; }
     if (r.check === 'runclock'){ card.innerHTML = `<h3>Flashing skeletons</h3><div class="note">${rt.runSeen ? '&#10003;' : '&#9675;'} RIDE lever ON: they flash<br>${rt.darkSeen ? '&#10003;' : '&#9675;'} RIDE lever OFF: they stay dark</div>`; return; }
     if (r.check === 'stopclock'){ card.innerHTML = `<h3>Haunted lamp</h3><div class="note">${rt.calmSeen ? '&#10003;' : '&#9675;'} Lever ON: it stays calm<br>${rt.blinkSeen ? '&#10003;' : '&#9675;'} Then lever OFF: it flickers again</div>`; return; }
@@ -2524,7 +2550,7 @@ function select(i){
   if (asking) toggleAsk(false);
   [...hotbar.children].forEach((b, j) => b.classList.toggle('sel', j === i)); hbLayout();
   const n = $('#itemName'); n.innerHTML = `${ITEMS[i].name}<small>${ITEMS[i].tip}</small>`; n.classList.add('show');
-  n.classList.remove('rest'); clearTimeout(nameT); nameT = setTimeout(() => { n.classList.remove('show'); if (ITEMS[sel] && ITEMS[sel].id !== 'pick'){ n.textContent = ITEMS[sel].name; n.classList.add('rest'); } }, 2400);   // then the name stays, small, so you always know what's in your hand
+  n.classList.remove('rest'); clearTimeout(nameT); nameT = setTimeout(() => { n.classList.remove('show'); if (ITEMS[sel] && ITEMS[sel].id !== 'pick'){ const fr = FACE_HOLD[ITEMS[sel].id]; if (fr) n.innerHTML = `${ITEMS[sel].name}<small>${fr}</small>`; else n.textContent = ITEMS[sel].name; n.classList.add('rest'); } }, 2400);   // then the name stays, small, so you always know what's in your hand (and, for a part with a facing, which way it will face: re-run 2's c29 only learnt the piston's rule after putting it down)
   sfx.click(); updatePreview();
 }
 
@@ -2545,6 +2571,10 @@ function hudBand(){
 }
 // how far the sky view may look from the middle: the small levels as before; Acts 3-5 the whole map (sweep 2 A6: it was held near the middle of the pier)
 const camLim = d => A.on ? Math.max(d, NX/2, NY/2) : d, camRMax = d => A.on ? 100 : d;   // (and how far out: far enough to see you AND the next beam; every act since the cold-return audit: Act 1's View showed a different yard, c01/c02)
+// the sky View's zoom is yours: zoom in or out once and it stays that way each time View opens, for the rest of the session (it went
+// back to the whole room every time). Kept as a share of the View's own fit, so it suits every room.
+const VIEWZ = {k:1, base:0};
+function viewZoomed(){ if (!inFP() && VIEWZ.base > 0) VIEWZ.k = Math.max(.25, Math.min(4, cam.r/VIEWZ.base)); }
 function focusCamera(def){
   if (A.on){
     const r = A.rt && A.rt.room, b = r ? r.box : A.room === 'hall' ? HALL : HUB;
@@ -2590,6 +2620,7 @@ function focusCamera(def){
   const lim = camLim(14);
   cam.target.x = Math.max(-lim, Math.min(lim, cam.target.x));
   cam.target.z = Math.max(-lim, Math.min(lim, cam.target.z));
+  VIEWZ.base = cam.r; if (VIEWZ.k !== 1) cam.r = Math.max(6, Math.min(camRMax(45), cam.r*VIEWZ.k));   // your own zoom, kept
   updateCam();
 }
 function resize(){
@@ -2843,18 +2874,22 @@ canvas.addEventListener('pointermove', e => {
   if (ptrs.size >= 2){
     if (inFP()) return;
     const p = pinchInfo();
-    if (gest.pinch){ if (p.d > 0 && gest.pinch.d > 0) cam.r = Math.max(6, Math.min(camRMax(45), cam.r * gest.pinch.d / p.d)); pan(p.mx - gest.pinch.mx, p.my - gest.pinch.my); }
+    if (gest.pinch){ if (p.d > 0 && gest.pinch.d > 0){ cam.r = Math.max(6, Math.min(camRMax(45), cam.r * gest.pinch.d / p.d)); viewZoomed(); } pan(p.mx - gest.pinch.mx, p.my - gest.pinch.my); }
     gest.pinch = p; updateCam(); return;
   }
   const dx = e.clientX - gest.lx, dy = e.clientY - gest.ly;
   gest.lx = e.clientX; gest.ly = e.clientY;
   if (!gest.moved && Math.hypot(e.clientX-gest.sx, e.clientY-gest.sy) > 8){ gest.moved = true; clearTimeout(holdTimer); }
   if (!gest.moved) return;
-  if (inFP()){ look(dx, dy, 0.006); return; }
-  if (gest.mode === 'pan') pan(dx, dy);
-  else { cam.theta -= dx*0.008; cam.phi = Math.max(0.2, Math.min(1.38, cam.phi - dy*0.006)); }
-  updateCam(); updatePreview();
+  if (gest.mode === 'pan' && !inFP()){ pan(dx, dy); updateCam(); updatePreview(); return; }
+  dragTurn(dx, dy);
 });
+// a drag turns the view: look around (walking) or swing the sky View round
+function dragTurn(dx, dy){
+  if (inFP()){ look(dx, dy, 0.006); return; }
+  cam.theta -= dx*0.008; cam.phi = Math.max(0.2, Math.min(1.38, cam.phi - dy*0.006));
+  updateCam(); updatePreview();
+}
 function endPtr(e){
   if (inFP() && locked && lockDown && e.type === 'pointerup'){ lockDown = false; clearTimeout(holdTimer); const [cx,cy] = centre(); act(cx, cy, 'use'); return; }
   if (!ptrs.has(e.pointerId)) return;
@@ -2868,10 +2903,27 @@ function endPtr(e){
 canvas.addEventListener('pointerup', endPtr);
 canvas.addEventListener('pointercancel', endPtr);
 canvas.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse' && !ptrs.size && !inFP()){ hoverCell = null; updatePreview(); } });
+// drags that start on the goal panel or the hint strip still turn the view (the cold-return audit's c15: the OPEN goal panel stopped
+// drags for ten actions). A tap is still a tap (it opens / closes the panel); only a real drag (over 8 px) turns, and then its click is
+// eaten. An open goal panel long enough to scroll keeps up / down drags for scrolling.
+const DRAGTHRU = {d:null, eat:0};
+const dragEaten = () => performance.now() < DRAGTHRU.eat;
+function dragThrough(el){
+  if (!el) return;
+  el.addEventListener('pointerdown', e => { DRAGTHRU.eat = 0; if ((e.button || 0) !== 0 || (inFP() && locked)) { DRAGTHRU.d = null; return; } DRAGTHRU.d = {el, id:e.pointerId, sx:e.clientX, sy:e.clientY, lx:e.clientX, ly:e.clientY, on:false}; });
+  el.addEventListener('pointermove', e => { const d = DRAGTHRU.d; if (!d || d.el !== el || e.pointerId !== d.id) return;
+    if (!d.on){ const mx = e.clientX - d.sx, my = e.clientY - d.sy; if (Math.hypot(mx, my) <= 8) return;
+      if (el.scrollHeight > el.clientHeight + 2 && Math.abs(my) > Math.abs(mx)){ DRAGTHRU.d = null; return; }   // (a long open goal: up / down scrolls it)
+      d.on = true; d.lx = e.clientX; d.ly = e.clientY; cam.auto = false; try { el.setPointerCapture(d.id); } catch (_) {} return; }
+    const dx = e.clientX - d.lx, dy = e.clientY - d.ly; d.lx = e.clientX; d.ly = e.clientY; e.preventDefault(); dragTurn(dx, dy); });
+  const end = e => { const d = DRAGTHRU.d; if (!d || d.el !== el || e.pointerId !== d.id) return; if (d.on) DRAGTHRU.eat = performance.now() + 350; DRAGTHRU.d = null; try { el.releasePointerCapture(e.pointerId); } catch (_) {} };
+  el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
+  el.addEventListener('click', e => { if (dragEaten()){ e.stopPropagation(); e.preventDefault(); } }, true);   // (the drag's own click: the panel stays as it was)
+}
 canvas.addEventListener('wheel', e => {
   e.preventDefault();
   if (inFP()){ cycle(e.deltaY > 0 ? 1 : -1); return; }
-  cam.r = Math.max(6, Math.min(camRMax(45), cam.r * Math.exp(e.deltaY*0.0012))); updateCam();
+  cam.r = Math.max(6, Math.min(camRMax(45), cam.r * Math.exp(e.deltaY*0.0012))); viewZoomed(); updateCam();
 }, {passive:false});
 
 /* touch thumb-stick + jump */
@@ -3054,6 +3106,8 @@ function act(cx, cy, mode){
   if (DLG.on && !dlgSoft()){ dlgAdvance(); if (!DLG.on) tapQuiet(); return; }
   if (A.gRide){ rideTap(cx, cy); return; }   // Act 3's ghost train ride
   if (mode === 'use' && $('#why').hidden && partyDialTap(cx, cy)) return;   // room 12's PARTY POWER button
+  if (mode === 'use' && !asking && spotTagTap(cx, cy)) return;   // a PUT IT HERE / TAP HERE label: as if you tapped its spot
+  if (mode === 'use' && !asking && A.on && cartTap(cx, cy)) return;   // a tap on a minecart pushes it
   if (mode === 'use' && pokeMonkey(cx, cy)) return;
   if (!$('#why').hidden && locked){ if (cardQuiz()){ try { document.exitPointerLock(); } catch (_) {} return; } closeCard(); return; }
   const h = pick(cx, cy); if (!h) return;
@@ -3815,7 +3869,8 @@ $('#btnGates').addEventListener('click', () => {
 });
 $('#btnNew').addEventListener('click', () => { sfx.click(); openSaves('new'); });   // a new game is a new save: the others stay safe
 $('#btnSaves').addEventListener('click', () => { sfx.click(); openSaves('list'); });
-$('#goalBox').addEventListener('click', () => { $('#goalBox').classList.toggle('open'); });
+$('#goalBox').addEventListener('click', () => { if (dragEaten()) return; $('#goalBox').classList.toggle('open'); });
+dragThrough($('#goalBox')); dragThrough($('#hintStrip'));
 $('#card').addEventListener('click', e => { if (e.target.closest('h3')){ const c = $('#card'); c.classList.toggle('fold'); c.dataset.foldAt = String(A.room && A.room.id || A.room || ''); } });   // tap the heading: fold the table away (it opens again in the next room)
 // the goal shrinks to one line 10 s after it last changed (game clock, so tests see it); any new goal shows in full again
 const GOALBRIEF = {t:0};
@@ -3823,6 +3878,7 @@ function goalBriefFrame(dt){
   const gb = $('#goalBox'), txt = $('#goalText').textContent; if (!gb) return;
   if (txt !== GOALBRIEF.last){ GOALBRIEF.last = txt; GOALBRIEF.t = 0; gb.classList.remove('brief'); }
   if ((GOALBRIEF.t += dt) > 10000 && txt.length > 70 && !gb.classList.contains('brief')) gb.classList.add('brief');   // (a one-line goal stays: folding it saves nothing)
+  { const sc = gb.classList.contains('open') && gb.scrollHeight > gb.clientHeight + 2; if (gb.classList.contains('scrolls') !== sc) gb.classList.toggle('scrolls', sc); }
   const c = $('#card'), here = String(A.room && A.room.id || A.room || ''); if (c.classList.contains('fold') && c.dataset.foldAt !== here) c.classList.remove('fold');
 }
 // folded, the goal panel shows whole sentences only (as many as fit in about two lines), then a "more" tab. Whoever sets the goal just sets its text.
@@ -4116,8 +4172,6 @@ function frame(now){
   advFrame(dt, now); sprayFrame(dt);
   runFx(dt); sbFrame(dt); achFrame(dt);
   if (shake > 0){ shake = Math.max(0, shake - dt/1000); if (!inFP()) updateCam(); if (!reduceMotion){ camera.position.x += (Math.random()-.5)*shake; camera.position.y += (Math.random()-.5)*shake; } }   // (Less motion: no screen shake)
-  const pulse = reduceMotion ? .5 : .42 + .16*Math.sin(now*0.004);
-  for (const m of ghostMats) m.opacity = pulse;
   if (!reduceMotion) clouds.forEach((c,i) => { c.position.x += dt*0.0006*(1+i*.2); if (c.position.x > 45) c.position.x = -45; });
   roomDecorFrame();
   renderer.render(scene, camera);
@@ -5706,6 +5760,16 @@ function cartWorld(k){
   if (ex >= 0){ const [dx, dz] = DIRS[ex]; return {x:c.x + dx*(k.t - .5), y:c.y, z:c.z + dz*(k.t - .5), d:ex}; }
   return {x:c.x, y:c.y, z:c.z, d:1};
 }
+// a tap ON a minecart uses the cart, whatever you hold (re-run 2's c12 tapped the cart holding a lever and put a lever down beside the
+// track: the cart's own pieces don't catch rays, so the tap went through to the floor). The cart counts as a ball round its body.
+function cartTap(cx, cy){
+  const ks = S.carts || [], ms = A.cartMeshes || []; if (!ks.length || !ms.length) return false;
+  const dir = clickRay(cx, cy), o = camera.position, h = pick(cx, cy), blockD = h && h.point ? h.point.distanceTo(o) : Infinity; let best = -1, bt = Infinity;
+  ms.forEach((m, i) => { if (!m || !m.parent || !ks[i]) return; const c = new THREE.Vector3(m.position.x, m.position.y + .4, m.position.z).sub(o), t = c.dot(dir);
+    if (t < .2 || t > (inFP() ? REACH + .6 : 200) || t > blockD + .45) return; if (c.addScaledVector(dir, -t).length() > .55) return; if (t < bt){ bt = t; best = i; } });
+  if (best < 0) return false;
+  const k = ks[best]; return cartPush(k.x, k.y);
+}
 function cartPush(x, y, toward){   // toward: push it towards that cell (tests), else away from you
   const k = (S.carts || []).find(q => q.x === x && q.y === y), c = at(x, y); if (!k || !c) return false;
   if (!c.conn) railShape(c);
@@ -7020,7 +7084,9 @@ function spawnTroop(r){
   const t = r.troop; TROOP.room = r;
   // a warm-up: just one at first (room 9: one tamarin, then the whole family turns up)
   const n0 = t.warmup && !A.solved.has(r.id) ? t.warmup : t.n; TROOP.stage = n0 < t.n ? 1 : 2;
-  (t.labels || []).forEach(([text, x, y]) => { const sp = textSprite(text, {w:150, fs:20, bg:'#fff6c8', ink:'#3a2a10', scale:.6, depth:true}), p = cellPos(x, y); sp.position.set(p.x, p.y + 1.75 + sp.scale.y/2, p.z); decorRoot.add(sp); TROOP.labels.push(sp); });
+  // (a tail points down at the thing, sitting just over it: re-run 2's c03 took room 9's GATE tag, floating high over the gate, for the
+  // pillar beside it)
+  (t.labels || []).forEach(([text, x, y]) => { const sp = textSprite(text, {w:150, fs:22, bg:'#fff6c8', ink:'#3a2a10', scale:.7, depth:true, tail:true}), p = cellPos(x, y); sp.position.set(p.x, p.y + 1.12 + sp.scale.y/2, p.z); sp.userData.text = text; sp.userData.at = [x, y]; decorRoot.add(sp); TROOP.labels.push(sp); });
   troopAdd(r, n0, false);
 }
 // more of the troop: they hop down over the far wall (a pop of scale, then a short drop)
@@ -7949,6 +8015,24 @@ function recapIfOn(lx, ly, read){
   finally { S.simulating = false; S.grid.forEach((c, i) => { if (c && saved[i]) Object.assign(c, saved[i]); }); S.tick = keep.tick; S.lastSnap = keep.lastSnap; S.stable = keep.stable; S.events.length = keep.ev; S.carts = keep.carts; S.gridDirty = true; }
   return out;
 }
+// one of your repeaters facing the wrong way ANYWHERE in the room, not just on the answer's spot (re-run 2's c15 put the lighthouse's
+// repeater into the loop backwards, one cell along, and the re-opened card didn't say): a repeater that never sends power out as it
+// is, but would if it were turned round, tried on a copy of the room (nothing on screen changes)
+function recapRepFace(r){
+  const b = r.box, reps = []; for (let x = b.x0 + 1; x < b.x1; x++) for (let y = b.y0 + 1; y < b.y1; y++){ const c = at(x, y); if (c && c.t === 'repeater' && !c.locked) reps.push(c); }
+  if (!reps.length || reps.length > 6) return null;
+  const saved = S.grid.map(c => c && Object.assign({}, c, {buf:c.buf ? c.buf.slice() : null, pts:c.pts ? c.pts.slice() : c.pts})), keep = {tick:S.tick, lastSnap:S.lastSnap, stable:S.stable, ev:S.events.length, carts:S.carts};
+  const back = () => { S.grid.forEach((c, i) => { if (c && saved[i]) Object.assign(c, saved[i]); }); S.tick = keep.tick; S.events.length = keep.ev; S.gridDirty = true; };
+  const sends = c => { for (let t = 0; t < 40; t++){ step(); if (c.out) return true; } return false; };
+  let found = null; S.simulating = true;
+  try { S.carts = [];
+    for (const c of reps){ back(); if (sends(c)) continue;
+      for (const d of [opp(c.dir), (c.dir + 1) % 4, (c.dir + 3) % 4]){ if (!nb(c, d)) continue;   // (turned to face nothing at all isn't "the right way": a repeater on a corner can't work either way)
+        back(); c.dir = d; c.buf = null; S.gridDirty = true; if (sends(c)){ found = c; break; } }
+      if (found) break; }
+  } finally { back(); S.simulating = false; S.lastSnap = keep.lastSnap; S.stable = keep.stable; S.carts = keep.carts; S.gridDirty = true; }
+  return found;
+}
 // what's wrong with the build right now, in one short line (or '')
 function recapWrong(r, rt){
   // one of your parts is in the right spot but faces the wrong way (c13, c14: the lighthouse's repeater; 504-506's pistons)
@@ -7956,7 +8040,8 @@ function recapWrong(r, rt){
     if (f) return `The ${recapName(f.t).toLowerCase()} faces the wrong way.`;
     // a torch standing on the floor where the answer's torch hangs on a block's side (c17 clicked the floor twice)
     const t = (r.sol || []).find(g => g.t === 'torch' && 'attach' in g && g.attach >= 0 && (c => c && !c.locked && c.t === 'torch' && c.attach !== g.attach)(at(g.x, g.y)));
-    if (t) return 'That torch must hang on a block\'s side.'; }
+    if (t) return 'That torch must hang on a block\'s side.';
+    if (recapRepFace(r)) return 'The repeater faces the wrong way.'; }
   const own = ownPowerIn(r); if (own) return `Your own ${recapName(own.t)} doesn't count here. Take it away.`;
   const wire = ['lit', 'pulse', 'boom', 'coop', 'together', 'each', 'pen', 'launch'].includes(r.check);
   // (table rooms too: re-run 2's c08 had a lit wire beside the lamp, bent away)
@@ -10044,7 +10129,7 @@ function beaconLook(g, act){ g.userData.later = act; const cols = g.children.fil
 function beaconTipFrame(g, wide){ const t = g.userData.tip; if (!t || !t.visible) return; const k = reduceMotion ? 0 : Math.sin(performance.now()/260)*.25;
   t.position.set(0, 3.4 + k, 0); t.scale.set(.08/wide, .1, 1); }
 // the hint button, once a room is done: show the way on (the glowing trail, now)
-function forceTrail(c){ if (!c) return; const W = A.wf || (A.wf = {key:'', best:1e9, t:0, crumbs:[], age:0}); W.key = c.join(); W.best = 1e9; W.forced = true; W.age = 0; }
+function forceTrail(c){ if (!c) return; const W = A.wf || (A.wf = {key:'', best:1e9, t:0, crumbs:[], age:0}); if (W.key !== c.join()) W.said = false; W.key = c.join(); W.best = 1e9; W.forced = true; W.age = 0; }
 // after an act's welcome (Acts 2-5): the glowing trail to the first room lays itself, once, no Hint press (sweep 2 A1/C1: Max won't press Hint;
 // the Maya's first room was never found in 50 actions). It goes when you get there, like the Hint's trail.
 function welcomeTrail(){ const c = objectiveCell(); if (c){ forceTrail(c); A.welcomeTrail = c.join(); } }
@@ -10095,10 +10180,14 @@ function hostWalkFrame(dt){
 function youMarkFrame(){
   const on = A.on && !inFP() && !!L && !$('#hud').hidden && S.mode === 'adventure';
   if (!on){ if (A.youMark) A.youMark.visible = false; return; }
-  if (!A.youMark){ A.youMark = textSprite('YOU', {w:90, fs:34, scale:2.2, tail:true}); A.youMark.material.depthTest = false; A.youMark.material.sizeAttenuation = false; A.youMark.userData.k = .07/A.youMark.scale.y; A.youMark.scale.multiplyScalar(A.youMark.userData.k);   // (the same size on screen, however far out the view is)
+  // (small and see-through, just over your head: re-run 2's c03, c08 and c21 said the big YOU tag covered the build)
+  if (!A.youMark){ A.youMark = textSprite('YOU', {w:90, fs:34, scale:2.2, tail:true}); A.youMark.material.depthTest = false; A.youMark.material.sizeAttenuation = false; A.youMark.material.opacity = .7; A.youMark.userData.k = .042/A.youMark.scale.y; A.youMark.scale.multiplyScalar(A.youMark.userData.k);   // (the same size on screen, however far out the view is)
     A.youMark.renderOrder = 998; A.youMark.userData.youMark = true; world.add(A.youMark); }   // (on the world, not labelRoot: a level build frees labelRoot's children)
-  const k = reduceMotion ? 0 : Math.sin(performance.now()/300)*.2; A.youMark.visible = true; A.youMark.position.set(P.x, P.y + 2.6 + k, P.z);
+  const k = reduceMotion ? 0 : Math.sin(performance.now()/300)*.1; A.youMark.visible = true; A.youMark.position.set(P.x, P.y + 2.1 + k, P.z);
 }
+// is this bit of the glowing trail on screen? (walking: in the middle of the view, nothing in the way; the sky View: inside the picture)
+const _crv = new THREE.Vector3();
+function crumbSeen(m){ const p = m.position; if (inFP()) return playerSees(p.x, p.y, p.z, .9); camera.updateMatrixWorld(); _crv.copy(p).project(camera); return Math.abs(_crv.x) < .95 && Math.abs(_crv.y) < .95 && _crv.z < 1; }
 function objectiveFrame(dt){
   beamTurnArm();
   const c = S.mode === 'adventure' && (inFP() || (L && !$('#hud').hidden)) ? objectiveCell() : null, el = $('#objArrow');   // (the beam shows in the sky view too: the landmark)
@@ -10114,7 +10203,7 @@ function objectiveFrame(dt){
   if (el) el.hidden = true;
   // stuck for ages? a glowing redstone trail along the actual walkable path (around trees, not through them)
   const key = c.join(), dist = Math.hypot(p.x - P.x, p.z - P.z), W = A.wf || (A.wf = {key:'', best:1e9, t:0, crumbs:[], age:0});
-  if (W.key !== key){ W.key = key; W.best = dist; W.t = 0; W.forced = false; }
+  if (W.key !== key){ W.key = key; W.best = dist; W.t = 0; W.forced = false; W.said = false; }   // (a new place to go: a new trail, said again when seen)
   if (dist < W.best - 2.5){ W.best = dist; W.t = 0; } else W.t += dt;
   const want = W.t > 75000 || !!W.forced || !!(A.chaseTrail && !A.metBarold);
   W.age -= dt;
@@ -10122,7 +10211,10 @@ function objectiveFrame(dt){
     const path = bfsPath(cellAtWorld(P.x, P.z), c) || [];
     const day = A.act === MAYA_ACT || A.act === UNI_ACT;   // (by day: solid red dots; an additive glow vanished on the Maya's white floor)
     path.slice(0, 40).forEach((q, i) => { if (i % 2) return; const m = glow(day ? (M.crumbDay || (M.crumbDay = new THREE.SpriteMaterial({map:M.glowGreen.map, color:0xc81400, transparent:true, depthWrite:false}))) : new THREE.SpriteMaterial({map:M.glowGreen.map, color:0xff2a10, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending}), .55, 0); m.position.set(q.x, q.y + .12, q.z); m.userData.i = i; decorRoot.add(m); W.crumbs.push(m); });
-    if (!W.said && path.length){ W.said = true; showToast('Follow the glowing redstone trail!'); } }
+  }
+  // say so only once a bit of the trail is really on screen (re-run 2's c08 got "Follow the glowing redstone trail!" in the corridor with
+  // no trail in sight, and took the aiming square for it)
+  if (want && !W.said && W.crumbs.length && W.crumbs.some(crumbSeen)){ W.said = true; showToast('Follow the glowing redstone trail!'); }
   if (!want && W.crumbs.length){ W.crumbs.forEach(m => decorRoot.remove(m)); W.crumbs = []; W.said = false; }
   if (W.crumbs.length){ const tt = performance.now()/120; W.crumbs.forEach(m => { const k = .4 + .35*Math.max(0, Math.sin(tt - m.userData.i*.5)); m.scale.set(k, k, 1); }); }
 }
@@ -10638,7 +10730,7 @@ function loreFrame(dt){
 let advFrameT = 0;
 function advFrame(dt, now){
   A.clock = (A.clock || 0) + dt;
-  ghostBobFrame(A.clock); goalBriefFrame(dt);
+  ghostBobFrame(A.clock); hintPulse(A.clock); goalBriefFrame(dt); spotTagsFrame();
   dlgFrame(dt); beatsFrame(dt); bubblesFrame(dt); offLineFrame(dt); whyFrame(dt);
   if (!A.on) return;
   peekFrame(dt);
@@ -11748,6 +11840,8 @@ function tutSpot(){
 }
 // wandered off during the dust step? the yellow square comes to you (a wanderer persona left it 28 blocks behind)
 // a hint's ghost piece bobs, so it can't be mistaken for the pale see-where-it-goes preview (playtest sweep: two identical pink squares)
+// the hint's ghost breathes (the aiming preview stays still): called every drawn frame, and by the tests' frames
+function hintPulse(now){ const k = reduceMotion ? .55 : .5 + .25*Math.sin(now*0.005); for (const m of hintMats) m.opacity = k; if (HINT_LINE){ HINT_LINE.transparent = true; HINT_LINE.opacity = reduceMotion ? 1 : .6 + .4*Math.sin(now*0.005); } }
 function ghostBobFrame(now){ if (!L || !L.ghosts || reduceMotion) return; for (const gh of L.ghosts) if (gh.mesh && gh.mesh.visible){ const u = gh.mesh.userData; if (u.y0 === undefined) u.y0 = gh.mesh.position.y; gh.mesh.position.y = u.y0 + .07 + .06*Math.sin(now*.005); } }
 function tutSpotFollow(){ const sp = tut.spot; if (!sp || at(...sp)) return; const [px, py] = cellAtWorld(P.x, P.z); if (Math.hypot(sp[0] - px, sp[1] - py) <= 8) return;
   tut.spot = null; const n = tutSpot(); if (tut.marker){ tut.marker.position.copy(cellPos(...n)); tut.marker.position.y += .03; } }
@@ -11921,6 +12015,70 @@ function advStart(given){
 function stopAdventure(){ dlgCancel(true); if (A.youMark) A.youMark.visible = false; document.body.classList.remove("emptyHands"); if (A.openCine){ A.openCine = false; cineEnd(); }
   A.freeze = false; A.endSeq = null; A.countdown = null; $('#mapCard').hidden = true; despawnTroop(); musicSet(null); const ml = $('#mline'); if (ml) ml.hidden = true;
   if (tut) { if (tut.marker) decorRoot.remove(tut.marker); tut = null; $('#tut').hidden = true; } if (A.on){ advSaveNow(); A.on = false; } recapTagsDrop(); RECAP.tagRoom = null; $('#crystals').hidden = true; if (space.floor) setSpaceLevel(0); shake = 0; }
+// ---- tags that point at a spot in the world: PUT IT HERE (the hint's ghost piece), TAP HERE (a block's side), STAND HERE (a floor square).
+// They were 3D signs over the spot: they covered the ghost and the wall sign, sat under the goal panel and the hint strip, hid under a
+// tamarin, and only TAP HERE did anything when tapped (the cold-return audit's re-run 2: c03, c06, c12, c15, c18, c29). Now each is a
+// small label on top of the view (over the goal panel and the hint strip, under cards and talk boxes), BESIDE its spot with an arrow
+// pointing at it, kept on screen while its spot is; tapping a PUT IT HERE or TAP HERE label does what tapping its spot does. ----
+const SPOTTAG = {list:[]};
+function spotTag(kind, text, o){
+  const lay = $('#spotTags'); if (!lay || S.simulating) return null;
+  const el = document.createElement('div'); el.className = 'spotTag ' + kind; el.hidden = true; el.innerHTML = '<b class="stL">&#9664;</b><span></span><b class="stR">&#9654;</b>'; el.querySelector('span').textContent = text;
+  lay.appendChild(el); const t = Object.assign({kind, text, el, shown:false, side:1}, o); SPOTTAG.list.push(t); return t;
+}
+function spotTagDrop(t){ if (!t) return; t.el.remove(); const i = SPOTTAG.list.indexOf(t); if (i >= 0) SPOTTAG.list.splice(i, 1); }
+const _stv = new THREE.Vector3();
+// the box a tag points at, in world space: [x0, x1, y0, y1, z0, z1]
+function spotTagBox(t){
+  if (t.kind === 'put'){ const gh = t.gh, p = cellPos(gh.x, gh.y), y0 = gh.mesh ? gh.mesh.position.y : p.y; return [p.x - .5, p.x + .5, y0, y0 + 1, p.z - .5, p.z + .5]; }
+  if (t.kind === 'tap'){ const sd = t.side3, p = cellPos(sd.x, sd.y), [dx, dz] = DIRS[sd.d], fx = p.x + dx*.52, fz = p.z + dz*.52; return [fx - (dx ? .03 : .5), fx + (dx ? .03 : .5), p.y, p.y + 1, fz - (dz ? .03 : .5), fz + (dz ? .03 : .5)]; }
+  const p = cellPos(...t.spot); return [p.x - .5, p.x + .5, p.y, p.y + .1, p.z - .5, p.z + .5];
+}
+function spotTagAlive(t){
+  if (t.kind === 'put') return !!(L && L.ghosts && L.ghosts.includes(t.gh) && t.gh.mesh && t.gh.mesh.parent === ghostRoot);
+  return !!(t.owner && A.uniStand === t.owner);
+}
+// every frame: place each tag beside its spot (right of it, or left if there's no room), or hide it when the spot is off screen
+function spotTagsFrame(){
+  if (!SPOTTAG.list.length) return;
+  const hud = $('#hud'), vw = window.innerWidth, vh = window.innerHeight, cr = canvas.getBoundingClientRect(); let changed = false;
+  for (const t of SPOTTAG.list.slice()){
+    if (!spotTagAlive(t)){ spotTagDrop(t); continue; }
+    let show = !hud.hidden && !CINE.on && (t.kind !== 'put' || (t.gh.mesh.visible && !ghostFilled(t.gh)));
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+    if (show){ const b = spotTagBox(t); camera.updateMatrixWorld();
+      for (const X of [b[0], b[1]]) for (const Y of [b[2], b[3]]) for (const Z of [b[4], b[5]]){ _stv.set(X, Y, Z).project(camera); if (_stv.z > 1 || _stv.z < -1){ show = false; break; }
+        const sx = cr.left + (_stv.x + 1)/2*cr.width, sy = cr.top + (1 - _stv.y)/2*cr.height; x0 = Math.min(x0, sx); x1 = Math.max(x1, sx); y0 = Math.min(y0, sy); y1 = Math.max(y1, sy); }
+      if (show && (x1 < 0 || x0 > vw || y1 < 0 || y0 > vh)) show = false;   // its spot is off screen
+      if (show && inFP()){ const c = (b[0] + b[1])/2, d = Math.hypot(c - P.x, (b[4] + b[5])/2 - P.z); if (d > 30) show = false; } }
+    if (t.el.hidden === show){ t.el.hidden = !show; changed = true; }
+    t.shown = show; if (!show) continue;
+    const w = t.el.offsetWidth || 120, h = t.el.offsetHeight || 26, gap = 6, cy = Math.max(y0, Math.min(y1, (y0 + y1)/2));
+    let side = x1 + gap + w <= vw - 8 ? 1 : x0 - gap - w >= 8 ? -1 : t.side;   // beside it: right if it fits, else left
+    let left = side > 0 ? x1 + gap : x0 - gap - w, top = cy - h/2;
+    left = Math.max(8, Math.min(vw - 8 - w, left)); top = Math.max(8, Math.min(vh - 8 - h, top));
+    if (side !== t.side){ t.side = side; changed = true; } t.rect = {l:left, t:top, r:left + w, b:top + h}; t.spotRect = {l:x0, t:y0, r:x1, b:y1};
+    t.el.querySelector('.stL').hidden = side < 0; t.el.querySelector('.stR').hidden = side > 0;
+    t.el.style.transform = `translate(${Math.round(left)}px,${Math.round(top)}px)`;
+  }
+  return changed;
+}
+// a tap (or the crosshair) on a tag: PUT IT HERE puts that piece on the ghost (the piece is picked from your hotbar if you have it);
+// TAP HERE puts what you hold on that block's side. Returns true when the tap was a tag's.
+function spotTagTap(cx, cy){
+  const t = SPOTTAG.list.find(q => q.shown && q.rect && (q.kind === 'put' || q.kind === 'tap') && cx >= q.rect.l - 6 && cx <= q.rect.r + 6 && cy >= q.rect.t - 6 && cy <= q.rect.b + 6);
+  if (!t) return false;
+  if (t.kind === 'put'){ const gh = t.gh, k = ITEMS.findIndex(i => i.id === gh.t);
+    if (at(gh.x, gh.y)){ sfx.nope(); showToast('Something is there already. Break it first.'); return true; }
+    if (ITEMS[sel].id !== gh.t){ if (k >= 0 && visibleSlots().includes(k) && !bannedHere(gh.t)) select(k); else { sfx.nope(); showToast(`That needs a ${k >= 0 ? ITEMS[k].name : gh.t}.`); return true; } }
+    const att = gh.attach ?? -1, blk = att >= 0 ? at(gh.x + DIRS[att][0], gh.y + DIRS[att][1]) : null;
+    swing(); place(gh.t, gh.x, gh.y, blk); syncVisuals(); return true; }
+  const sd = t.side3, tx = sd.x + DIRS[sd.d][0], ty = sd.y + DIRS[sd.d][1], blk = at(sd.x, sd.y), k = t.part ? ITEMS.findIndex(i => i.id === t.part) : -1;
+  if (at(tx, ty)){ sfx.nope(); showToast('Break the old one first. Then tap here.'); return true; }
+  if (t.part && ITEMS[sel].id !== t.part && k >= 0 && visibleSlots().includes(k)) select(k);
+  if (blk){ swing(); place(ITEMS[sel].id, tx, ty, blk); syncVisuals(); }
+  return true;
+}
 // Acts 3-5, between rooms: the hint lights the glowing trail to the beam, and says so (as Act 1's hint does)
 function laterTrail(text, met){ const c = met ? objectiveCell() : null; if (!c || !/beam/.test(text)) return text; forceTrail(c);
   return text.replace(/Follow the (tall )?beam of light to ([^.!]*)[.!]/, 'Follow the glowing trail on the ground to $2. It ends at the tall beam of light.').replace('(follow the beam)', '(follow the glowing trail)'); }
@@ -11957,10 +12115,9 @@ function advHint(){
     const missing = r.sol.filter(g => g.t !== 'air' && !(at(g.x, g.y) && at(g.x, g.y).t === g.t && (!('dir' in g) || at(g.x, g.y).dir === g.dir)));
     L.hintPieces = Math.min(missing.length, (L.hintPieces || 0) + 1);
     L.ghosts = missing.slice(0, showN).map(g => Object.assign({key:true}, g));
-    L.ghosts.forEach(gh => { const m = buildMesh(Object.assign({lit:gh.t==='torch', delay:1, dir:gh.dir||0, attach:gh.attach ?? -1, pw:15}, gh), true); m.position.copy(cellPos(gh.x, gh.y)); ghostRoot.add(m); gh.mesh = m; });
+    L.ghosts.forEach(gh => { const m = buildMesh(Object.assign({lit:gh.t==='torch', delay:1, dir:gh.dir||0, attach:gh.attach ?? -1, pw:15}, gh), 'hint'); m.position.copy(cellPos(gh.x, gh.y)); ghostRoot.add(m); gh.mesh = m; });
     // a tag over the hint's ghost piece: testers kept mixing it up with the pale square that shows where YOUR next piece would go
-    L.ghosts.forEach(gh => { const sp = textSprite('PUT IT HERE', {w:200, fs:30, bg:'#e8f6ff', ink:'#123a5a'}), im = sp.material.map.image, p = cellPos(gh.x, gh.y);
-      sp.material.sizeAttenuation = false; sp.scale.set(.06*im.width/im.height, .06, 1); sp.position.set(p.x, p.y + 1.9, p.z); sp.userData.ghostTag = true; ghostRoot.add(sp); gh.tag = sp; });   // (1.9: high enough not to cover the ghost when you look down at it: c23)
+    L.ghosts.forEach(gh => { gh.tag = spotTag('put', 'PUT IT HERE', {gh}); });   // (beside the ghost, on top of the panels, and tapping it puts the piece there: spotTag)
     L.hintLevel = 3; syncGhosts(); L.hintLevel = 2;
     // the ladder has two steps (the clue, then the next piece as a ghost; each piece you put in, the next press shows the next one). Pressed
     // again with the same ghost still waiting, it used to say the same thing again (c13, c18: "Hint 3 repeats Hint 2"): now it says that's all
@@ -11993,7 +12150,7 @@ function setHintStrip(head, html){
   el.innerHTML = BULB_SVG + '<span></span>'; el.lastChild.textContent = txt; el.hidden = false;
 }
 function hintStripTick(){ if (A.hintStrip && hintCtx() !== A.hintStrip.ctx){ A.hintStrip = null; const el = $('#hintStrip'); if (el) el.hidden = true; } }
-$('#hintStrip').addEventListener('click', () => { if (A.hintStrip){ sfx.click(); showCard(A.hintStrip.head, A.hintStrip.html); } });
+$('#hintStrip').addEventListener('click', () => { if (dragEaten()) return; if (A.hintStrip){ sfx.click(); showCard(A.hintStrip.head, A.hintStrip.html); } });
 // run the hint, and keep what it said in the strip (whatever card it showed)
 function advHintKept(){
   try { localStorage.setItem(HINT_USES, String(hintUses() + 1)); } catch (e) {}
@@ -12941,6 +13098,7 @@ function eggGate(c, litFn, asLamp, firing){   // firing: the toy is going off ri
     // a clock: nothing touched, and the toy's input keeps flipping on its own (still flipping 6 s later: a counter that is
     // part-way through its count stops, a clock doesn't)
     // (a loop that burns its torch out flips too, in bursts: that is NOT a clock, so no "Tick Tock" while the card says "burnt out": c15)
+    const evAll = S.events.length;
     { const ev0 = S.events.length, seq = run(120); if (flipsIn(seq, 60) >= 4 && !S.events.slice(ev0).some(e => e[0] === 'burn')) return {gate:'clock', n:sw.length}; }
     if (!sw.length) return null;
     // counting (Tom: "pull the pin exactly THREE times"): ONE press of a switch, and the circuit sends a few pulses by itself, then stops
@@ -12951,9 +13109,13 @@ function eggGate(c, litFn, asLamp, firing){   // firing: the toy is going off ri
       if (n >= 2 && flipsIn(seq, seq.length - 60) === 0) return {gate:'count', n:sw.length, pulses:n};
     }
     // memory: press each switch and let go. With every switch off again, does the answer depend on WHICH one you pressed last?
-    { const rest = sw.map(s => { sw.forEach(q => eggSet(q, false)); run(10); eggSet(s, true); run(20); eggSet(s, false); run(40); return lit(); }); if (rest.some(v => v !== rest[0])) return {gate:'memory', n:sw.length}; }
-    const k = sw.length, rows = [];
-    for (let r = 0; r < (1 << k); r++){ sw.forEach((s, i) => eggSet(s, !!((r >> (k - 1 - i)) & 1))); const seq = run(40); rows.push(seq[seq.length - 1]); }
+    // (and each answer must SETTLE: a loop that flickers, or burns a torch out, also gives different answers each time, and that is not a
+    // memory: re-run 2's c21 got "Elephant Brain" in room 409 for a grumpy torch wired round into its own block)
+    { let calm = true; const rest = sw.map(s => { sw.forEach(q => eggSet(q, false)); run(10); eggSet(s, true); run(20); eggSet(s, false); run(40); const tail = run(40); if (flipsIn(tail, 1)) calm = false; return tail[tail.length - 1]; });
+      if (calm && !S.events.slice(evAll).some(e => e[0] === 'burn') && rest.some(v => v !== rest[0])) return {gate:'memory', n:sw.length}; }
+    const k = sw.length, rows = []; let unsteady = false;
+    for (let r = 0; r < (1 << k); r++){ sw.forEach((s, i) => eggSet(s, !!((r >> (k - 1 - i)) & 1))); const seq = run(40); rows.push(seq[seq.length - 1]); if (flipsIn(seq, 34)) unsteady = true; }
+    if (unsteady || S.events.slice(evAll).some(e => e[0] === 'burn')) return null;   // (it flickers or burns a torch out: its "table" is noise, not a gate)
     // which switches matter at all
     const used = [...Array(k).keys()].filter(i => rows.some((v, r) => v !== rows[r ^ (1 << (k - 1 - i))]));
     if (!used.length) return null;
@@ -14286,10 +14448,21 @@ function achShowNext(){
   el.innerHTML = `<div class="achI">${achIconHTML(d.gate ? 'gate:' + d.gate : d.icon)}</div><div class="achW"><div class="achH">ACHIEVEMENT!</div><div class="achNm"></div><div class="achL"></div></div>`;
   el.querySelector('.achNm').textContent = d.name; el.querySelector('.achL').textContent = d.line || '';
   feed('toast', 'ACHIEVEMENT! ' + d.name + (d.line ? ': ' + d.line : ''));
-  void el.offsetWidth; el.classList.add('show'); try { sfx.chime(); } catch (e) {}
+  achPlace(el); void el.offsetWidth; el.classList.add('show'); try { sfx.chime(); } catch (e) {}
   setTimeout(() => { el.classList.remove('show'); setTimeout(() => { ACHQ.shift(); achShowNext(); }, 450); }, Math.max(4200, 2200 + (d.name.length + (d.line || '').length)*45));
 }
 
+// where the toast goes: top right, but never over the room's table or counter card, the goal panel, the hint strip or the buttons
+// (re-run 2's c08 and c21: achievements covered the mix table and the mix counter). Below whatever is in its way on the right; if
+// that would run into the hotbar, just above the hotbar.
+function achPlace(el){
+  el.style.top = ''; const R = el.getBoundingClientRect(), w = R.width, h = R.height, x1 = window.innerWidth - 16, x0 = x1 - w, top0 = parseFloat(getComputedStyle(el).top) || 70;   // (not R.top: it slides in from 12 px up)
+  let top = top0; const bars = ['#card', '#goalBox', '#hintStrip', '#topBtns', '#crystals'].map(q => $(q)).filter(e => e && !e.hidden && e.offsetParent !== null).map(e => e.getBoundingClientRect()).filter(b => b.width > 2 && b.height > 2 && b.right > x0 && b.left < x1);
+  for (let k = 0; k < 6; k++){ const hit = bars.find(b => b.top < top + h && b.bottom > top); if (!hit) break; top = hit.bottom + 8; }
+  const hb = $('#hotbarWrap'), floor = hb && hb.offsetParent !== null ? hb.getBoundingClientRect().top - 8 : window.innerHeight - 8;
+  if (top + h > floor) top = Math.max(8, floor - h);
+  if (Math.abs(top - top0) > .5) el.style.top = Math.round(top) + 'px';
+}
 /* ---- the page (menu, the inventory pane, or L in the game) ---- */
 function achPageHTML(){
   const c = achCtx(), list = ACH_LIST.filter(achLive), got = list.filter(d => c.got.has(d.id)).length;
@@ -14417,10 +14590,11 @@ function achGateOf(o){
 // flickering until its torches burn out): press each switch and let go, twice round; the answer must change and stay changed
 function achMemory(c){
   const sw = eggSwitches(c); if (sw.length < 2) return false;
-  return eggSim(() => { const run = n => { for (let t = 0; t < n; t++) step(); return !!c.lit; };
+  return eggSim(() => { const ev0 = S.events.length, run = n => { for (let t = 0; t < n; t++) step(); return !!c.lit; };
+    const settle = () => { let v = run(30), flips = 0; for (let t = 0; t < 30; t++){ step(); if (!!c.lit !== v){ flips++; v = !!c.lit; } } return flips ? null : v; };   // (null: it never settled)
     sw.forEach(s => eggSet(s, false)); run(10);
-    const after = []; for (const s of [...sw, ...sw]){ eggSet(s, true); run(20); eggSet(s, false); after.push(run(30)); }
-    return sw.every((s, i) => after[i] === after[i + sw.length]) && new Set(after).size > 1; });
+    const after = []; for (const s of [...sw, ...sw]){ eggSet(s, true); run(20); eggSet(s, false); after.push(settle()); }
+    return after.every(v => v !== null) && !S.events.slice(ev0).some(e => e[0] === 'burn') && sw.every((s, i) => after[i] === after[i + sw.length]) && new Set(after).size > 1; });
 }
 // the truth table of the switches that really matter (like eggGate, on a copy of the grid)
 function achTable(c){
@@ -14973,7 +15147,7 @@ function mayaCardHTML(r, rt){
   if (r.check === 'tally'){ const n = mayaN(r), tr = rt.trow || {};
     return `<h3>Count them!</h3><div class="note">${r.count && r.count.sys === 'thermo' ? 'Balls' : 'Beans'}: <b style="font-size:20px">${n}</b> &nbsp; the board: ${mayaShows(r)}</div><div class="note">${r.rows.map(k => `<span style="font-size:17px;margin:0 3px;${tr[k] ? 'color:#2a8a2a;font-weight:700' : ''}">${tr[k] ? '&#10003;' : '&#9675;'}${k}</span>`).join('')}</div>${rt.recount ? '<div class="note" style="font-size:13px;color:#b01e12"><b>New wires: count again!</b> The board must work for every number.</div>' : ''}<div class="note" style="font-size:13px">+1 drops one in. ${mayaStart(r) ? 'BACK TO ' + mayaStart(r) : 'EMPTY'} starts again.</div>`; }
   if (r.check === 'serve') return `<h3>The serve</h3><div class="note">Press the referee's button:<br>1. <b>BONNNG!</b> (the gong)<br>2. THEN <b>BOING!</b> (the ball flies)</div>`;
-  if (r.check === 'goal'){ const ph = rt.phase || 0; return `<h3>Goal light</h3><div class="note">${ph ? '&#10003; It remembered the goal' : '&#9675; Stand on the plate, step off: does it stay on?'}<br>&#9675; RESET: does it stay off?</div>`; }
+  if (r.check === 'goal'){ const ph = rt.phase || 0; return `<h3>Goal light</h3><div class="note">${ph ? '&#10003; It remembered the goal' : '&#9675; Stand on the plate, then off. Does it stay on?'}<br>&#9675; RESET: does it stay off?</div>`; }
   if (r.check === 'sun'){ const f = rt.lastF; return `<h3>The sun window</h3><div class="note">The sun lines up with the window <b>2.4 s</b> after dawn.<br>The shutter must still be shut at 1.2 s.${f !== undefined ? `<br>Last try: ${f == null ? 'it never opened' : `it opened at <b>${(f/10).toFixed(1)} s</b>`}` : ''}</div>`; }
   return '';
 }
@@ -15873,7 +16047,7 @@ function faceSay(c, gh){
     if (!want || !('attach' in want) || wa === (c.attach ?? -1)){ uniStandMark(null); return false; }
     const W = useWord(), Wc = W[0].toUpperCase() + W.slice(1), say = wa >= 0 ? [`That ${nm} must hang on a block.`, `Break it. ${Wc} the glowing block side.`] : [`That ${nm} goes on the floor.`, `Break it. Then ${W} the floor.`];
     sfx.nope(); plogEvent('wrong'); uniProfTell(who, say);
-    if (wa >= 0){ const [dx, dy] = DIRS[wa]; uniStandMark(null, {x:c.x + dx, y:c.y + dy, d:opp(wa)}); } else uniStandMark(null);
+    if (wa >= 0){ const [dx, dy] = DIRS[wa]; uniStandMark(null, {x:c.x + dx, y:c.y + dy, d:opp(wa), t:c.t}); } else uniStandMark(null);
     return true;
   }
   const obs = c.t === 'observer', rep = c.t === 'repeater', name = obs ? 'An observer' : rep ? 'A repeater' : c.t === 'spiston' ? 'A sticky piston' : 'A piston';
@@ -15906,8 +16080,7 @@ function uniStandMark(spot, side){
   const g = new THREE.Group(), mat = new THREE.MeshBasicMaterial({color:0xffe14a, transparent:true, opacity:.6}), m = new THREE.Mesh(side ? cbox(1.02, 1.02, .08) : cbox(1.02, .08, 1.02), mat); m.raycast = () => {}; g.add(m);
   const at0 = side ? [side.x, side.y] : spot, p = cellPos(...at0); g.position.copy(p);
   if (side){ const [dx, dz] = DIRS[side.d]; m.position.set(dx*.53, .5, dz*.53); if (dx) m.rotation.y = Math.PI/2; } else m.position.y = .05;
-  const tg = textSprite(side ? 'TAP HERE' : 'STAND HERE', {w:150, fs:30, bg:'#ffe14a', ink:'#3a2a10', scale:1}), im = tg.material.map.image; tg.material.sizeAttenuation = false; tg.material.depthTest = false; tg.renderOrder = 997;
-  tg.scale.set(.075*im.width/im.height, .075, 1); tg.position.set(side ? DIRS[side.d][0]*.6 : 0, side ? 1.4 : 1.1, side ? DIRS[side.d][1]*.6 : 0); g.add(tg);
+  spotTag(side ? 'tap' : 'stand', side ? 'TAP HERE' : 'STAND HERE', side ? {owner:g, side3:side, part:side.t} : {owner:g, spot:at0});   // (a label beside it, on top of the panels: spotTag)
   fxRoot.add(g); A.uniStand = g; A.uniStandAt = spot || null; A.uniStandSide = side || null; A.uniStandMat = mat; A.uniStandUntil = (A.clock || 0) + 20000; A.uniStandRoom = A.rt && A.rt.room ? A.rt.room.id : null;
 }
 // (every adventure frame: the square pulses; it goes after 20 s or when you leave its room)
@@ -16350,11 +16523,11 @@ function uniCardHTML(r, rt){
   const ok = b => b ? '&#10003;' : '&#9675;', bk = uniBookBtn(r);
   if (r.check === 'autodoor'){ const s = rt.sides || {}; return `<h3>Automatic door</h3><div class="note">${ok(s[1] || s[-1])} It opens when you walk up<br>${ok(s[1] && s[-1])} From BOTH sides<br>&#9675; And it shuts behind you</div>` + bk; }
   if (r.check === 'dingdong'){ const t = {ok:'DING... DONG!', same:'DONK! (both at once)', quick:'Too quick', slow:'Too slow', pitchSame:'Same note twice', upside:'DONG... DING (upside down)', one:'Only one note', none:'Silence'}[rt.last]; return `<h3>The doorbell</h3><div class="note">Press the doorbell button:<br>1. <b>DING</b> (a high note)<br>2. THEN <b>DONG</b> (a lower note)${t ? `<br>Last try: <b>${t}</b>` : ''}</div>` + bk; }
-  if (r.check === 'pushpull') return `<h3>Push and pull</h3><div class="note">${ok(rt.inSeen)} Lever ON: the block goes onto the gold square<br>&#9675; Lever OFF: it comes back</div>` + bk;
+  if (r.check === 'pushpull') return `<h3>Push and pull</h3><div class="note">${ok(rt.inSeen)} Lever ON: block goes onto the gold square<br>&#9675; Lever OFF: it comes back</div>` + bk;
   if (r.check === 'secret'){ const ph = rt.ph || 0; return `<h3>The secret door</h3><div class="note">${ok(ph >= 1)} Lever OFF: the gap is SHUT<br>${ok(ph >= 2)} Lever ON: it opens<br>&#9675; Lever OFF: it shuts again</div>` + bk; }
   if (r.check === 'trap') return `<h3>Catch Gloop!</h3><div class="note">${ok(rt.wasIn)} Gloop hops into the pen<br>${ok(rt.caughtT > 0)} The gate shuts behind it<br>&#9675; ...and STAYS shut</div><div class="note" style="font-size:13px">RESET puts Gloop back at the start.</div>` + bk;
   if (r.check === 'lift'){ const t = {magmaMsg:'Pulled DOWN (magma)', waterMsg:'No bubbles'}[rt.last]; return `<h3>The bubble lift</h3><div class="note">${ok(A.uniRodeUp)} Bubbles push you UP the tube<br>&#9675; ...onto the balcony${t ? `<br>Last try: <b>${t}</b>` : ''}</div>` + bk; }
-  if (r.check === 'fly'){ const t = {leftBehind:'It left half of itself behind', stopped:'It stopped too soon', bumpMe:'It bumped into you'}[rt.last]; return `<h3>The flying machine</h3><div class="note">${ok(rt.flew)} It moves all by itself<br>&#9675; ...all the way to the gold line<br><span style="font-size:13px">Start it: put a block in front of an observer's face.</span>${t ? `<br>Last flight: <b>${t}</b>` : ''}</div>` + bk; }
+  if (r.check === 'fly'){ const t = {leftBehind:'It left half of itself behind', stopped:'It stopped too soon', bumpMe:'It bumped into you'}[rt.last]; return `<h3>The flying machine</h3><div class="note">${ok(rt.flew)} It moves all by itself<br>&#9675; ...all the way to the gold line<br><span style="font-size:13px">Start it. Put a block where the observer looks.</span>${t ? `<br>Last flight: <b>${t}</b>` : ''}</div>` + bk; }
   if (r.check === 'cannon'){ const t = {hit:'BOOM! On target!', together:'Both went BANG in the barrel', frontFirst:'The front one went first', frontOnly:'Only the front one went', flop:'It flopped out'}[rt.last]; return `<h3>The TNT cannon</h3><div class="note">Press <b>FIRE!</b><br>1. The BACK TNT goes BANG<br>2. ...and throws the FRONT TNT (already fizzing)<br>3. onto the target!${t ? `<br>Last shot: <b>${t}</b>` : ''}</div>` + bk; }
   if (r.check === 'farm'){ const n = Math.max(0, uniPicksIn(r) - (rt.p0 || 0)); return `<h3>Pumpkins picked: ${Math.min(3, n)} of 3</h3><div class="note">No hands! A piston picks each pumpkin when it grows.${rt.noisySaid ? '<br><b>The piston never stops!</b> Watch the STALK.' : ''}</div>` + bk; }
   return bk;
@@ -17297,13 +17470,21 @@ function ubTile(g, c, X, Y, S, cells){
   }
 }
 function uniBookCanvas(layer, below, box, S){
-  const W = (box.x1 - box.x0 + 1)*S, H = (box.y1 - box.y0 + 1)*S, c = document.createElement('canvas'); c.width = W; c.height = H + S; const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
-  g.fillStyle = '#f6eccc'; g.fillRect(0, 0, W, H + S);
+  const W = (box.x1 - box.x0 + 1)*S, H = (box.y1 - box.y0 + 1)*S, c = document.createElement('canvas'); c.width = W; const g = c.getContext('2d');
+  // where you stand, along the bottom of the page: whole words, on as many lines as it takes (it was one line, centred, and a narrow
+  // machine's page cut it off: re-run 2's c29 read "U STAND HERE, LOOKING UP THE PA")
+  const MSG = 'YOU STAND HERE, LOOKING UP THE PAGE', pad = 6; let fs = Math.round(S*.42), lines;
+  for (;;){ g.font = `700 ${fs}px "Atkinson Hyperlegible", sans-serif`; lines = []; let cur = '';
+    for (const w of MSG.split(' ')){ const t = cur ? cur + ' ' + w : w; if (g.measureText(t).width > W - pad*2 && cur){ lines.push(cur); cur = w; } else cur = t; }
+    if (cur) lines.push(cur); if (lines.every(l => g.measureText(l).width <= W - pad*2) || fs <= 9) break; fs--; }
+  const lh = Math.round(fs*1.25), foot = Math.max(S, lines.length*lh + pad*2);
+  c.height = H + foot; g.imageSmoothingEnabled = false; c.dataset.fit = lines.every(l => { g.font = `700 ${fs}px "Atkinson Hyperlegible", sans-serif`; return g.measureText(l).width <= W - pad*2 + .5; }) ? '1' : '0'; c.dataset.lines = lines.length;
+  g.fillStyle = '#f6eccc'; g.fillRect(0, 0, W, H + foot);
   g.strokeStyle = 'rgba(120,100,60,.25)'; g.lineWidth = 1; for (let x = 0; x <= W; x += S){ g.beginPath(); g.moveTo(x + .5, 0); g.lineTo(x + .5, H); g.stroke(); } for (let y = 0; y <= H; y += S){ g.beginPath(); g.moveTo(0, y + .5); g.lineTo(W, y + .5); g.stroke(); }
   if (below){ g.globalAlpha = .22; below.cells.forEach(cl => ubTile(g, cl, (cl.x - box.x0)*S, (cl.y - box.y0)*S, S, below.cells)); g.globalAlpha = 1; }
   layer.cells.forEach(cl => ubTile(g, cl, (cl.x - box.x0)*S, (cl.y - box.y0)*S, S, layer.cells));
   // where you stand: the bottom of the page
-  g.fillStyle = '#1a6a64'; g.font = `700 ${Math.round(S*.42)}px "Atkinson Hyperlegible", sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('YOU STAND HERE, LOOKING UP THE PAGE', W/2, H + S/2);
+  g.fillStyle = '#1a6a64'; g.font = `700 ${fs}px "Atkinson Hyperlegible", sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; lines.forEach((l, i) => g.fillText(l, W/2, H + foot/2 + (i - (lines.length - 1)/2)*lh));
   return c;
 }
 function uniBookBox(layers){ let x0 = 99, x1 = -99, y0 = 99, y1 = -99; layers.forEach(l => l.cells.forEach(c => { x0 = Math.min(x0, c.x); x1 = Math.max(x1, c.x); y0 = Math.min(y0, c.y); y1 = Math.max(y1, c.y); })); return {x0:x0 - 1, x1:x1 + 1, y0:y0 - 1, y1:y1 + 1}; }
@@ -17412,6 +17593,7 @@ const UNI_TEST = {
   places(){ const b = q => ({w:q.x1 - q.x0 - 1, h:q.y1 - q.y0 - 1}); return {quad:b(UNI_QUAD), lawn:b(UNI_LAWN), dinner:b(UNI_DINNER), lib:Object.assign(b(UNI_LIB), {wall:S.walls[UNI_LIB.y0*NX + UNI_LIB.x0]}), rooms:ROOMS.map(r => Object.assign(b(r.box), {id:r.id, wall:S.walls[r.box.y0*NX + r.box.x0], desks:r.desks || 0, pupils:r.pupils || 0, look:r.look, floorIn:[[0, 0], [10, 8]].every(p => { const [x, y] = apeP(r, p); return x > r.box.x0 && x < r.box.x1 && y > r.box.y0 && y < r.box.y1; })}))}; },
   gate(id){ const r = uniRoom(id), c = r && at(...r.entry); return c && c.t === 'door' ? (c.latched ? 'open' : 'shut') : 'none'; },
   tablet(){ const t = A.uniTablet; if (!t) return null; const p = t.getWorldPosition(new THREE.Vector3()); p.y += .95; const m = A.headmonkey; return {text:t.userData.text, onWall:!!t.parent, pointing:!!A.uniPointing, arm:m && m.userData.arms ? +m.userData.arms[1].rotation.x.toFixed(2) : null, looked:!!(BEAT.cur && BEAT.cur.target === t), seen:playerSees(p.x, p.y, p.z), line:DLG.on && DLG.q ? DLG.q[DLG.i][1] : ''}; },   // (test-university.js: the Barrington callback)
+  bookFit(){ const out = []; UNI_ROOMS.forEach(r => { uniBookOpen(r.id); document.querySelectorAll('#uniBook .ubCanvas').forEach(cv => { const b = cv.getBoundingClientRect(); out.push({id:r.id, fit:cv.dataset.fit === '1', lines:+cv.dataset.lines, w:cv.width, shownW:Math.round(b.width), left:Math.round(b.left), right:Math.round(b.right)}); }); }); uniBookClose(); return out; },
   standMark(){ return A.uniStand ? A.uniStandAt || A.uniStandSide : null; }, profLines(){ return A.uniProfLines || null; }, preview(){ hover(...centre()); let arrows = 0; let hang = 0; previewRoot.traverse(o => { if (o.userData.faceArrow) arrows++; if (o.userData.hangOn) hang++; }); return {kids:previewRoot.children.length, hover:hoverCell, sel:ITEMS[sel] && ITEMS[sel].id, arrows, hang}; }, crumbs(){ return A.wf && A.wf.forced ? A.wf.crumbs.length : 0; }, place(){ return uniPlaceName(); },
   trail(){ const c = objectiveCell(), p = c && bfsPath(cellAtWorld(P.x, P.z), c); return {obj:c, len:p ? p.length : -1}; },
   portrait(){ return {curtain:!!(A.curtain && A.curtain.visible), barold:!!A.portraitB}; },
@@ -17596,7 +17778,22 @@ window.__game.whyMissing = () => { const out = new Set(); ROOMS.forEach(r => { c
 window.__game.aimPoint = () => aimPoint().map(Math.round);   // (test-recover.js: the aiming square follows an unlocked mouse)
 window.__game.ladderTops = () => ladderTops().map(({r, side, out}) => ({id:r.id, entry:r.entry, out, side:side.map(([x, y]) => S.walls[y*NX + x]), vines:[-1, 0, 1].map(o => { const [ex, ey] = r.entry, x = ex + out[0] + (out[0] ? 0 : o), y = ey + out[1] + (out[1] ? 0 : o); return S.ladder[y*NX + x]; }), sign:decorRoot.children.some(o => o.userData.ladderTop === r.id)}));   // (test-recover.js: rooms 9 and 21's drop)
 window.__game.lookOf = (x, y) => { const c = at(x, y); if (!c) return null; const m = buildMesh(c); let wisp = false, charred = false; m.traverse(o => { if (o.userData.burntWisp) wisp = true; if (o.material === M.charred) charred = true; }); return {t:c.t, burnt:c.burnt || 0, wisp, charred, smokeGreen:M.glowSmoke.map === M.glowGreen.map}; };   // (test-recover.js: a burnt-out torch looks burnt out)
-window.__game.ghostTags = () => ghostRoot.children.filter(o => o.userData.ghostTag && o.visible).length;   // (test-recover.js: Hint 2's PUT IT HERE tags)
+// (test-ui-polish.js: the UI polish batch's hooks)
+window.__game.ui = {
+  view(){ return {yaw:P.yaw, pitch:P.pitch, theta:cam.theta, phi:cam.phi, r:cam.r, fp:inFP(), fit:VIEWZ.base, zoom:VIEWZ.k}; },
+  spotTags(){ spotTagsFrame(); return SPOTTAG.list.map(t => ({kind:t.kind, text:t.text, shown:t.shown, side:t.side, rect:t.rect, spot:t.spotRect, gh:t.gh ? {t:t.gh.t, x:t.gh.x, y:t.gh.y} : null})); },
+  tapAt(x, y){ act(x, y, 'use'); },
+  troopTags(){ return TROOP.labels.filter(l => l.parent).map(l => ({text:l.userData.text, at:l.userData.at, tip:+(l.position.y - l.scale.y/2).toFixed(3), floor:+cellPos(...l.userData.at).y.toFixed(3), w:+l.scale.x.toFixed(2), x:l.position.x, z:l.position.z})); },
+  lookAt(x, y, z){ const dx = x - P.x, dz = z - P.z; P.yaw = Math.atan2(-dx, -dz); P.pitch = Math.atan2(y - (P.y + EYE), Math.hypot(dx, dz)); stepFP(0); },
+  look(yaw, pitch){ P.yaw = yaw; P.pitch = pitch; stepFP(0); },
+  numbers(){ let zero = 0, more = 0; cellRoot.traverse(o => { if (o.isSprite && o.visible && numMats.includes(o.material)){ if (o.material === numMats[0]) zero++; else more++; } }); return {zero, more, on:!!(S.slow || S.numbers)}; },
+  youMark(){ const m = A.youMark; if (!m || !m.visible) return null; return {frac:+m.scale.y.toFixed(3), px:Math.round(m.scale.y*window.innerHeight), op:m.material.opacity, up:+(m.position.y - P.y).toFixed(2)}; },   // (sizeAttenuation off: scale.y is about its share of the view's height)
+  carts(){ return (S.carts || []).map((k, i) => { const m = (A.cartMeshes || [])[i]; return {room:k.room, x:k.x, y:k.y, v:k.v, at:m ? [m.position.x, m.position.y, m.position.z] : null}; }); },
+  crumbs(){ return A.wf ? A.wf.crumbs.map(m => [m.position.x, m.position.y, m.position.z]) : []; }, crumbsSeen(){ return A.wf ? A.wf.crumbs.map(crumbSeen) : []; }, sees(x, y, z, f){ return playerSees(x, y, z, f); }, wf(){ const W = A.wf || {}; return {said:W.said, forced:W.forced, t:W.t, n:(W.crumbs || []).length}; },
+  looks(){ const info = m => { if (!m) return null; const cols = [], arrows = [], ops = []; let box = false; m.traverse(o => { if (o.userData.hintBox) box = true; if (o.userData.faceArrow) o.traverse(q => { if (q.isMesh) arrows.push(q.material.color.getHex()); }); else if (o.isMesh && !o.parent.userData.faceArrow && o.material && !Array.isArray(o.material) && o.material.color){ cols.push(o.material.color.getHex()); ops.push(+o.material.opacity.toFixed(3)); } }); return {cols, arrows, ops, box, y:+m.position.y.toFixed(3)}; };
+    return {ghost:L && L.ghosts && L.ghosts[0] ? info(L.ghosts[0].mesh) : null, preview:info(previewRoot.children[0])}; },
+};
+window.__game.ghostTags = () => SPOTTAG.list.filter(t => t.kind === 'put' && spotTagAlive(t) && t.gh.mesh.visible && !ghostFilled(t.gh)).length;   // (test-recover.js: Hint 2's PUT IT HERE tags)
 // QA hooks: "Where was I?", Reset this room (test-recover.js)
 window.__game.recap = {
   card(id){ const r = id ? ROOMS.find(q => q.id === id) : A.rt && A.rt.room; return r ? recapFor(r) : null; }, lines(id){ const c = this.card(id); return c ? recapAllLines(c) : []; },
