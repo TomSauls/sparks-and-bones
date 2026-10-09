@@ -4360,10 +4360,10 @@ const TEMPLE_ROOMS = [
     sol:[K('rblock',8,3)] },
   { id:21, ch:3, name:'Too far!', give:['dust','stone','torch'], check:'table', inputs:[[1,1]], out:[[1,7]], fn:a=>a, showPower:true,
     fixed:[K('lever',1,1),K('lamp',1,7)], walls:[[1,4,2],[2,4,2],[3,4,2],[4,4,2],[5,4,2],[6,4,2],[7,4,2]],
-    goal:'Make the lever switch the lamp ON and OFF, the long way round.',
+    goal:'Lever ON: the lamp is ON. Lever OFF: the lamp is OFF. Go the long way round.',
     hello:'Phew, it\'s a long way round. I wonder if power gets tired...',
     nudge:'The power gets tired before the end. What could give it fresh power, part way along?',
-    hint:'Power starts at 15 and loses 1 every block. Two grumpy torches in a row flip it twice, so it comes out the right way round, fresh at 15!',
+    hint:'Power starts at 15. It loses 1 every block. A grumpy torch gives fresh power. It flips the power too. Two grumpy torches flip it back.',
     tired:'The power got tired! Remember the grumpy torch? What if TWO torches flipped it twice?',
     win:'Two flips make it the right way round, and fresh! That\'s exactly what a Repeater does inside.',
     mc:'Old-school Minecraft trick: torch, block, torch. Two flips give you a fresh signal at full strength!',
@@ -7939,6 +7939,16 @@ function recapPastOut(r){
     if (n && n.t === 'dust' && !n.locked && !n.pts[opp(d)] && DIRS.some((_, e) => n.pts[e])) return at(x, y); } }
   return null;
 }
+// what a cell would be with one lever flipped ON, tried on a copy of the room (nothing on screen changes): re-run 2's c12 was told
+// "The platform rail has no power" while the start lever was OFF; flipping it ON powered the platform from the other side
+function recapIfOn(lx, ly, read){
+  const lv = at(lx, ly); if (!lv || lv.on) return read();
+  const saved = S.grid.map(c => c && Object.assign({}, c, {buf:c.buf ? c.buf.slice() : null, pts:c.pts.slice()})), keep = {tick:S.tick, lastSnap:S.lastSnap, stable:S.stable, ev:S.events.length, carts:S.carts};
+  S.simulating = true; let out;
+  try { S.carts = []; lv.on = true; for (let t = 0; t < 40; t++) step(); out = read(); }
+  finally { S.simulating = false; S.grid.forEach((c, i) => { if (c && saved[i]) Object.assign(c, saved[i]); }); S.tick = keep.tick; S.lastSnap = keep.lastSnap; S.stable = keep.stable; S.events.length = keep.ev; S.carts = keep.carts; S.gridDirty = true; }
+  return out;
+}
 // what's wrong with the build right now, in one short line (or '')
 function recapWrong(r, rt){
   // one of your parts is in the right spot but faces the wrong way (c13, c14: the lighthouse's repeater; 504-506's pistons)
@@ -7949,7 +7959,8 @@ function recapWrong(r, rt){
     if (t) return 'That torch must hang on a block\'s side.'; }
   const own = ownPowerIn(r); if (own) return `Your own ${recapName(own.t)} doesn't count here. Take it away.`;
   const wire = ['lit', 'pulse', 'boom', 'coop', 'together', 'each', 'pen', 'launch'].includes(r.check);
-  if (wire){ const past = alongsideOut(r) || recapPastOut(r); if (past){ const w = recapOutWord(past.t), t = `A wire runs PAST the ${w}. Point its END in.`; return recapWords(t) <= 8 ? t : `A wire runs PAST the ${w}. Point it IN.`; } }
+  // (table rooms too: re-run 2's c08 had a lit wire beside the lamp, bent away)
+  if (wire || r.check === 'table'){ const past = (wire && alongsideOut(r)) || recapPastOut(r); if (past){ const w = recapOutWord(past.t), t = `A wire runs PAST the ${w}. Point its END in.`; return recapWords(t) <= 8 ? t : `A wire runs PAST the ${w}. Point it IN.`; } }
   if (wire && A.act === 1 && ranOutIn(r)) return 'The wire is too long. The power runs out.';
   if (typeof burntIn === 'function' && burntIn(r.box)) return 'A torch burnt out! That loop flips too fast.';
   if (!r.direct && r.check === 'lit' && r.out.some(([x, y]) => outLit(x, y) && shortcutAt(x, y))) return 'Power is jammed right next to it. Use a wire.';
@@ -8014,9 +8025,9 @@ function recapFor(r){
   } else if (ck === 'order' || ck === 'seq'){ next = 'Press it once. Watch what goes first.';
   } else if (CART_CHECKS.has(ck)){ if (rt.stopped){ tried = true; done.push('The cart stopped at the platform.'); } next = 'Flip the start lever ON. Watch the cart.';
     // Stop That Cart!: what the platform rail is doing now, the room's whole rule (testers c10-c12 never learnt it from the card)
-    if (ck === 'stopgo' && r.platformAt){ const pc = at(...r.platformAt);
+    if (ck === 'stopgo' && r.platformAt){ const pc0 = at(...r.platformAt), lit = r.launchAt ? recapIfOn(...r.launchAt, () => { const c = at(...r.platformAt); return !!(c && c.lit); }) : !!(pc0 && pc0.lit), pc = pc0 && Object.assign({}, pc0, {lit});   // (with the start lever ON, as the next step says)
       if (rt.stopped) next = 'Now give the platform rail power. Then tap the cart.';
-      else if (pc && pc.t === 'prail' && pc.lit){ done.push('The platform rail has power: the cart zooms past.'); next = 'With NO power, a gold rail is a brake. Break the gold rails beside it.'; }   // (the retest: "Cut its power" didn't say how)
+      else if (pc && pc.t === 'prail' && pc.lit){ done.push(pc0 && pc0.lit ? 'The platform rail has power: the cart zooms past.' : 'Start lever ON: the platform rail gets power.'); next = 'With NO power, a gold rail is a brake. Break the gold rails beside it.'; }   // (the retest: "Cut its power" didn't say how)
       else if (pc && pc.t === 'prail'){ done.push('The platform rail has no power. It is a brake!'); }
       else if (pc){ wrong = 'The platform rail must be GOLD, with no power.'; } }
   } else if (MAYA_CHECKS.has(ck)){
@@ -8052,7 +8063,7 @@ function recapHTML(c){
   const L2 = (cls, ico, txt) => `<div class="rcLine ${cls}"><span class="rcIco" aria-hidden="true">${ico}</span><span>${escH(txt)}</span></div>`;
   return `<div class="recap"><div class="rcHead">${escH(c.head)}</div>`
     + `<div class="rcLbl">The goal</div>${c.goal.map(t => L2('rcGoal', '&#9733;', t)).join('')}`
-    + `<div class="rcLbl">Done</div>${c.done.map(t => recapSplit(t, RECAP_MAX).map((u, i) => /^Nothing/.test(t) ? L2('rcNone', i ? '' : '&#8226;', u) : L2('rcDone', i ? '' : '&#10003;', u)).join('')).join('')}`
+    + `<div class="rcLbl">Done</div>${c.done.map(t => recapSplit(t, RECAP_MAX).map((u, i) => /^Nothing|\bnot\b.*\byet\b/.test(t) ? L2('rcNone', i ? '' : '&#8226;', u) : L2('rcDone', i ? '' : '&#10003;', u)).join('')).join('')}`
     + (c.wrong ? `<div class="rcLbl">Oops</div>${recapSplit(c.wrong, RECAP_MAX).map((u, i) => L2('rcWrong', i ? '' : '&#10007;', u)).join('')}` : '')
     + `<div class="rcLbl">Next</div>${recapSplit(c.next, RECAP_MAX).map((u, i) => L2('rcNext', i ? '' : '&#10140;', u)).join('')}</div>`;
 }
@@ -8079,7 +8090,10 @@ function recapTags(r){
     const sp = textSprite(word.toUpperCase(), {w:150, fs:34, bg:'#fff6c8', ink:'#3a2a10', scale:1.15}), p = cellPos(x, y);
     const im = sp.material.map.image; sp.material.sizeAttenuation = false; sp.scale.set(.08*im.width/im.height, .08, 1);   // the same size near or far: the lever at the far end of the room is as easy to read as the lamp beside you
     sp.position.set(p.x, p.y + (high ? 2.1 : 1.3), p.z); sp.userData.text = word.toUpperCase(); decorRoot.add(sp); RECAP.tags.push(sp); };
-  (r.inputs || []).forEach(([x, y]) => { const c = at(x, y); if (c && RECAP_TAG_IN.has(c.t)) tag(x, y, recapName(c.t)); });
+  // levers that already have their own sign (DUCK, CAPTAIN...) get no second tag; lamp-code levers say their number (re-run 2, c21:
+  // "every sign just says LEVER", the goal says "the 4 lever ON, the 2 lever OFF")
+  const bits = (r.disp || []).filter(d => d.bit), ownSign = (r.fixed || []).some(f => f.t === 'lever' && (f.tag || f.label));
+  if (!ownSign) (r.inputs || []).forEach(([x, y], i) => { const c = at(x, y); if (c && RECAP_TAG_IN.has(c.t)) tag(x, y, bits.length === r.inputs.length ? `the ${bits[i].v} lever` : recapName(c.t)); });
   (r.out || []).forEach(([x, y]) => { const c = at(x, y); if (c && RECAP_TAG_OUT.has(c.t)) tag(x, y, recapOutWord(c.t), true); });   // (over the lightning bolt)
   // cart rooms: where the cart starts, where it must stop, where it ends (c10 never found room 215's platform or its start lever)
   if (r.launchAt){ const c = at(...r.launchAt); if (c && RECAP_TAG_IN.has(c.t)) tag(...r.launchAt, 'start ' + recapName(c.t)); }
@@ -9146,7 +9160,7 @@ const ROOM_DECOR = {
     props:[['bunting'], ['poster', 'NO BOUNCING. (Bounce anyway.)'], ['tinydoor'], ['tinyshelf', 'bowls']]},
   20:{who:'work', use:'the measuring room', sign:'Light the lamp at the wire\'s very END!',
     props:[['ruler'], ['gauge'], ['poster', 'POWER GOES 15 STEPS. Then it gets tired.']]},
-  21:{who:'work', use:'the top deck', ceil:0, sign:'Make the lever switch the lamp, the long way round!',
+  21:{who:'work', use:'the top deck', ceil:0, sign:'Lever ON: lamp ON. Lever OFF: lamp OFF.',
     props:[['flags'], ['telescope'], ['spools']]},
   22:{who:'giant', use:'the giants\' sun deck', ceil:0, sign:'The wire is too long. Put a Repeater in it!',
     props:[['deckchair'], ['poster', 'SUN CREAM. Giant size.'], ['flags']]},
