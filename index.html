@@ -69,6 +69,11 @@ button{font-family:inherit;}
 #spotTags .spotTag.put{background:#d6ffe6;color:#0d4a28;border-color:#0d4a28;}
 #spotTags .spotTag.tap,#spotTags .spotTag.stand{background:#ffe14a;color:#3a2a10;border-color:#3a2a10;}
 #spotTags .spotTag b{font-size:13px;}
+#spotTags .spotTag.vert{flex-direction:column;gap:0;padding:2px 8px;}
+#spotTags .spotTag.vert b{line-height:.9;}
+#spotTags .spotTag.name{background:#fff6c8;color:#3a2a10;border-color:#3a2a10;border-width:2px;font-size:13px;padding:2px 6px;gap:3px;}
+#spotTags .spotTag.name b{font-size:11px;}
+#spotTags .spotTag.name.vert{padding:1px 6px;}
 body.cine #spotTags{display:none;}
 #goalBox,#hintStrip{touch-action:none;}   /* a drag over them turns the view (dragThrough) */
 #goalBox.open.scrolls{touch-action:pan-y;}
@@ -1596,6 +1601,7 @@ M.brick = lam(CV.brick); M.mossy = lam(CV.mossy); M.cracked = lam(CV.cracked); M
 M.vine = new THREE.MeshLambertMaterial({map:tex(CV.vine, null, true), transparent:true, alphaTest:.5, side:THREE.DoubleSide});
 M.lip = new THREE.MeshLambertMaterial({color:0x6e6c62});
 CV.vein = cv16(g => { g.drawImage(CV.brick, 0, 0); g.fillStyle = '#9a2a1c'; [[2,0],[2,1],[3,2],[3,3],[4,4],[5,5],[5,6],[6,7],[8,8],[9,8],[10,9],[11,10],[11,11],[12,12],[13,13],[13,14],[13,15],[7,6],[8,5],[9,4],[10,4]].forEach(([x,y]) => g.fillRect(x, y, 1, 1)); g.fillStyle = '#d83a22'; [[3,2],[6,7],[10,9],[12,12]].forEach(([x,y]) => g.fillRect(x, y, 1, 1)); });
+M.gatePaint = new THREE.MeshLambertMaterial({color:0xd8381c, emissive:0x3a0a02}); M.gateWhite = new THREE.MeshLambertMaterial({color:0xf4efe0, emissive:0x202018});   // a fence gate's paint (bright, so it shows across a dim room)
 M.vein = new THREE.MeshLambertMaterial({map:tex(CV.vein, [1, 3], true)}); M.gold = lam(CV.gold); M.leaves = lam(CV.leaves); M.log = lam(CV.log); M.plank = lam(CV.plank);
 M.glass = new THREE.MeshLambertMaterial({map:tex(CV.glass), transparent:true, depthWrite:false, side:THREE.DoubleSide});
 M.steel = lam(CV.steel); M.rglass = new THREE.MeshLambertMaterial({map:tex(CV.rglass), transparent:true, depthWrite:false, side:THREE.DoubleSide});   // the sandbox's blast-proof blocks
@@ -1747,12 +1753,15 @@ function buildMesh(c, ghost){
       add(cbox(.3,.08,.3), M.banana, 0,1.04,0);
       break; }
     case 'gate': {   // fence gate: opens when it gets power
+      // A painted farm gate, so it reads as a GATE from across the room (re-run 2's c03 took the pillar beside room 9's little wooden gate
+      // for it): tall posts with gold caps (taller than a pen wall), and red bars right across the gap while it's shut; open, the two
+      // red halves swing back and the gap is clear. Only the look: its cell, its power and who can walk through are as before.
       const along = c.dir % 2 === 1;   // bars run north-south
-      const P = (x, z) => along ? [0, 0, x] : [x, 0, 0];
-      const post = (k) => { const [px, , pz] = P(k*.45); add(cbox(.16,1,.16), M.wood, px,.5,pz); };
-      post(-1); post(1);
-      if (!c.lit){ [.35,.75].forEach(y => { add(along ? cbox(.08,.1,.78) : cbox(.78,.1,.08), M.plank, 0,y,0); }); add(along ? cbox(.08,.5,.1) : cbox(.1,.5,.08), M.plank, 0,.55,0); }
-      else { [.35,.75].forEach(y => { const [ax, , az] = P(-.38), [bx, , bz] = P(.38); add(along ? cbox(.38,.1,.08) : cbox(.08,.1,.38), M.plank, ax + (along ? .2 : 0), y, az + (along ? 0 : .2)); add(along ? cbox(.38,.1,.08) : cbox(.08,.1,.38), M.plank, bx + (along ? .2 : 0), y, bz + (along ? 0 : .2)); }); }
+      const B = (w, h, d, m, x, y, z) => along ? add(cbox(d, h, w), m, z, y, x) : add(cbox(w, h, d), m, x, y, z);   // (x across the gap, z through it)
+      [-1, 1].forEach(k => { B(.18, 1.3, .18, M.wood, k*.44, .65, 0); B(.26, .12, .26, M.gold, k*.44, 1.36, 0); });
+      if (!c.lit){ [.28, .6, .92].forEach(y => B(.72, .12, .1, M.gatePaint, 0, y, 0)); [-.27, -.09, .09, .27].forEach(x => B(.08, .76, .08, M.gatePaint, x, .6, 0));
+        const br = B(.86, .09, .06, M.gateWhite, 0, .6, .06); br.rotation[along ? 'x' : 'z'] = (along ? -1 : 1)*.72; }   // and a white brace corner to corner
+      else [-1, 1].forEach(k => [.28, .6, .92].forEach(y => B(.1, .12, .38, M.gatePaint, k*.38, y, .22)));   // swung back into the pen, each half against its post
       break; }
     case 'launcher': {   // a piston under a slime block, set into the floor
       add(cbox(.96,.06,.96), M.plank, 0,.03,0);
@@ -4908,6 +4917,8 @@ function makePirate(captain, k){
   g.userData.head = head; g.userData.pirate = true;
   return g;
 }
+// a wall sign as a world box for the screen labels to keep off (wallSignRects): its centre, which way it faces, its size
+const signBox = (pos, rot, w, h) => ({x:pos.x, y:pos.y, z:pos.z, nx:Math.sin(rot), nz:Math.cos(rot), w, h});
 // ---- flat boards drawn on one canvas, merged: the room goal signs (on the wall you face as you walk in) and the pier's own boards ----
 function funSigns(g){
   const CW = 256, CH = 200, cv = document.createElement('canvas'); cv.width = 1024; cv.height = 1024; const x2 = cv.getContext('2d'), tex = new THREE.CanvasTexture(cv);
@@ -4927,6 +4938,7 @@ function funSigns(g){
     m.position.set(c.x + fr, floorAt(...r.entry) + 2.5, c.z + fz);
     if (face === 'N'){ m.position.z += .53; m.rotation.y = 0; } else if (face === 'S'){ m.position.z -= .53; m.rotation.y = Math.PI; } else if (face === 'W'){ m.position.x += .53; m.rotation.y = Math.PI/2; } else { m.position.x -= .53; m.rotation.y = -Math.PI/2; }
     m.rotation.z = (whash(r.id, 2, 3) - .5)*.12;   // pinned up a bit wonky
+    r.signBoxes = [signBox(m.position, m.rotation.y, SW + .1, SH + .1)];   // (labels keep off it: wallSignRects)
     g.add(m); });
 }
 // the pier's boards: the sign totem's crossed-out silhouettes, DEFINITELY NO SKELETONS, the welcome arch, the decrees, LOST PROPERTY, RUM (NOT RUM), the coach sticker, THE HAUNTED RIDE
@@ -5645,6 +5657,8 @@ const APE_ROOMS = [
     hint:'Power jumps from gold rail to gold rail, up to 8. A gold rail with NO power is a brake. The platform rail needs no power. Break the gold rails on both sides of it. Put plain rails there instead. Then power it and tap the cart.',
     past:'WHOOSH! Straight past the platform. The power ran along the gold rails into the platform rail. Stop it getting there!',
     stopLine:'It stopped! Passengers on. Now send it on: power the platform rail, then tap the cart.',
+    farLine:'That lever is too far away! A lever only powers what it TOUCHES. Put it right next to the platform rail.',   // (c12: "GO on never worked (a lever one block from the track)"; Java: it doesn't)
+    tapLine:'The platform rail has power! Now tap the cart.',
     win:'Stop... and GO! Power runs along up to 8 gold rails, so you split the line to make a brake just where you wanted.',
     mc:'Minecraft powered rails pass power along up to 8 more powered rails. Break the line with a plain rail.',
     naive:[K('rail',4,2)],
@@ -5802,6 +5816,7 @@ function cartCheck(r, rt){
     if (k.v) continue;
     if (eq(k, r.pitAt)){ if (k.rest === 3){ sfx.nope(); const p = cartWorld(k); burst(new THREE.Vector3(p.x, p.y + .6, p.z), 0x7ad83a, 30); monkeySay(r.pitLine || 'SPLAT!', 9000); plogEvent('wrong'); if (A.apeBeats && !A.apeBeats.has('radio2')) A.apeDue.push({at:(A.clock || 0) + 2500, fn:() => { if (beat('radio2')) dlgStart([['Radio', '*crackle* Ah. Did I mention...? Minecarts don\'t have brakes. *blub*']]); }}); } if (k.rest >= 15){ cartHome(k); showToast('The diggers fish the cart out of the slime. Yuck.'); } continue; }
     if (eq(k, r.platformAt) && k.rest >= 10 && !rt.stopped){ rt.stopped = true; monkeySay(r.stopLine || 'It stopped!', 9000); }
+    if (r.check === 'stopgo' && rt.stopped && eq(k, r.platformAt) && k.rest >= 10) stopgoGo(r, rt, k);
     if (solving && eq(k, r.stationAt) && k.rest >= 3 && r.check !== 'loadgo'){
       if (r.check === 'ding' && !r.out.every(([x, y]) => outLit(x, y))){ if (!rt.saidEarly){ rt.saidEarly = true; sfx.nope(); monkeySay(r.early || 'The bell isn\'t ringing!', 9000); plogEvent('wrong'); } continue; }
       if (r.check === 'stopgo' && !rt.stopped){ if (!rt.saidPast){ rt.saidPast = true; sfx.nope(); monkeySay(r.past || 'It went straight past!', 9000); plogEvent('wrong'); } continue; }
@@ -5809,6 +5824,19 @@ function cartCheck(r, rt){
     }
     if (k.rest === 5 && !eq(k, k.home) && !eq(k, r.platformAt) && r.stuck && !rt.saidStuck){ rt.saidStuck = true; monkeySay(r.stuck, 9000); }
   }
+}
+// Stop That Cart!, the GO half: re-run 2's c12 stopped the cart, then put a lever one block from the track, and "GO on never worked".
+// Java agrees: a lever powers only the blocks and rails it TOUCHES (not across a gap, not corner to corner, not through a plain rail).
+// So the rule stays and the room says why: the host, once for each such lever you flip ON; the card (recapFor) too. With the power on,
+// a cart at rest in the middle of a track stays put until it's pushed (Java), so after a few seconds: "Now tap the cart."
+function stopgoLevers(r){ const [px, py] = r.platformAt, b = r.box, near = [], far = [];
+  for (let x = b.x0 + 1; x < b.x1; x++) for (let y = b.y0 + 1; y < b.y1; y++){ const c = at(x, y); if (c && c.t === 'lever' && !c.locked) (Math.abs(x - px) + Math.abs(y - py) === 1 ? near : far).push(c); }
+  return {near, far}; }
+function stopgoGo(r, rt, k){
+  const pc = at(...r.platformAt); if (!pc) return;
+  if (pc.lit){ if (k.rest >= 40 && !rt.saidTap){ rt.saidTap = true; monkeySay(r.tapLine || 'Now tap the cart.', 9000); } return; }
+  const nw = stopgoLevers(r).far.find(c => c.on && !(rt.farSaid || (rt.farSaid = new Set())).has(c.x + ',' + c.y));
+  if (nw && r.farLine){ rt.farSaid.add(nw.x + ',' + nw.y); sfx.nope(); monkeySay(r.farLine, 9000); plogEvent('wrong'); }
 }
 // minecart meshes: an iron tub on wheels, a crystal load, eased towards where the cart is each frame
 function makeCart(col, room){
@@ -6029,6 +6057,7 @@ function apeSigns(g){
     const m = new THREE.Mesh(geo, mat), fr = wx % 1, fz = wy % 1; m.raycast = () => {};
     m.position.set(c.x + fr, floorAt(...r.entry) + 2.5, c.z + fz);
     if (face === 'N'){ m.position.z += .53; m.rotation.y = 0; } else if (face === 'S'){ m.position.z -= .53; m.rotation.y = Math.PI; } else if (face === 'W'){ m.position.x += .53; m.rotation.y = Math.PI/2; } else { m.position.x -= .53; m.rotation.y = -Math.PI/2; }
+    r.signBoxes = [signBox(m.position, m.rotation.y, SW, SH)];   // (labels keep off it: wallSignRects)
     g.add(m); });
 }
 // ---- the Crystal Express: the four jobs (216-219) each lay a piece of its track in the big cavern; then you RIDE it out of the mine,
@@ -7086,7 +7115,8 @@ function spawnTroop(r){
   const n0 = t.warmup && !A.solved.has(r.id) ? t.warmup : t.n; TROOP.stage = n0 < t.n ? 1 : 2;
   // (a tail points down at the thing, sitting just over it: re-run 2's c03 took room 9's GATE tag, floating high over the gate, for the
   // pillar beside it)
-  (t.labels || []).forEach(([text, x, y]) => { const sp = textSprite(text, {w:150, fs:22, bg:'#fff6c8', ink:'#3a2a10', scale:.7, depth:true, tail:true}), p = cellPos(x, y); sp.position.set(p.x, p.y + 1.12 + sp.scale.y/2, p.z); sp.userData.text = text; sp.userData.at = [x, y]; decorRoot.add(sp); TROOP.labels.push(sp); });
+  // (now a label on the screen's label layer, beside the thing with an arrow: spotTag, like the room's other name tags)
+  (t.labels || []).forEach(([text, x, y]) => { const tg = spotTag('name', text, {cell:[x, y], hgt:1, alive:() => TROOP.labels.includes(tg)}); if (tg) TROOP.labels.push(tg); });
   troopAdd(r, n0, false);
 }
 // more of the troop: they hop down over the far wall (a pop of scale, then a short drop)
@@ -7106,7 +7136,7 @@ function troopAdd(r, n, hopIn){
 }
 function despawnTroop(){
   TROOP.list.forEach(m => decorRoot.remove(m)); TROOP.list = []; discoDrop();
-  TROOP.labels.forEach(l => decorRoot.remove(l)); TROOP.labels = [];
+  TROOP.labels.forEach(spotTagDrop); TROOP.labels = [];
   TROOP.bananas.forEach(b => fxRoot.remove(b.g)); TROOP.bananas = [];
   TROOP.room = null;
 }
@@ -8111,7 +8141,10 @@ function recapFor(r){
   } else if (CART_CHECKS.has(ck)){ if (rt.stopped){ tried = true; done.push('The cart stopped at the platform.'); } next = 'Flip the start lever ON. Watch the cart.';
     // Stop That Cart!: what the platform rail is doing now, the room's whole rule (testers c10-c12 never learnt it from the card)
     if (ck === 'stopgo' && r.platformAt){ const pc0 = at(...r.platformAt), lit = r.launchAt ? recapIfOn(...r.launchAt, () => { const c = at(...r.platformAt); return !!(c && c.lit); }) : !!(pc0 && pc0.lit), pc = pc0 && Object.assign({}, pc0, {lit});   // (with the start lever ON, as the next step says)
-      if (rt.stopped) next = 'Now give the platform rail power. Then tap the cart.';
+      if (rt.stopped){ const lv = stopgoLevers(r);
+        if (pc0 && pc0.lit){ done.push('The platform rail has power.'); next = 'Now tap the cart.'; }
+        else if (lv.far.length && !lv.near.length){ wrong = 'Your lever does not touch the platform rail.'; next = 'Move it right beside the platform rail. Then tap the cart.'; }   // (c12: a lever one block from the track)
+        else next = 'Now give the platform rail power. Then tap the cart.'; }
       else if (pc && pc.t === 'prail' && pc.lit){ done.push(pc0 && pc0.lit ? 'The platform rail has power: the cart zooms past.' : 'Start lever ON: the platform rail gets power.'); next = 'With NO power, a gold rail is a brake. Break the gold rails beside it.'; }   // (the retest: "Cut its power" didn't say how)
       else if (pc && pc.t === 'prail'){ done.push('The platform rail has no power. It is a brake!'); }
       else if (pc){ wrong = 'The platform rail must be GOLD, with no power.'; } }
@@ -8167,25 +8200,25 @@ function recapFit(){ const w = $('#why'), rc = w.querySelector('.recap'); if (w.
 // where the lever was, or that the dark box under the lightning bolt IS the lamp (cold-return testers c01-c04). Since Tom's decision
 // after the audit they are up the whole time you're in an unsolved room (recapFrame), not only with the card.
 const RECAP_TAG_IN = new Set(['lever', 'button', 'plate']), RECAP_TAG_OUT = new Set(['lamp', 'door', 'gate', 'dispenser', 'tnt', 'fart', 'firework', 'disco', 'bridge', 'launcher', 'note', 'idoor']);
-function recapTagsDrop(){ (RECAP.tags || []).forEach(t => { decorRoot.remove(t); t.material.map.dispose(); t.material.dispose(); }); RECAP.tags = []; }
+// (they are labels on the screen's label layer, beside their thing with an arrow, over the goal panel and the hint strip: spotTag. They
+// were 3D signs, so the hint strip could hide one and up close they floated off the top of the screen: c12)
+function recapTagsDrop(){ (RECAP.tags || []).forEach(spotTagDrop); RECAP.tags = []; }
 function recapTags(r){
   recapTagsDrop(); RECAP.tagRoom = r.id; if (A.solved.has(r.id)) return;
   const named = new Set(((r.troop && r.troop.labels) || []).map(([, x, y]) => x + ',' + y)), seen = new Set();
-  const tag = (x, y, word, high) => { const k = x + ',' + y; if (named.has(k) || seen.has(k)) return; seen.add(k);
-    const sp = textSprite(word.toUpperCase(), {w:150, fs:34, bg:'#fff6c8', ink:'#3a2a10', scale:1.15}), p = cellPos(x, y);
-    const im = sp.material.map.image; sp.material.sizeAttenuation = false; sp.scale.set(.08*im.width/im.height, .08, 1);   // the same size near or far: the lever at the far end of the room is as easy to read as the lamp beside you
-    sp.position.set(p.x, p.y + (high ? 2.1 : 1.3), p.z); sp.userData.text = word.toUpperCase(); decorRoot.add(sp); RECAP.tags.push(sp); };
+  const tag = (x, y, word, hgt) => { const k = x + ',' + y; if (named.has(k) || seen.has(k)) return; seen.add(k);
+    const c = at(x, y), t = spotTag('name', word.toUpperCase(), {cell:[x, y], hgt:hgt || (c && c.t === 'door' ? 2 : c && RECAP_TAG_OUT.has(c.t) ? 1 : .6), alive:() => RECAP.tags.includes(t)}); if (t) RECAP.tags.push(t); };   // (the same size near or far: the lever at the far end of the room is as easy to read as the lamp beside you)
   // levers that already have their own sign (DUCK, CAPTAIN...) get no second tag; lamp-code levers say their number (re-run 2, c21:
   // "every sign just says LEVER", the goal says "the 4 lever ON, the 2 lever OFF")
   const bits = (r.disp || []).filter(d => d.bit), ownSign = (r.fixed || []).some(f => f.t === 'lever' && (f.tag || f.label));
   if (!ownSign) (r.inputs || []).forEach(([x, y], i) => { const c = at(x, y); if (c && RECAP_TAG_IN.has(c.t)) tag(x, y, bits.length === r.inputs.length ? `the ${bits[i].v} lever` : recapName(c.t)); });
-  (r.out || []).forEach(([x, y]) => { const c = at(x, y); if (c && RECAP_TAG_OUT.has(c.t)) tag(x, y, recapOutWord(c.t), true); });   // (over the lightning bolt)
+  (r.out || []).forEach(([x, y]) => { const c = at(x, y); if (c && RECAP_TAG_OUT.has(c.t)) tag(x, y, recapOutWord(c.t)); });
   // cart rooms: where the cart starts, where it must stop, where it ends (c10 never found room 215's platform or its start lever)
   if (r.launchAt){ const c = at(...r.launchAt); if (c && RECAP_TAG_IN.has(c.t)) tag(...r.launchAt, 'start ' + recapName(c.t)); }
-  if (r.platformAt) tag(...r.platformAt, 'platform'); if (r.stationAt) tag(...r.stationAt, 'end');
+  if (r.platformAt) tag(...r.platformAt, 'platform', .25); if (r.stationAt) tag(...r.stationAt, 'end', .25);
   // University classrooms keep their switch and their door in their own fields (c25 never found 504's book lever or its gap)
   if (r.leverAtW){ const c = at(...r.leverAtW); if (c && RECAP_TAG_IN.has(c.t)) tag(...r.leverAtW, c.label ? c.label.toLowerCase() : recapName(c.t)); }
-  if (r.doorAtW) tag(...r.doorAtW, r.check === 'secret' ? 'the gap' : 'door', true);
+  if (r.doorAtW) tag(...r.doorAtW, r.check === 'secret' ? 'the gap' : 'door', 1);
 }
 // is now a calm moment? (no card, no talk box, no cutscene, no tutorial, no ride, no menu)
 function recapCalm(){
@@ -8204,8 +8237,7 @@ function recapFrame(dt){
   // the room's name tags are ALWAYS up while you're inside an unsolved room (Tom, after the cold-return audit: Max looks at the floor,
   // the tags help him find the lever, the lamp, the gate); gone in the sky View, once the room is solved, and when you leave
   { const r0 = A.rt && A.rt.room, want = A.on && r0 && !r0.heart && !r0.ship && !A.solved.has(r0.id) ? r0.id : null;
-    if (want !== RECAP.tagRoom || (RECAP.tags || []).some(t => !t.parent)){ recapTagsDrop(); RECAP.tagRoom = null; if (want) recapTags(r0); }
-    (RECAP.tags || []).forEach(t => { t.visible = viewFP; }); }
+    if (want !== RECAP.tagRoom || (RECAP.tags || []).some(t => !SPOTTAG.list.includes(t))){ recapTagsDrop(); RECAP.tagRoom = null; if (want) recapTags(r0); } }   // (hidden in the sky View: spotTagsFrame)
   uniStandFrame();   // (the glowing "stand here" square: every act)
   if (!RECAP.due) return;
   const r = A.rt && A.rt.room, late = now - RECAP.dueAt;
@@ -12015,15 +12047,18 @@ function advStart(given){
 function stopAdventure(){ dlgCancel(true); if (A.youMark) A.youMark.visible = false; document.body.classList.remove("emptyHands"); if (A.openCine){ A.openCine = false; cineEnd(); }
   A.freeze = false; A.endSeq = null; A.countdown = null; $('#mapCard').hidden = true; despawnTroop(); musicSet(null); const ml = $('#mline'); if (ml) ml.hidden = true;
   if (tut) { if (tut.marker) decorRoot.remove(tut.marker); tut = null; $('#tut').hidden = true; } if (A.on){ advSaveNow(); A.on = false; } recapTagsDrop(); RECAP.tagRoom = null; $('#crystals').hidden = true; if (space.floor) setSpaceLevel(0); shake = 0; }
-// ---- tags that point at a spot in the world: PUT IT HERE (the hint's ghost piece), TAP HERE (a block's side), STAND HERE (a floor square).
+// ---- tags that point at a spot in the world: PUT IT HERE (the hint's ghost piece), TAP HERE (a block's side), STAND HERE (a floor square),
+// and the room's name tags (LEVER, LAMP, GATE, START LEVER, PLATFORM, THE 4 LEVER...).
 // They were 3D signs over the spot: they covered the ghost and the wall sign, sat under the goal panel and the hint strip, hid under a
-// tamarin, and only TAP HERE did anything when tapped (the cold-return audit's re-run 2: c03, c06, c12, c15, c18, c29). Now each is a
-// small label on top of the view (over the goal panel and the hint strip, under cards and talk boxes), BESIDE its spot with an arrow
-// pointing at it, kept on screen while its spot is; tapping a PUT IT HERE or TAP HERE label does what tapping its spot does. ----
+// tamarin, floated off the top of the screen up close, and only TAP HERE did anything when tapped (the cold-return audit's re-run 2: c03,
+// c06, c12, c15, c18, c29). Now each is a small label on top of the view (over the goal panel and the hint strip, under cards and talk
+// boxes), BESIDE its spot with an arrow pointing at it, kept on screen while its spot is; tapping a PUT IT HERE or TAP HERE label does
+// what tapping its spot does. Labels never sit on each other (the action labels win their place, the name tags move out of the way),
+// and PUT IT HERE / TAP HERE / STAND HERE never sit on a wall sign. ----
 const SPOTTAG = {list:[]};
 function spotTag(kind, text, o){
   const lay = $('#spotTags'); if (!lay || S.simulating) return null;
-  const el = document.createElement('div'); el.className = 'spotTag ' + kind; el.hidden = true; el.innerHTML = '<b class="stL">&#9664;</b><span></span><b class="stR">&#9654;</b>'; el.querySelector('span').textContent = text;
+  const el = document.createElement('div'); el.className = 'spotTag ' + kind; el.hidden = true; el.innerHTML = '<b class="stU" hidden>&#9650;</b><b class="stL">&#9664;</b><span></span><b class="stR">&#9654;</b><b class="stD" hidden>&#9660;</b>'; el.querySelector('span').textContent = text;
   lay.appendChild(el); const t = Object.assign({kind, text, el, shown:false, side:1}, o); SPOTTAG.list.push(t); return t;
 }
 function spotTagDrop(t){ if (!t) return; t.el.remove(); const i = SPOTTAG.list.indexOf(t); if (i >= 0) SPOTTAG.list.splice(i, 1); }
@@ -12032,34 +12067,81 @@ const _stv = new THREE.Vector3();
 function spotTagBox(t){
   if (t.kind === 'put'){ const gh = t.gh, p = cellPos(gh.x, gh.y), y0 = gh.mesh ? gh.mesh.position.y : p.y; return [p.x - .5, p.x + .5, y0, y0 + 1, p.z - .5, p.z + .5]; }
   if (t.kind === 'tap'){ const sd = t.side3, p = cellPos(sd.x, sd.y), [dx, dz] = DIRS[sd.d], fx = p.x + dx*.52, fz = p.z + dz*.52; return [fx - (dx ? .03 : .5), fx + (dx ? .03 : .5), p.y, p.y + 1, fz - (dz ? .03 : .5), fz + (dz ? .03 : .5)]; }
+  if (t.kind === 'name'){ const p = cellPos(...t.cell), w = t.half || .45; return [p.x - w, p.x + w, p.y, p.y + (t.hgt || .6), p.z - w, p.z + w]; }
   const p = cellPos(...t.spot); return [p.x - .5, p.x + .5, p.y, p.y + .1, p.z - .5, p.z + .5];
 }
 function spotTagAlive(t){
+  if (t.alive) return t.alive();
   if (t.kind === 'put') return !!(L && L.ghosts && L.ghosts.includes(t.gh) && t.gh.mesh && t.gh.mesh.parent === ghostRoot);
   return !!(t.owner && A.uniStand === t.owner);
 }
-// every frame: place each tag beside its spot (right of it, or left if there's no room), or hide it when the spot is off screen
+// a box's corners on screen ({l, t, r, b}), or null when any corner is behind you
+function screenBox(pts, cr){ let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+  for (const [X, Y, Z] of pts){ _stv.set(X, Y, Z).project(camera); if (_stv.z > 1 || _stv.z < -1) return null;
+    const sx = cr.left + (_stv.x + 1)/2*cr.width, sy = cr.top + (1 - _stv.y)/2*cr.height; x0 = Math.min(x0, sx); x1 = Math.max(x1, sx); y0 = Math.min(y0, sy); y1 = Math.max(y1, sy); }
+  return {l:x0, t:y0, r:x1, b:y1}; }
+const rectOver = (A, B) => Math.max(0, Math.min(A.r, B.r) - Math.max(A.l, B.l)) * Math.max(0, Math.min(A.b, B.b) - Math.max(A.t, B.t));
+// the wall signs of the room you're in (each room's goal sign; the University's blackboards too), as world boxes: centre, facing, size
+const SIGN_TEST = [];   // (test-ui-polish2.js: a made-up sign exactly where a label would go)
+function wallSignsHere(){
+  const r = A.rt && A.rt.room; if (!r) return SIGN_TEST.slice();
+  if (SIGN_TEST.length) return SIGN_TEST.concat(ROOMS === TEMPLE_ROOMS ? [] : r.signBoxes || []);
+  if (ROOMS === TEMPLE_ROOMS) return RD.signs.filter(s => s.room === r.id).map(s => ({x:s.x + s.dir[0]*.06, y:s.cy, z:s.z + s.dir[1]*.06, nx:s.dir[0], nz:s.dir[1], w:s.w + .16, h:s.h + .16}));
+  return r.signBoxes || [];
+}
+// ...and on screen: the ones in front of you, facing you
+function wallSignRects(cr){
+  const out = [];
+  for (const s of wallSignsHere()){ const cx = camera.position.x - s.x, cz = camera.position.z - s.z; if (cx*s.nx + cz*s.nz <= 0) continue;   // (its back, or edge on)
+    const ax = s.nz, az = -s.nx, hw = s.w/2, hh = s.h/2, pts = [];
+    for (const a of [-hw, hw]) for (const b of [-hh, hh]) pts.push([s.x + ax*a, s.y + b, s.z + az*a]);
+    const q = screenBox(pts, cr); if (q) out.push(q); }
+  return out;
+}
+// every frame: place each tag beside its spot (right of it, left, above or below: wherever it covers nothing else), or hide it when
+// the spot is off screen
 function spotTagsFrame(){
   if (!SPOTTAG.list.length) return;
   const hud = $('#hud'), vw = window.innerWidth, vh = window.innerHeight, cr = canvas.getBoundingClientRect(); let changed = false;
+  camera.updateMatrixWorld(); const live = [];
   for (const t of SPOTTAG.list.slice()){
     if (!spotTagAlive(t)){ spotTagDrop(t); continue; }
-    let show = !hud.hidden && !CINE.on && (t.kind !== 'put' || (t.gh.mesh.visible && !ghostFilled(t.gh)));
-    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
-    if (show){ const b = spotTagBox(t); camera.updateMatrixWorld();
-      for (const X of [b[0], b[1]]) for (const Y of [b[2], b[3]]) for (const Z of [b[4], b[5]]){ _stv.set(X, Y, Z).project(camera); if (_stv.z > 1 || _stv.z < -1){ show = false; break; }
-        const sx = cr.left + (_stv.x + 1)/2*cr.width, sy = cr.top + (1 - _stv.y)/2*cr.height; x0 = Math.min(x0, sx); x1 = Math.max(x1, sx); y0 = Math.min(y0, sy); y1 = Math.max(y1, sy); }
-      if (show && (x1 < 0 || x0 > vw || y1 < 0 || y0 > vh)) show = false;   // its spot is off screen
-      if (show && inFP()){ const c = (b[0] + b[1])/2, d = Math.hypot(c - P.x, (b[4] + b[5])/2 - P.z); if (d > 30) show = false; } }
+    let show = !hud.hidden && !CINE.on && (t.kind === 'put' ? t.gh.mesh.visible && !ghostFilled(t.gh) : t.kind === 'name' ? viewFP : true), q = null;   // (the name tags hide in the sky View)
+    if (show){ const b = spotTagBox(t), pts = []; for (const X of [b[0], b[1]]) for (const Y of [b[2], b[3]]) for (const Z of [b[4], b[5]]) pts.push([X, Y, Z]);
+      q = screenBox(pts, cr); if (!q || q.r < 0 || q.l > vw || q.b < 0 || q.t > vh) show = false;   // its spot is off screen (or behind you)
+      if (show && inFP()){ const d = Math.hypot((b[0] + b[1])/2 - P.x, (b[4] + b[5])/2 - P.z); if (d > 30) show = false; } }
     if (t.el.hidden === show){ t.el.hidden = !show; changed = true; }
-    t.shown = show; if (!show) continue;
-    const w = t.el.offsetWidth || 120, h = t.el.offsetHeight || 26, gap = 6, cy = Math.max(y0, Math.min(y1, (y0 + y1)/2));
-    let side = x1 + gap + w <= vw - 8 ? 1 : x0 - gap - w >= 8 ? -1 : t.side;   // beside it: right if it fits, else left
-    let left = side > 0 ? x1 + gap : x0 - gap - w, top = cy - h/2;
-    left = Math.max(8, Math.min(vw - 8 - w, left)); top = Math.max(8, Math.min(vh - 8 - h, top));
-    if (side !== t.side){ t.side = side; changed = true; } t.rect = {l:left, t:top, r:left + w, b:top + h}; t.spotRect = {l:x0, t:y0, r:x1, b:y1};
-    t.el.querySelector('.stL').hidden = side < 0; t.el.querySelector('.stR').hidden = side > 0;
-    t.el.style.transform = `translate(${Math.round(left)}px,${Math.round(top)}px)`;
+    t.shown = show; if (show){ t.spotRect = q; live.push(t); }
+  }
+  if (!live.length) return changed;
+  // the action labels first (they get the best place), then the name tags round them
+  const order = t => t.kind === 'name' ? 1 : 0; live.sort((p, q) => order(p) - order(q));
+  const placed = [], signs = live.some(t => t.kind !== 'name') ? wallSignRects(cr) : [], M8 = 8;
+  for (const t of live){
+    const s = t.spotRect, w = t.el.offsetWidth || 120, h = t.el.offsetHeight || 26, gap = 6;
+    const cy = Math.max(M8 + h/2, Math.min(vh - M8 - h/2, (s.t + s.b)/2)), cx = Math.max(M8 + w/2, Math.min(vw - M8 - w/2, (s.l + s.r)/2));
+    const fit = (l, tp) => ({l:Math.max(M8, Math.min(vw - M8 - w, l)), t:Math.max(M8, Math.min(vh - M8 - h, tp))});
+    // beside it: right, left, above, below. Each costs what it covers (another label, a wall sign, its own thing, another tagged thing),
+    // how far the screen's edge pushed it, and a little for not being the usual place (right) or not where it was last frame (no flicker)
+    let best = null; t.clean = false;
+    [[1, s.r + gap, cy - h/2], [-1, s.l - gap - w, cy - h/2], [2, cx - w/2, s.t - gap - h], [-2, cx - w/2, s.b + gap]].forEach(([side, l, tp], i) => {
+      const f = fit(l, tp), R = {l:f.l, t:f.t, r:f.l + w, b:f.t + h};
+      let cost = i*25 + (side === t.side ? -40 : 0) + (Math.abs(f.l - l) + Math.abs(f.t - tp))*3 + rectOver(R, s)*2;
+      const onL = placed.reduce((a, p) => a + rectOver(R, p), 0), onS = t.kind !== 'name' ? signs.reduce((a, g) => a + rectOver(R, g), 0) : 0;
+      cost += onL*8 + onS*6; if (!onL && !onS) t.clean = true;   // (t.clean: there was a place clear of the labels and the signs: test-ui-polish2.js)
+      live.forEach(o => { if (o !== t) cost += rectOver(R, o.spotRect); });   // (and rather not on another tagged thing: the BANANA MACHINE label sat on room 9's gate)
+      if (!best || cost < best.cost) best = {side, R, cost}; });
+    // still on another label (the screen's edge squeezed it there): nudge it up or down, clear of it
+    const R = best.R;
+    for (let k = 0; k < 8; k++){ const hit = placed.find(p => rectOver(R, p) > 0); if (!hit) break;
+      const dn = hit.b + 2, up = hit.t - h - 2, okDn = dn + h <= vh - M8, okUp = up >= M8;
+      const nt = okDn && (!okUp || Math.abs(dn - R.t) <= Math.abs(up - R.t)) ? dn : okUp ? up : null; if (nt === null) break; R.t = nt; R.b = nt + h; }
+    placed.push(R); t.onSign = signs.some(g => rectOver(R, g) > 0);
+    if (best.side !== t.side){ t.side = best.side; changed = true; } t.rect = R;
+    const vert = Math.abs(best.side) === 2; t.el.classList.toggle('vert', vert);
+    t.el.querySelector('.stL').hidden = best.side !== 1; t.el.querySelector('.stR').hidden = best.side !== -1;
+    t.el.querySelector('.stU').hidden = best.side !== -2; t.el.querySelector('.stD').hidden = best.side !== 2;
+    t.el.style.transform = `translate(${Math.round(R.l)}px,${Math.round(R.t)}px)`;
   }
   return changed;
 }
@@ -14448,21 +14530,25 @@ function achShowNext(){
   el.innerHTML = `<div class="achI">${achIconHTML(d.gate ? 'gate:' + d.gate : d.icon)}</div><div class="achW"><div class="achH">ACHIEVEMENT!</div><div class="achNm"></div><div class="achL"></div></div>`;
   el.querySelector('.achNm').textContent = d.name; el.querySelector('.achL').textContent = d.line || '';
   feed('toast', 'ACHIEVEMENT! ' + d.name + (d.line ? ': ' + d.line : ''));
-  achPlace(el); void el.offsetWidth; el.classList.add('show'); try { sfx.chime(); } catch (e) {}
+  el.style.top = ''; el._top0 = null; achPlace(el); void el.offsetWidth; el.classList.add('show'); achFollow(el); try { sfx.chime(); } catch (e) {}
   setTimeout(() => { el.classList.remove('show'); setTimeout(() => { ACHQ.shift(); achShowNext(); }, 450); }, Math.max(4200, 2200 + (d.name.length + (d.line || '').length)*45));
 }
 
 // where the toast goes: top right, but never over the room's table or counter card, the goal panel, the hint strip or the buttons
 // (re-run 2's c08 and c21: achievements covered the mix table and the mix counter). Below whatever is in its way on the right; if
 // that would run into the hotbar, just above the hotbar.
+// It is placed again every frame while it shows (achFollow): the table card can grow, the goal panel open or the hint strip appear in
+// the 4 seconds it's up (wip/ui-polish noted they could overlap for that moment).
 function achPlace(el){
-  el.style.top = ''; const R = el.getBoundingClientRect(), w = R.width, h = R.height, x1 = window.innerWidth - 16, x0 = x1 - w, top0 = parseFloat(getComputedStyle(el).top) || 70;   // (not R.top: it slides in from 12 px up)
+  if (el._top0 == null){ el.style.top = ''; el._top0 = parseFloat(getComputedStyle(el).top) || 70; }   // (its own place, from the style sheet: once per pop-up)
+  const R = el.getBoundingClientRect(), w = R.width, h = R.height, x1 = window.innerWidth - 16, x0 = x1 - w, top0 = el._top0;   // (not R.top: it slides in from 12 px up)
   let top = top0; const bars = ['#card', '#goalBox', '#hintStrip', '#topBtns', '#crystals'].map(q => $(q)).filter(e => e && !e.hidden && e.offsetParent !== null).map(e => e.getBoundingClientRect()).filter(b => b.width > 2 && b.height > 2 && b.right > x0 && b.left < x1);
   for (let k = 0; k < 6; k++){ const hit = bars.find(b => b.top < top + h && b.bottom > top); if (!hit) break; top = hit.bottom + 8; }
   const hb = $('#hotbarWrap'), floor = hb && hb.offsetParent !== null ? hb.getBoundingClientRect().top - 8 : window.innerHeight - 8;
   if (top + h > floor) top = Math.max(8, floor - h);
-  if (Math.abs(top - top0) > .5) el.style.top = Math.round(top) + 'px';
+  const want = Math.abs(top - top0) > .5 ? Math.round(top) + 'px' : ''; if (el.style.top !== want) el.style.top = want;
 }
+function achFollow(el){ if (!el.classList.contains('show') || !el.isConnected) return; achPlace(el); requestAnimationFrame(() => achFollow(el)); }
 /* ---- the page (menu, the inventory pane, or L in the game) ---- */
 function achPageHTML(){
   const c = achCtx(), list = ACH_LIST.filter(achLive), got = list.filter(d => c.got.has(d.id)).length;
@@ -15348,7 +15434,7 @@ function mayaSigns(g){
   const mat = new THREE.MeshBasicMaterial({map:tex}), SW = 2.4, SH = SW*CH/CW;
   ROOMS.forEach((r, i) => { const s = mayaWallSpot(r, 0), geo = new THREE.PlaneGeometry(SW, SH), uv = geo.attributes.uv, u0 = (i % 4)*CW/1024, v1 = 1 - Math.floor(i / 4)*CH/1024, u1 = u0 + CW/1024, v0 = v1 - CH/1024;
     for (let k = 0; k < uv.count; k++) uv.setXY(k, uv.getX(k) ? u1 : u0, uv.getY(k) ? v1 : v0);
-    const m = new THREE.Mesh(geo, mat); m.raycast = () => {}; m.position.copy(s.pos); m.rotation.y = s.rot; g.add(m); });
+    const m = new THREE.Mesh(geo, mat); m.raycast = () => {}; m.position.copy(s.pos); m.rotation.y = s.rot; r.signBoxes = [signBox(s.pos, s.rot, SW, SH)]; g.add(m); });
 }
 // the stela: a carved stone on the wall that shows the room's number BIG (Maya dots and bars, or lamp code). Redrawn when it changes.
 function mayaDrawStone(cv, r, title){
@@ -17053,7 +17139,7 @@ function uniSigns(g){
   const mat = new THREE.MeshBasicMaterial({map:tex}), SW = 2.4, SH = SW*CH/CW;
   ROOMS.forEach((r, i) => { const s = mayaWallSpot(r, 0), geo = new THREE.PlaneGeometry(SW, SH), uv = geo.attributes.uv, u0 = (i % 4)*CW/1024, v1 = 1 - Math.floor(i / 4)*CH/1024, u1 = u0 + CW/1024, v0 = v1 - CH/1024;
     for (let k = 0; k < uv.count; k++) uv.setXY(k, uv.getX(k) ? u1 : u0, uv.getY(k) ? v1 : v0);
-    const m = new THREE.Mesh(geo, mat); m.raycast = () => {}; m.position.copy(s.pos); m.rotation.y = s.rot; g.add(m); });
+    const m = new THREE.Mesh(geo, mat); m.raycast = () => {}; m.position.copy(s.pos); m.rotation.y = s.rot; r.signBoxes = [signBox(s.pos, s.rot, SW, SH)]; g.add(m); });
 }
 // a blackboard in each classroom (the machine's name and the professor), on the same wall as the sign, the other end
 function uniBlackboards(g){
@@ -17061,7 +17147,8 @@ function uniBlackboards(g){
     x.fillStyle = '#6a4424'; x.fillRect(0, 0, 256, 160); x.fillStyle = '#23402e'; x.fillRect(8, 8, 240, 144); x.fillStyle = '#f2f2e8'; x.textAlign = 'center'; x.textBaseline = 'middle';
     fitFont(x, r.name.toUpperCase(), 228, 26); x.fillText(r.name.toUpperCase(), 128, 52); fitFont(x, r.host, 228, 18, 400); x.fillText(r.host, 128, 92);
     x.font = '400 14px "Atkinson Hyperlegible", sans-serif'; x.fillText('Build it here. Then build it at HOME.', 128, 126);
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.4), new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(cv)})); m.position.copy(s.pos); m.position.y += .1; m.rotation.y = s.rot; m.raycast = () => {}; g.add(m); });
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.4), new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(cv)})); m.position.copy(s.pos); m.position.y += .1; m.rotation.y = s.rot; m.raycast = () => {}; g.add(m);
+    (r.signBoxes = r.signBoxes || []).push(signBox(m.position, s.rot, 2.2, 1.4)); });
 }
 // Gloop: a friendly green slime cube (eyes and a smile), hopping its route in room 505
 function makeGloop(){
@@ -17682,7 +17769,7 @@ window.__game = {
     door(id){ const r = ROOMS.find(q => q.id === id); const d = r.exit && at(...r.exit); return d ? !!(d.latched || d.lit) : !wallAt(...r.toilet); },
     cell(x, y){ const c = at(x, y); return c ? {t:c.t, lit:c.lit, on:c.on, pw:c.pw, attach:c.attach, dir:c.dir, open:c.open} : null; },
     wall(x, y){ return wallAt(x, y); }, elevAt(x, y){ return floorAt(x, y); }, slideAt(x, y){ const v = S.slide[y*NX + x]; return S.ladder[y*NX + x] ? 'L' : v >= 0 ? 'v<>^'[[3,1,0,2].indexOf(v)] || v : ' '; },
-    troop(){ return {n:TROOP.list.length, shown:TROOP.list.filter(m => m.parent).length, tags:TROOP.labels.filter(l => l.parent).map(l => l.userData.text || '?'), room:TROOP.room && TROOP.room.id, inPen:A.rt && A.rt.inPen, launches:A.rt && A.rt.launches, hand:A.rt && A.rt.handLaunches, danceUntil:TROOP.danceUntil || 0, kinds:TROOP.list.map(m => m.userData.kind)}; },
+    troop(){ return {n:TROOP.list.length, shown:TROOP.list.filter(m => m.parent).length, tags:TROOP.labels.map(l => l.text), room:TROOP.room && TROOP.room.id, inPen:A.rt && A.rt.inPen, launches:A.rt && A.rt.launches, hand:A.rt && A.rt.handLaunches, danceUntil:TROOP.danceUntil || 0, kinds:TROOP.list.map(m => m.userData.kind)}; },
     get rooms(){ return ROOMS.map(r => ({launchAt:r.launchAt, platformAt:r.platformAt, journey:r.journey || JOURNEY[r.id], id:r.id, name:r.name, check:r.check, count:r.count, inputs:r.inputs || [], out:r.out || [], exit:r.exit, toilet:r.toilet, entry:r.entry, box:r.box, sol:r.sol, naive:r.naive, after:r.after, tntAt:r.tntAt, quick:r.quick, fixed:r.fixed, loose:r.loose, gate:r.gate, play:!!r.play, why:r.why || null, playBeat:r.playBeat || null})); },
     entryCell(id){ return entryOf(ROOMS.find(r => r.id === id)); },
     visAudit(id, pitch){ return visAudit(ROOMS.find(r => r.id === id), pitch); }, peeks(){ return (A.peeks || []).map(s2 => [s2.userData.x, s2.userData.y]); }, peekTime(id){ const r = ROOMS.find(q => q.id === id); roomPeek(r); let worst = 0; while (A.peekJob){ const t0 = performance.now(); A.rt = A.rt || {}; const rt0 = A.rt.room; A.rt.room = r; peekJobFrame(); A.rt.room = rt0; worst = Math.max(worst, performance.now() - t0); } return worst; }, peekBusy(){ return !!A.peekJob; }, gapSparks(){ return (A.gapSparks || []).slice(); }, sparkEnds(){ return (A.sparkEnds || []).slice(); },
@@ -17781,9 +17868,22 @@ window.__game.lookOf = (x, y) => { const c = at(x, y); if (!c) return null; cons
 // (test-ui-polish.js: the UI polish batch's hooks)
 window.__game.ui = {
   view(){ return {yaw:P.yaw, pitch:P.pitch, theta:cam.theta, phi:cam.phi, r:cam.r, fp:inFP(), fit:VIEWZ.base, zoom:VIEWZ.k}; },
-  spotTags(){ spotTagsFrame(); return SPOTTAG.list.map(t => ({kind:t.kind, text:t.text, shown:t.shown, side:t.side, rect:t.rect, spot:t.spotRect, gh:t.gh ? {t:t.gh.t, x:t.gh.x, y:t.gh.y} : null})); },
+  spotTags(){ spotTagsFrame(); return SPOTTAG.list.map(t => ({kind:t.kind, text:t.text, shown:t.shown, side:t.side, rect:t.rect, spot:t.spotRect, clean:t.clean, onSign:t.onSign, cell:t.cell || null, gh:t.gh ? {t:t.gh.t, x:t.gh.x, y:t.gh.y} : null})); },
+  signRects(){ camera.updateMatrixWorld(); return wallSignRects(canvas.getBoundingClientRect()); }, signsHere(){ return wallSignsHere(); },
+  // a made-up sign facing you that covers screen rect q, as far away as cell [x, y] (null: take them all down)
+  addSign(q, cell){ if (!q){ SIGN_TEST.length = 0; return 0; } camera.updateMatrixWorld(); const cr = canvas.getBoundingClientRect(), p = cellPos(...cell), z = new THREE.Vector3(p.x, p.y + .5, p.z).project(camera).z;
+    const w3 = (sx, sy) => new THREE.Vector3((sx - cr.left)/cr.width*2 - 1, 1 - (sy - cr.top)/cr.height*2, z).unproject(camera), a = w3(q.l, q.t), b = w3(q.r, q.t), c = w3(q.l, q.b), m = w3((q.l + q.r)/2, (q.t + q.b)/2);
+    const n = new THREE.Vector3().subVectors(camera.position, m); n.y = 0; n.normalize();
+    SIGN_TEST.push({x:m.x, y:m.y, z:m.z, nx:n.x, nz:n.z, w:a.distanceTo(b), h:a.distanceTo(c)}); return SIGN_TEST.length; },
+  // the share of a screen rect's pixels that are painted-gate red (a fresh render, read straight back)
+  redShare(q){ renderer.render(scene, camera); const gl = renderer.getContext(), cr = canvas.getBoundingClientRect(), sx = canvas.width/cr.width, sy = canvas.height/cr.height;
+    const x0 = Math.max(0, Math.round((q.l - cr.left)*sx)), x1 = Math.min(canvas.width, Math.round((q.r - cr.left)*sx)), y0 = Math.max(0, Math.round((q.t - cr.top)*sy)), y1 = Math.min(canvas.height, Math.round((q.b - cr.top)*sy));
+    const w = x1 - x0, h = y1 - y0; if (w < 1 || h < 1) return null; const px = new Uint8Array(w*h*4); gl.readPixels(x0, canvas.height - y1, w, h, gl.RGBA, gl.UNSIGNED_BYTE, px);
+    let n = 0; for (let i = 0; i < w*h; i++){ const R = px[i*4], G = px[i*4 + 1], B = px[i*4 + 2]; if (R > 120 && R > G*2.2 && R > B*2.5) n++; } return n/(w*h); },
+  boxOf(x, y, h){ camera.updateMatrixWorld(); const p = cellPos(x, y), pts = []; for (const X of [p.x - .45, p.x + .45]) for (const Y of [p.y, p.y + (h || 1)]) for (const Z of [p.z - .45, p.z + .45]) pts.push([X, Y, Z]); return screenBox(pts, canvas.getBoundingClientRect()); },   // (a cell's box on screen)
+  orbit(theta, phi, r){ if (theta != null) cam.theta = theta; if (phi != null) cam.phi = phi; if (r != null) cam.r = r; updateCam(); camera.updateMatrixWorld(); },   // (the sky View's camera)
   tapAt(x, y){ act(x, y, 'use'); },
-  troopTags(){ return TROOP.labels.filter(l => l.parent).map(l => ({text:l.userData.text, at:l.userData.at, tip:+(l.position.y - l.scale.y/2).toFixed(3), floor:+cellPos(...l.userData.at).y.toFixed(3), w:+l.scale.x.toFixed(2), x:l.position.x, z:l.position.z})); },
+  troopTags(){ spotTagsFrame(); return TROOP.labels.map(l => ({text:l.text, at:l.cell, shown:l.shown, side:l.side, rect:l.rect, spot:l.spotRect})); },
   lookAt(x, y, z){ const dx = x - P.x, dz = z - P.z; P.yaw = Math.atan2(-dx, -dz); P.pitch = Math.atan2(y - (P.y + EYE), Math.hypot(dx, dz)); stepFP(0); },
   look(yaw, pitch){ P.yaw = yaw; P.pitch = pitch; stepFP(0); },
   numbers(){ let zero = 0, more = 0; cellRoot.traverse(o => { if (o.isSprite && o.visible && numMats.includes(o.material)){ if (o.material === numMats[0]) zero++; else more++; } }); return {zero, more, on:!!(S.slow || S.numbers)}; },
@@ -17799,7 +17899,7 @@ window.__game.recap = {
   card(id){ const r = id ? ROOMS.find(q => q.id === id) : A.rt && A.rt.room; return r ? recapFor(r) : null; }, lines(id){ const c = this.card(id); return c ? recapAllLines(c) : []; },
   show(why){ return recapShow(why || 'asked'); }, due(){ return RECAP.due; }, last(){ return RECAP.last; }, shownN(){ return RECAP.shownN; }, calm(){ return recapCalm(); },
   idle(ms){ RECAP.skew = (RECAP.skew || 0) + ms; }, input(){ recapInput(); }, hidden(ms){ RECAP.hiddenAt = recapNow() - ms; document.dispatchEvent(new Event('visibilitychange')); },
-  sign(id){ const r = ROOMS.find(q => q.id === id); return r ? roomSignText(r) : ''; }, tags(){ return (RECAP.tags || []).filter(t => t.parent).map(t => t.userData.text); }, tagsShown(){ return (RECAP.tags || []).filter(t => t.parent && t.visible).length; }, split:recapSplit, words:recapWords, restart(){ return roomRestart(); }, GAP:RECAP.GAP, MAX:RECAP_MAX, chopped(){ return RECAP_CHOPPED.splice(0); }, tagsFor(id){ const r = ROOMS.find(q => q.id === id); if (!r) return []; recapTags(r); const t = this.tags(); recapTagsDrop(); RECAP.tagRoom = null; return t; },
+  sign(id){ const r = ROOMS.find(q => q.id === id); return r ? roomSignText(r) : ''; }, tags(){ return (RECAP.tags || []).map(t => t.text); }, tagsShown(){ spotTagsFrame(); return (RECAP.tags || []).filter(t => t.shown).length; }, split:recapSplit, words:recapWords, restart(){ return roomRestart(); }, GAP:RECAP.GAP, MAX:RECAP_MAX, chopped(){ return RECAP_CHOPPED.splice(0); }, tagsFor(id){ const r = ROOMS.find(q => q.id === id); if (!r) return []; recapTags(r); const t = this.tags(); recapTagsDrop(); RECAP.tagRoom = null; return t; },
   rooms(){ return ROOMS.map(r => ({id:r.id, name:r.name, check:r.check, win:String(r.win || ''), hello:r.hello || '', why:(r.why || []).map(w => w.say || ''), goal:String(r.goal || ""), hint:String(r.hint || ''), nudge:String(r.nudge || ''), sign:roomSignText(r), play:!!r.play, loose:(r.loose || []).length, sol:(r.sol || []).length, only:r.only || null, box:r.box})); }
 };
 window.__game.qa = { plog(){ return PLOG; }, sess(){ return PSESS; }, report:plogReportAll, flags:plogFlags, touch(){ plogTouch(); plogSave(); }, bonk(){ bonk(); }, shot:qaShot, problem:problemReport,
