@@ -4818,7 +4818,7 @@ const PIER = {totem:[11, 137], arch:[8, 135], wheel:[24, 152], carousel:[48, 158
 // ---- the look: a moonlit seaside pier, put together by pirates in an afternoon (everything at haphazard angles) ----
 function buildFunDecor(){
   freeKids(decorRoot);
-  ['crash', 'jungle', 'crown', 'glove', 'cog', 'beacon', 'reggie', 'heart', 'facade', 'thief', 'zest', 'greg', 'digby', 'general'].forEach(k => A[k] = null);
+  ['crash', 'jungle', 'crown', 'glove', 'punchAt', 'cog', 'beacon', 'reggie', 'heart', 'facade', 'thief', 'zest', 'greg', 'digby', 'general'].forEach(k => A[k] = null);
   A.chestMeshes = []; A.crystalsMesh = []; A.noteMeshes = []; A.extras = []; A.bolts = []; A.nearLabels = []; A.flies = []; A.eyes = []; A.bubbles = []; A.pickups = []; A.hosts = {}; A.cartMeshes = [];
   A.monkey = makeSkeleton(); A.monkey.userData.bubble = null; piratHat(A.monkey);   // Barold: away until he turns up in his pirate hat
   if (A.baroldBack){ decorRoot.add(A.monkey); A.monkey.position.copy(cellPos(FUN_SPAWN[0] + 2, FUN_SPAWN[1] - 1)); }
@@ -5910,7 +5910,7 @@ function makeGreg(){
 }
 function buildApeDecor(){
   freeKids(decorRoot);
-  ['crash', 'jungle', 'crown', 'glove', 'cog', 'beacon', 'reggie', 'heart', 'facade', 'thief', 'captain'].forEach(k => A[k] = null);
+  ['crash', 'jungle', 'crown', 'glove', 'punchAt', 'cog', 'beacon', 'reggie', 'heart', 'facade', 'thief', 'captain'].forEach(k => A[k] = null);
   A.chestMeshes = []; A.crystalsMesh = []; A.noteMeshes = []; A.extras = []; A.bolts = []; A.nearLabels = []; A.flies = []; A.eyes = []; A.bubbles = []; A.pickups = []; A.crew = [];
   A.monkey = makeSkeleton(); decorRoot.add(A.monkey); A.monkey.userData.bubble = null; A.monkey.position.copy(cellPos(APE_SPAWN[0] + 2, APE_SPAWN[1] - 1));
   const g = new THREE.Group(); decorRoot.add(g); A.apeDecor = g;
@@ -9611,7 +9611,7 @@ const DECOR_HOOKS = {
 
 function buildDecor(){
   freeKids(decorRoot);
-  ['glove', 'cog', 'beacon', 'captain', 'funWheel', 'funCarousel', 'funShip', 'funDecor'].forEach(k => A[k] = null); A.crew = [];
+  ['glove', 'punchAt', 'cog', 'beacon', 'captain', 'funWheel', 'funCarousel', 'funShip', 'funDecor'].forEach(k => A[k] = null); A.crew = [];
   A.chestMeshes = [];
   A.crystalsMesh = [];
   // monkey
@@ -10033,10 +10033,13 @@ function doorTrapFrame(dt){
   if (A.cog && gear) A.cog.rotation.z += dt*.004;
   // while it has power, the glove keeps punching the air in front of the door (looks only: the knockback below never asks the glove)
   A.gloveT = Math.max(0, (A.gloveT || 0) - dt/1000); if (on && A.gloveT <= 0) A.gloveT = 1.2;
-  { const ext = A.gloveT > .95 ? 1 : A.gloveT > .6 ? (A.gloveT - .6)/.35 : 0, u = A.glove.userData, g = A.glove; let reach = .35 + ext*4.1, yaw = Math.PI/2, tilt = 0;   // reaches right across the doorway
-    if (A.punchAt && A.gloveT > .6){ const t = A.punchAt, dx = t.x - g.position.x, dz = t.z - g.position.z, h = Math.hypot(dx, dz); yaw = Math.atan2(dx, dz); tilt = -Math.atan2(t.y - g.position.y, h); reach = .35 + ext*Math.max(.5, Math.min(7, Math.hypot(h, t.y - g.position.y) - .35)); }   // a hit: aimed right at you
+  // each punch is a quick LUNGE out (it used to just appear fully out, so you never saw it coming), a hold, then a slow pull back
+  { const ext = A.gloveT > GLOVE_HIT ? (1.2 - A.gloveT)/(1.2 - GLOVE_HIT) : A.gloveT > .95 ? 1 : A.gloveT > .6 ? (A.gloveT - .6)/.35 : 0, u = A.glove.userData, g = A.glove; let reach = .35 + ext*4.1, yaw = Math.PI/2, tilt = 0;   // reaches right across the doorway
+    if (A.punchAt && A.punchAt.live) A.punchAt = Object.assign(punchTarget(), {live:true});   // still swinging: it follows you, so it can't miss
+    if (A.punchAt && A.gloveT > .6){ const t = A.punchAt, dx = t.x - g.position.x, dz = t.z - g.position.z, h = Math.hypot(dx, dz); yaw = Math.atan2(dx, dz); tilt = -Math.atan2(t.y - g.position.y, h); reach = .35 + ext*Math.max(.5, Math.min(7.5, Math.hypot(h, t.y - g.position.y) - .8)); }   // a hit: the front of the glove stops right on your nose
     else A.punchAt = null;
     g.rotation.set(tilt, yaw, 0, 'YXZ'); u.fist.position.z = reach; u.arm.scale.z = Math.max(.05, reach); u.arm.position.z = reach/2; }
+  if (A.punchAt && A.punchAt.live && A.gloveT <= GLOVE_HIT){ A.punchAt = {x:A.punchAt.x, y:A.punchAt.y, z:A.punchAt.z}; bonkLand(); }   // the glove has reached you: NOW you go flying
   if (A.gloveT > 1.15 && Math.hypot(P.x - A.glove.position.x, P.z - A.glove.position.z) < 9) noise(.06, .03, 900);
   if (A.knock){ const k = A.knock, [kx, ky] = cellAtWorld(P.x, P.z); k.t -= dt/1000;
     if (bonkZone(kx, ky) && P.y < (TRAP.landing || 2) + .3 && P.vy < 6) P.vy = 9;   // still down in the hole: keep lifting you out (whatever else happened this frame)
@@ -10057,9 +10060,14 @@ function doorTrapFrame(dt){
 }
 // the Bonk-o-Matic's reach: the chasm and the doorway behind it, at ANY height (walk in, fall in or jump in: it always gets you)
 function bonkZone(px, py){ return (px >= 6 && px <= 10 && py >= 126 && py <= 128) || (px >= 7 && px <= 9 && py === 129); }   // (the top step right in front of the door counts too: walk up to the door and it gets you)
-// the knockback is its own system: it never depends on the glove's animation or position, so it can't miss. The glove just punches at the same moment, for show
+// the glove lunges at your face first, and you go flying the moment it lands (before, the knock came first and the glove punched the empty spot you'd just left).
+// it follows you while it swings and always lands on the same clock, so it still can't miss
+const GLOVE_HIT = 1.06;   // the lunge: gloveT counts down from 1.2, so it lands .14 s after the bonk starts
+function punchTarget(){ return {x:P.x - Math.sin(P.yaw)*.6, y:P.y + EYE - .15, z:P.z - Math.cos(P.yaw)*.6}; }   // just in front of your eyes, whichever way you're looking
 function bonk(){
-  A.bonkCD = 1500; A.gloveT = 1.2; A.punchAt = {x:P.x, y:P.y + 1.15, z:P.z};   // the glove swings round and smacks you right where you are (for show: the knock below never waits for it)
+  A.bonkCD = 1500; A.gloveT = 1.2; A.punchAt = Object.assign(punchTarget(), {live:true});
+}
+function bonkLand(){
   A.knock = {vx:0, vz:7, t:.6}; P.vy = 11; P.ground = false;   // up and out of the chasm, back down the stairs
   sfx.boing(); noise(.12, .22, 500, 'lowpass', 0, 2); shake = Math.max(shake, .35); showToast(bag('bonk', BONKS)); discover('bonk'); powFlash();
 }
@@ -15344,7 +15352,7 @@ function makeEngineer(banana){
 }
 function buildMayaDecor(){
   freeKids(decorRoot);
-  ['crash', 'jungle', 'crown', 'glove', 'cog', 'beacon', 'reggie', 'heart', 'facade', 'thief', 'captain', 'zest', 'greg', 'digby', 'general', 'heartMap', 'ballMesh', 'courtMonkeys', 'sunModel', 'beam', 'sunSprite'].forEach(k => A[k] = null);
+  ['crash', 'jungle', 'crown', 'glove', 'punchAt', 'cog', 'beacon', 'reggie', 'heart', 'facade', 'thief', 'captain', 'zest', 'greg', 'digby', 'general', 'heartMap', 'ballMesh', 'courtMonkeys', 'sunModel', 'beam', 'sunSprite'].forEach(k => A[k] = null);
   A.chestMeshes = []; A.crystalsMesh = []; A.noteMeshes = []; A.extras = []; A.bolts = []; A.nearLabels = []; A.flies = []; A.eyes = []; A.bubbles = []; A.pickups = []; A.crew = []; A.cartMeshes = [];
   A.monkey = makeSkeleton(); decorRoot.add(A.monkey); A.monkey.userData.bubble = null; A.monkey.position.copy(cellPos(MAYA_SPAWN[0] + 2, MAYA_SPAWN[1] - 1));
   const g = new THREE.Group(); decorRoot.add(g); A.mayaDecor = g;
@@ -16747,7 +16755,7 @@ function portraitCanvas(name, col, hat, barold){
 }
 function buildUniDecor(){
   decorRoot.children.forEach(o => artDrop(o)); freeKids(decorRoot);
-  ['crash', 'jungle', 'crown', 'glove', 'cog', 'beacon', 'reggie', 'heart', 'facade', 'thief', 'captain', 'zest', 'greg', 'digby', 'general', 'heartMap'].forEach(k => A[k] = null);
+  ['crash', 'jungle', 'crown', 'glove', 'punchAt', 'cog', 'beacon', 'reggie', 'heart', 'facade', 'thief', 'captain', 'zest', 'greg', 'digby', 'general', 'heartMap'].forEach(k => A[k] = null);
   A.chestMeshes = []; A.crystalsMesh = []; A.noteMeshes = []; A.extras = []; A.bolts = []; A.nearLabels = []; A.flies = []; A.eyes = []; A.bubbles = []; A.pickups = []; A.crew = []; A.cartMeshes = [];
   A.monkey = makeSkeleton(); decorRoot.add(A.monkey); A.monkey.userData.bubble = null; A.monkey.position.copy(cellPos(UNI_SPAWN[0] + 2, UNI_SPAWN[1] - 1));
   const g = new THREE.Group(); decorRoot.add(g); A.uniDecor = g;
