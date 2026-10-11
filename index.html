@@ -3499,6 +3499,7 @@ function buildMenuScene(){
 function menuSceneFrame(now){ if (!MENU3D.g) return; const on = !MENU3D.el.hidden && !A.on; MENU3D.g.visible = on; if (on && cam.sway && !reduceMotion){ cam.theta = Math.sin(now*.00011)*.32; updateCam(); } }
 function loadShowcase(){
   setWorld(16, 16, 'lab'); buildWalls(); buildFloorDecor(false);
+  advRootsShow(false); sbClear();   // the adventure's walkways, lava and torches would float over the menu's jungle with nothing under them
   L = null; clearWorld(); syncVisuals();
   buildMenuScene().visible = true;
   cam.target.set(0, 9, -16); cam.r = 50; cam.phi = 1.3; cam.theta = 0; cam.auto = false; cam.sway = true; updateCam();
