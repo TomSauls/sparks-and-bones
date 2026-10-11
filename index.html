@@ -155,6 +155,11 @@ body.emptyHands #hotbarWrap,body.emptyHands #hand{display:none!important;}
 #hotbar.gift{animation:gift 1.6s ease-out 1;}
 @keyframes gift{0%{transform:scale(.3);filter:brightness(3)}40%{transform:scale(1.25);filter:brightness(2)}100%{transform:none;filter:none}}
 .pwList{display:flex;flex-direction:column;gap:6px;}
+.passShow{font-size:30px;font-weight:700;letter-spacing:.12em;min-height:52px;padding:6px 12px;background:#fff;color:#222;border:3px solid #333;box-sizing:border-box;width:100%;white-space:pre;overflow:hidden;}
+.passKeys{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin:8px 0;}
+.passKey{min-width:0;padding:6px 0;font-size:22px;}
+.passKey.wide{grid-column:span 2;font-size:17px;}
+.passKey.clr{grid-column:span 3;font-size:17px;} .passGo{grid-column:span 4;font-size:24px;}
 .pwBtn{display:flex;flex-direction:column;align-items:flex-start;text-align:left;font-size:18px;}
 .pwBtn small{font-size:13px;opacity:.8;font-weight:400;}
 #hotbar{pointer-events:auto;display:flex;gap:2px;padding:3px;background:rgba(20,20,20,.55);border:3px solid #2a2a2a;box-shadow:0 0 0 2px #8a8a8a;}
@@ -3920,18 +3925,30 @@ $('#btnPass').addEventListener('click', () => {
   sfx.click();
   const kept = pwKept().filter(w => { const pw = pwFind(w); return pw && (pw.act !== FUN_ACT || FUN_READY); });   // (Act 3's are listed once it plays end to end)
   const list = kept.length ? `<p><b>Your passwords</b> (tap one to jump back there):</p><div class="pwList">${kept.map(w => { const pw = pwFind(w); return `<button class="btn pwBtn" data-w="${w}">${w}<small>${pw.after === 'launch' ? 'after the liftoff' : 'rooms 1 to ' + pw.after + ' done'}</small></button>`; }).join('')}</div>` : '<p><i>No passwords yet. The temple gives you one every few rooms.</i></p>';
-  openPane('Passwords', `<p><b>What's a password?</b> It's a secret code the game gives you every few rooms. Old games used them instead of saving!</p><p>When you get one, grab a <b>pencil and paper</b> and <b>write it down</b> (ask a grown-up to help). Keep the paper safe: stick it on the fridge! If the game ever forgets where you were, or you play on a different computer or tablet, type it in here and you'll jump straight back.</p>${list}<p><b>Type a password:</b></p><input id="passIn" autocomplete="off" style="font-size:22px;width:100%;padding:8px;text-transform:uppercase" placeholder="e.g. ONE SILLY WORD"><div class="row"><button class="btn red" id="passGo">Go!</button><span id="passMsg" class="msg" role="status"></span></div><div id="passWhere" hidden></div>`);
-  let busy = false;
-  const start = how => { if (busy) return; const sv = usePassword($('#passIn').value, how); if (!sv){ $('#passMsg').textContent = `You've got ${SLOT_MAX} saves already! Delete one in Saves to make room.`; sfx.nope(); return; }
+  openPane('Passwords', `<p><b>What's a password?</b> It's a secret code the game gives you every few rooms. Old games used them instead of saving!</p><p>When you get one, grab a <b>pencil and paper</b> and <b>write it down</b> (ask a grown-up to help). Keep the paper safe: stick it on the fridge! If the game ever forgets where you were, or you play on a different computer or tablet, type it in here and you'll jump straight back.</p>${list}<p><b>Type a password:</b></p><div id="passShow" class="passShow" role="textbox" aria-label="Password" aria-live="polite"></div><div class="passKeys">${'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(c => `<button class="btn passKey" data-k="${c}">${c}</button>`).join('')}<button class="btn passKey wide" data-k="del" aria-label="Rub out a letter">&#9003; Rub out</button><button class="btn passKey clr" data-k="clr">Clear</button><button class="btn red passGo" id="passGo">Go!</button></div><div class="row"><span id="passMsg" class="msg" role="status"></span></div><div id="passWhere" hidden></div>`);
+  let busy = false, typed = '';
+  const start = how => { if (busy) return; const sv = usePassword(typed, how); if (!sv){ $('#passMsg').textContent = `You've got ${SLOT_MAX} saves already! Delete one in Saves to make room.`; sfx.nope(); return; }
     busy = true; $('#passWhere').hidden = true; $('#passMsg').textContent = 'Yes! Off you go...'; sfx.chime(); setTimeout(() => { $('#pane').hidden = true; ac(); playWithLoader(() => startAdventure(sv)); }, 700); };
-  const go = () => { if (busy) return; if (!passFind($('#passIn').value)){ $('#passWhere').hidden = true; $('#passMsg').textContent = 'Hmm, that\'s not one of the temple\'s passwords. Check the spelling?'; sfx.nope(); return; }
+  const go = () => { if (busy) return; if (!passFind(typed)){ $('#passWhere').hidden = true; $('#passMsg').textContent = 'Hmm, that\'s not one of the temple\'s passwords. Check the spelling?'; sfx.nope(); return; }
     const x = slotIdx(), cur = slotEntry(x.cur, x); if (!cur || !slotSum(slotLoad(cur.id)).started) return start('here');   // no game to lose: straight in
     const full = x.slots.length >= SLOT_MAX, w = $('#passWhere'); $('#passMsg').textContent = ''; sfx.chime();   // never swap the game you're on without asking
     w.innerHTML = `<p><b>Yes! That's a real password.</b> Where shall it go?</p><div class="row"><button class="btn red" id="passNew"${full ? ' disabled' : ''}>Start a new save</button><button class="btn" id="passHere">Put it in "${escH(cur.name)}"</button></div><p style="font-size:15px">${full ? `You've got ${SLOT_MAX} saves, so a new one won't fit. ` : ''}"${escH(cur.name)}" would jump to the password's place. Rooms you've done stay done.</p>`;
     w.hidden = false; $('#passNew').onclick = () => { sfx.click(); start('new'); }; $('#passHere').onclick = () => { sfx.click(); start('here'); };
     const first = full ? $('#passHere') : $('#passNew'); if (padMode) padFocus(first); else first.focus(); };
-  document.querySelectorAll('.pwBtn').forEach(bt => bt.onclick = () => { $('#passIn').value = bt.dataset.w; go(); });
-  $('#passGo').onclick = go; $('#passIn').onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter') go(); }; setTimeout(() => $('#passIn').focus(), 50);
+  document.querySelectorAll('.pwBtn').forEach(bt => bt.onclick = () => { typed = bt.dataset.w; showTyped(); go(); });
+  // letters are buttons, not a text box: the Apple TV app draws no text box at all, and a controller can't type into one (Tom, on the TV,
+  // couldn't enter a password). A keyboard still types (keys go to the letters while this pane is open); touch and the pad press the keys.
+  const showTyped = () => { const el = $('#passShow'); if (el) el.textContent = typed || ' '; $('#passWhere').hidden = true; $('#passMsg').textContent = ''; };
+  const key = k => { if (busy) return; if (k === 'del') typed = typed.slice(0, -1); else if (k === 'clr') typed = ''; else if (typed.length < 24) typed += k; showTyped(); };
+  document.querySelectorAll('.passKey').forEach(bt => bt.onclick = e => { e.stopPropagation(); sfx.click(); key(bt.dataset.k); });
+  const onKey = e => {
+    if (!$('#passShow') || $('#pane').hidden){ document.removeEventListener('keydown', onKey, true); return; }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const k = e.key || '';
+    if (/^[a-z]$/i.test(k)) key(k.toUpperCase()); else if (k === 'Backspace') key('del'); else if (k === 'Enter' && typed) go(); else return;
+    e.preventDefault(); e.stopPropagation(); };
+  document.addEventListener('keydown', onKey, true);
+  $('#passGo').onclick = go; showTyped(); padMem.pane = $('.passKey');   // a controller starts on A, not Done
 });
 $('#btnCopy').addEventListener('click', () => {
   const t = $('#saveOut'), done = () => { $('#copyMsg').textContent = 'Copied!'; };
