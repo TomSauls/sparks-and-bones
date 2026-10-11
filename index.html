@@ -432,6 +432,8 @@ body.pad #topBtns .btn[data-pad]::after{content:attr(data-pad);position:absolute
 /* playtest sweep B6: the panels at the top left mustn't cover half the world. The goal shrinks to its title 10 s after it changes
    (tap it for all of it), the table can be folded by tapping its heading, and on short screens everything is a bit smaller */
 #goalBox.brief:not(.open) #goalText{display:none;}
+body:not(.dlgOn) #goalBox.brief.inRoom:not(.open) #goalText{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:13px;line-height:1.2;}
+@media (max-width:600px){ body:not(.dlgOn) #goalBox.brief.inRoom:not(.open) #goalText{-webkit-line-clamp:1;} }   /* in a room the folded goal still says what to do (two lines): from room 14 on the goals are longer and it went blank (Tom, 11 Oct) */
 #goalBox.brief:not(.open) #lessonTitle::after{content:'more \25BE';display:inline-block;margin-left:8px;padding:0 6px;font-size:13px;font-weight:700;color:#fff;background:#7a5a20;border-radius:3px;vertical-align:3px;white-space:nowrap;letter-spacing:0;}
 #card h3{cursor:pointer;}
 #card h3::after{content:' \25BE';font-size:.85em;color:var(--panel-ink);}
@@ -1037,7 +1039,7 @@ function step(){
   if (S.gridDirty) layout();
   let cells = S.simCells || S.grid.filter(Boolean);   // (a try-out of one room's circuit steps only that room: eggSim)
   for (const c of cells) if (c.t === 'drail'){ const was = c.on || c.timer > 0; c.on = cartOnCell(c.x, c.y); if (c.on){ c.timer = DRAIL_TICKS; if (!was && !S.simulating) sfx.plate(); } }   // a cart on a detector rail; it stays on a moment after the cart has gone
-  for (const c of cells) if (c.t === 'plate'){ const was = c.on || c.timer > 0; c.on = c.tray ? trayOnCell(c) : playerOnCell(c.x, c.y) || (typeof troopOnCell === 'function' && troopOnCell(c.x, c.y)) || uniMobOn(c.x, c.y); if (c.on){ c.timer = PLATE_TICKS; if (!was && !S.simulating) sfx.plate(); } }   // you or a monkey press it; like Java it stays down about a second after they step off
+  for (const c of cells) if (c.t === 'plate'){ const was = c.on || c.timer > 0; c.on = c.tray ? trayOnCell(c) : playerOnPlate(c.x, c.y) || (typeof troopOnCell === 'function' && troopOnCell(c.x, c.y)) || uniMobOn(c.x, c.y); if (c.on){ c.timer = PLATE_TICKS; if (!was && !S.simulating) sfx.plate(); } }   // you or a monkey press it; like Java it stays down about a second after they step off
   // like Java: a torch, lever or button pops off when the block it's stuck on is gone
   for (const c of cells) if ((c.t === 'torch' || c.t === 'lever' || c.t === 'button') && c.attach >= 0 && !c.locked && !S.simulating && at(c.x, c.y) === c){ const b = nb(c, c.attach); if (!b || !SOLID.has(b.t)){ setCell(c.x, c.y, null); S.events.push(['popoff', c]); } }
   if (S.gridDirty){ layout(); cells = S.simCells || S.grid.filter(Boolean); }
@@ -1054,7 +1056,9 @@ function step(){
     if (c.t !== 'lamp' && c.t !== 'tnt' && c.t !== 'fart' && c.t !== 'socket' && c.t !== 'bridge' && !TOY_SET.has(c.t) && !(c.t === 'door' && c.wired) && !UNI_TAKES.has(c.t)) continue;
     if (c.dance) continue;   // the plaza's secret disco ball has its own rule
     let p = false;
-    for (let d=0; d<4 && !p; d++){ const n = nb(c,d); if (srcPower(n, opp(d)) > 0 || dustInto(n, opp(d)) || (n && n.t === 'stone' && n.powered)) p = true; }   // a powered block switches on the things touching it
+    for (let d=0; d<4 && !p; d++){ const n = nb(c,d); if (srcPower(n, opp(d)) > 0 || dustInto(n, opp(d)) || (n && n.t === 'stone' && n.powered) || (c.t === 'disco' && n && n.t === 'dust' && n.pw > 0)) p = true; }   // a powered block switches on the things touching it
+    // (the disco ball takes power from ANY powered wire touching it, even one running past: Tom, 11 Oct, Max's joined-up OR wiring ran beside it and
+    // should have counted. It's a party toy, not a lesson in which way a wire points; the lamps and doors keep Java's rule)
     c.lit = p;
   }
   for (const c of cells){ if (c.t !== 'vein' || c.open) continue; for (let d=0; d<4; d++){ const n = nb(c,d); if (srcPower(n, opp(d)) > 0 || dustInto(n, opp(d))){ c.open = true; S.events.push(['vein', c]); break; } } }
@@ -1246,52 +1250,21 @@ const sfx = {
   // a real PARP (the old one sounded like a spring): the sound is written sample by sample as a train of rough little
   // puffs of air (the lips flapping 35-300 times a second, every puff a different length and loudness, some missing:
   // that's the flutter and the sputter), then a resonant low-pass makes it fleshy. Seven kinds; never the same kind twice running.
+  // Writing one is the slowest thing a sound does (Tom: the game hung when the whoopee cushion went off, on the Apple TV, where
+  // JavaScript has no JIT), so each kind keeps a few it has written (fartBuf) and the filter makes every play a little different.
   fart(kind){
     const a = ac(); if (!a) return;
-    const R = Math.random, rr = r => r[0] + R()*(r[1] - r[0]), t0 = a.currentTime + .01, sr = a.sampleRate;
-    const KINDS = {   // how long (s), puffs a second, where that ends up (times the start), wobble per puff, missing puffs, airiness, puff width, filter (Hz), resonance
-      short:  {dur:[.13, .28], f:[70, 100], drift:[.85, 1.05], jit:.12, skip:.03, air:.3, open:.3, lp:[620, 820], q:[5, 8]},
-      long:   {dur:[.9, 1.5], f:[62, 88], drift:[.6, .8], jit:.15, skip:.05, air:.3, open:.3, lp:[560, 760], q:[5, 8], tail:true},
-      squeaky:{dur:[.3, .6], f:[190, 290], drift:[.82, 1.2], jit:.05, skip:.02, air:.15, open:.6, lp:[800, 1100], q:[7, 10]},
-      rumbly: {dur:[.7, 1.2], f:[34, 48], drift:[.8, 1], jit:.2, skip:.05, air:.4, open:.25, lp:[330, 440], q:[4, 6]},
-      wet:    {dur:[.4, .75], f:[48, 72], drift:[.7, 1], jit:.3, skip:.16, air:.75, open:.35, lp:[560, 760], q:[3, 5], bubbles:true},
-      trumpet:{dur:[.6, .95], f:[105, 140], drift:[.8, .92], jit:.04, skip:0, air:.12, open:.3, lp:[950, 1300], q:[3, 5], toot:true},
-      stutter:{dur:[.5, .8], f:[65, 95], drift:[.8, 1], jit:.12, skip:.04, air:.35, open:.3, lp:[600, 800], q:[5, 8], pops:3 + Math.floor(R()*3)}
-    };
-    const names = Object.keys(KINDS);
-    if (!KINDS[kind]) do kind = names[Math.floor(R()*names.length)]; while (kind === sfx.lastFartKind);
-    const K = KINDS[kind], dur = rr(K.dur), f0 = rr(K.f), f1 = f0*rr(K.drift), lpF = rr(K.lp), q = rr(K.q), shim = 3 + R()*5, shimPh = R()*6;
-    const env = p => { const tt = p*dur; let e = Math.min(1, tt/.012)*Math.min(1, (dur - tt)/(K.tail ? dur*.4 : .05));
-      if (K.toot) e *= p < .15 ? 1 : p < .2 ? .15 : 1;   // "pa... PAAARP"
-      if (K.pops){ const sg = p*K.pops % 1; e *= sg < .6 ? Math.pow(Math.sin(Math.PI*sg/.6), .4) : 0; }
-      return e*(.82 + .18*Math.sin(tt*shim*6.283 + shimPh)); };
-    const len = Math.ceil(sr*(dur + .03)), buf = a.createBuffer(1, len, sr), d = buf.getChannelData(0);
-    let i = 0, wander = 0, puffs = 0;
-    while (i < len){
-      const p = i/sr/dur; if (p >= 1) break;
-      wander = wander*.92 + (R() - .5)*.06;   // the pitch wanders a little, it never sweeps like a spring
-      const f = (f0 + (f1 - f0)*p)*(1 + wander)*(1 + (R()*2 - 1)*K.jit)*(K.toot && p >= .15 ? 1.19 : 1);
-      const per = Math.max(6, Math.round(sr/f)), op = Math.max(3, Math.round(per*K.open*(.85 + R()*.3)));
-      const skip = K.skip + (K.tail && p > .6 ? .5*(p - .6)/.4 : 0), amp = R() < skip ? 0 : env(p)*(.6 + R()*.4);
-      for (let k = 0; k < per && i < len; k++, i++){
-        const n = R()*2 - 1;
-        d[i] = amp*(k < op ? Math.sin(Math.PI*k/op)*(1 - K.air + K.air*n) : -.3*Math.exp(-(k - op)/(per*.18)) + K.air*.1*n);   // a puff, then the lips slap shut
-      }
-      puffs++;
-    }
-    if (K.bubbles) for (let b = 0, nb = 3 + Math.floor(R()*4); b < nb; b++){   // wet: little bubbly bloops
-      const s0 = Math.floor(R()*dur*.85*sr), bl = Math.floor(sr*(.02 + R()*.03)), fb = 220 + R()*380;
-      for (let k = 0; k < bl && s0 + k < len; k++) d[s0 + k] += .5*Math.sin(6.283*fb*(1 - .4*k/bl)*k/sr)*Math.sin(Math.PI*k/bl);
-    }
-    let pk = 0; for (let k = 0; k < len; k++) pk = Math.max(pk, Math.abs(d[k])); if (pk > 0) for (let k = 0; k < len; k++) d[k] /= pk;
-    const s = a.createBufferSource(), lp = a.createBiquadFilter(), hp = a.createBiquadFilter(), out = a.createGain(); s.buffer = buf;
+    const R = Math.random, rr = r => r[0] + R()*(r[1] - r[0]), t0 = a.currentTime + .01;
+    if (!FART_KINDS[kind]) do kind = FART_NAMES[Math.floor(R()*FART_NAMES.length)]; while (kind === sfx.lastFartKind);
+    const K = FART_KINDS[kind], F = fartBuf(a, kind), dur = F.dur, lpF = rr(K.lp), q = rr(K.q);
+    const s = a.createBufferSource(), lp = a.createBiquadFilter(), hp = a.createBiquadFilter(), out = a.createGain(); s.buffer = F.buf;
     lp.type = 'lowpass'; lp.Q.value = q; const lc = new Float32Array(12);   // the filter flutters a little and gets darker as it runs out of puff
     for (let k = 0; k < lc.length; k++) lc[k] = lpF*(1.12 - .35*k/(lc.length - 1))*(.9 + R()*.2);
     lp.frequency.setValueCurveAtTime(lc, t0, dur + .02);
     hp.type = 'highpass'; hp.frequency.value = 28; out.gain.value = kind === 'squeaky' ? .3 : kind === 'trumpet' ? .34 : kind === 'rumbly' ? .55 : .42;
     s.connect(lp).connect(hp).connect(out).connect(sfxOut(a));
     s.start(t0); s.stop(t0 + dur + .05); s.onended = () => [s, lp, hp, out].forEach(x => { try { x.disconnect(); } catch (e) {} });
-    sfx.lastFartKind = kind; (sfx.farts = sfx.farts || []).push({kind, dur:+dur.toFixed(3), base:+f0.toFixed(1), end:+f1.toFixed(1), lp:Math.round(lpF), puffs}); if (sfx.farts.length > 20) sfx.farts.shift();
+    sfx.lastFartKind = kind; (sfx.farts = sfx.farts || []).push({kind, dur:+dur.toFixed(3), base:+F.f0.toFixed(1), end:+F.f1.toFixed(1), lp:Math.round(lpF), puffs:F.puffs}); if (sfx.farts.length > 20) sfx.farts.shift();
   },
   buzz(){   // a little fly, come to see what the smell is
     const a = ac(); if (!a) return; const t0 = a.currentTime, o = a.createOscillator(), l = a.createOscillator(), lg = a.createGain(), lp = a.createBiquadFilter(), g = a.createGain();
@@ -1361,6 +1334,51 @@ sfx.thump = function(n){ const a = ac(); if (!a) return; const k = boomK(n), t0 
     const lp = a.createBiquadFilter(), sh = a.createWaveShaper(); lp.type = 'lowpass'; lp.frequency.value = 380; sh.curve = thumpCurve();
     const hg = drop(w, vary(130, .05), 52, .5 + k*.9, (.22 + k*.12)*m, 'triangle'); hg.connect(sh).connect(lp).connect(out);
     setTimeout(() => { try { sh.disconnect(); lp.disconnect(); } catch (e) {} }, (w + 2 + k*2)*1000 + 200); }); };
+// the whoopee cushion's puffs (sfx.fart): how long (s), puffs a second, where that ends up (times the start), wobble per puff,
+// missing puffs, airiness, puff width, filter (Hz), resonance
+const FART_KINDS = {
+  short:  {dur:[.13, .28], f:[70, 100], drift:[.85, 1.05], jit:.12, skip:.03, air:.3, open:.3, lp:[620, 820], q:[5, 8]},
+  long:   {dur:[.9, 1.5], f:[62, 88], drift:[.6, .8], jit:.15, skip:.05, air:.3, open:.3, lp:[560, 760], q:[5, 8], tail:true},
+  squeaky:{dur:[.3, .6], f:[190, 290], drift:[.82, 1.2], jit:.05, skip:.02, air:.15, open:.6, lp:[800, 1100], q:[7, 10]},
+  rumbly: {dur:[.7, 1.2], f:[34, 48], drift:[.8, 1], jit:.2, skip:.05, air:.4, open:.25, lp:[330, 440], q:[4, 6]},
+  wet:    {dur:[.4, .75], f:[48, 72], drift:[.7, 1], jit:.3, skip:.16, air:.75, open:.35, lp:[560, 760], q:[3, 5], bubbles:true},
+  trumpet:{dur:[.6, .95], f:[105, 140], drift:[.8, .92], jit:.04, skip:0, air:.12, open:.3, lp:[950, 1300], q:[3, 5], toot:true},
+  stutter:{dur:[.5, .8], f:[65, 95], drift:[.8, 1], jit:.12, skip:.04, air:.35, open:.3, lp:[600, 800], q:[5, 8], pops:true}
+};
+const FART_NAMES = Object.keys(FART_KINDS), FART_KEEP = 3;
+// one parp of this kind, written sample by sample. Each audio context keeps FART_KEEP of each kind and plays them again, so
+// only the first few parps of a kind pay for the writing. Written at 22.05 kHz (everything that comes out of the low-pass is
+// far below that), which is about half the work of the context's own 44.1/48 kHz.
+function fartBuf(a, kind){
+  const all = a.fartBufs || (a.fartBufs = {}), have = all[kind] || (all[kind] = []);
+  if (have.length >= FART_KEEP) return have[Math.floor(Math.random()*have.length)];
+  const R = Math.random, rr = r => r[0] + R()*(r[1] - r[0]), sr = Math.min(22050, a.sampleRate);
+  const K = FART_KINDS[kind], dur = rr(K.dur), f0 = rr(K.f), f1 = f0*rr(K.drift), shim = 3 + R()*5, shimPh = R()*6, pops = K.pops ? 3 + Math.floor(R()*3) : 0;
+  const env = p => { const tt = p*dur; let e = Math.min(1, tt/.012)*Math.min(1, (dur - tt)/(K.tail ? dur*.4 : .05));
+    if (K.toot) e *= p < .15 ? 1 : p < .2 ? .15 : 1;   // "pa... PAAARP"
+    if (pops){ const sg = p*pops % 1; e *= sg < .6 ? Math.pow(Math.sin(Math.PI*sg/.6), .4) : 0; }
+    return e*(.82 + .18*Math.sin(tt*shim*6.283 + shimPh)); };
+  const len = Math.ceil(sr*(dur + .03)), buf = a.createBuffer(1, len, sr), d = buf.getChannelData(0);
+  let i = 0, wander = 0, puffs = 0;
+  while (i < len){
+    const p = i/sr/dur; if (p >= 1) break;
+    wander = wander*.92 + (R() - .5)*.06;   // the pitch wanders a little, it never sweeps like a spring
+    const f = (f0 + (f1 - f0)*p)*(1 + wander)*(1 + (R()*2 - 1)*K.jit)*(K.toot && p >= .15 ? 1.19 : 1);
+    const per = Math.max(6, Math.round(sr/f)), op = Math.max(3, Math.round(per*K.open*(.85 + R()*.3)));
+    const skip = K.skip + (K.tail && p > .6 ? .5*(p - .6)/.4 : 0), amp = R() < skip ? 0 : env(p)*(.6 + R()*.4);
+    for (let k = 0; k < per && i < len; k++, i++){
+      const n = R()*2 - 1;
+      d[i] = amp*(k < op ? Math.sin(Math.PI*k/op)*(1 - K.air + K.air*n) : -.3*Math.exp(-(k - op)/(per*.18)) + K.air*.1*n);   // a puff, then the lips slap shut
+    }
+    puffs++;
+  }
+  if (K.bubbles) for (let b = 0, nb = 3 + Math.floor(R()*4); b < nb; b++){   // wet: little bubbly bloops
+    const s0 = Math.floor(R()*dur*.85*sr), bl = Math.floor(sr*(.02 + R()*.03)), fb = 220 + R()*380;
+    for (let k = 0; k < bl && s0 + k < len; k++) d[s0 + k] += .5*Math.sin(6.283*fb*(1 - .4*k/bl)*k/sr)*Math.sin(Math.PI*k/bl);
+  }
+  let pk = 0; for (let k = 0; k < len; k++) pk = Math.max(pk, Math.abs(d[k])); if (pk > 0) for (let k = 0; k < len; k++) d[k] /= pk;
+  const F = {buf, dur, f0, f1, puffs}; have.push(F); return F;
+}
 let THUMP_CURVE = null;
 function thumpCurve(){ if (!THUMP_CURVE){ THUMP_CURVE = new Float32Array(256); for (let i = 0; i < 256; i++){ const x = i/127.5 - 1; THUMP_CURVE[i] = Math.tanh(2.5*x)/Math.tanh(2.5); } } return THUMP_CURVE; }
 const SFX_CAT = {ook:'creatures', buzz:'creatures', aww:'creatures', bird:'ambient', blub:'ambient', click:'voice', nope:'voice', row:'voice', chime:'voice'};   // everything else is Blocks
@@ -1825,7 +1843,11 @@ function buildMesh(c, ghost){
       const slab = new THREE.Mesh(cbox(horiz ? 1 : .3, 3, horiz ? .3 : 1), M.glyph); slab.position.y = open ? 4.4 : 1.5; g.add(slab);
       const band = new THREE.Mesh(cbox(horiz ? 1.02 : .32, .3, horiz ? .32 : 1.02), M.frieze); band.position.y = slab.position.y + .9; g.add(band);
       if (!open){ const lock = new THREE.Mesh(cbox(horiz ? .3 : .34, .3, horiz ? .34 : .3), M.hotOff); lock.position.y = 1.5; g.add(lock); }
-      if (c.wired && c.mid){ const lamp = new THREE.Mesh(cbox(horiz ? .56 : 1, .44, horiz ? 1 : .56), open ? M.lampOn : M.lampOff); lamp.position.y = 2.76; g.add(lamp); if (open && !ghost) lamp.add(glow(M.glowGold, 1.6, 0)); }   // the door's own lamp: it lights when power reaches the door
+      // the door's own lamp: a proper lamp block hung under a stone beam on the room side of the doorway, clear of the slab both shut and
+      // open (it used to sit inside the slab, flush with it: the slab ground up through it when it opened, and nobody saw it was a lamp)
+      if (c.wired && c.mid){ const [ix, iz] = c.inside || [0, 0], at = v => [ix*v, iz*v];
+        const lamp = new THREE.Mesh(cbox(.7, .7, .7), open ? M.lampOn : M.lampOff); lamp.position.set(at(.9)[0], 3, at(.9)[1]); g.add(lamp); if (open && !ghost) lamp.add(glow(M.glowGold, 1.8, 0));
+        const beam = new THREE.Mesh(cbox(ix ? 1.05 : 3, .26, iz ? 1.05 : 3), M.glyph); beam.position.set(at(.72)[0], 3.48, at(.72)[1]); g.add(beam); }   // jamb to jamb, in front of the slab's path
       if (c.lit && !ghost) g.add(glow(M.glowGold, 1.2, 3.2));
       break; }
     case 'fart': {
@@ -2068,7 +2090,7 @@ function vkey(c){
     case 'socket': return 'S'+c.lit;
     case 'bridge': return 'B'+c.lit;
     case 'water': case 'confetti': case 'firework': case 'gong': case 'goldfish': case 'spacetoilet': return c.t + c.lit + c.dir + (c.away ? 'a' : '');
-    case 'door': return 'D'+(c.lit || c.latched)+c.dir+(c.wired ? (c.mid ? 'm' : 'w') : '');
+    case 'door': return 'D'+(c.lit || c.latched)+c.dir+(c.wired ? (c.mid ? 'm' + (c.inside || []).join('') : 'w') : '');
     case 'gate': return 'G'+c.lit+(c.dir % 2);
     case 'dispenser': case 'launcher': case 'disco': case 'airhorn': case 'gunge': return c.t + c.lit;
     case 'bananacannon': return c.t + c.lit + c.dir;
@@ -2478,7 +2500,7 @@ function renderCard(){
     if (r.check === 'pen'){ const nT = TROOP.room === r && TROOP.list.length ? TROOP.list.length : r.troop.n; card.innerHTML = `<h3>Tamarins in the pen</h3><div class="note"><b style="font-size:22px">${rt.inPen || 0} / ${nT}</b>${nT < r.troop.n ? '<br>(just one, to start with)' : ''}</div>`; return; }
     if (r.check === 'launch'){ card.innerHTML = `<h3>Monkey launches</h3><div class="note"><b style="font-size:22px">${Math.min(rt.launches || 0, r.launches)} / ${r.launches}</b><br>(they have to do it themselves!)</div>`; return; }
     if (r.check === 'together'){ card.hidden = true; card.innerHTML = ''; return; }
-    if (r.check === 'each'){ const n = (rt.seen || new Set()).size; card.innerHTML = `<h3>Dance plates: ${n} / ${r.inputs.length}</h3>${DISCO_LAYERS.map((nm, k) => `<div class="step${k < n ? ' on' : ''}">${k < n ? '&#10003;' : '&#9675;'} ${nm}</div>`).join('')}<div class="note">Stand on each plate by itself.</div>`; return; }
+    if (r.check === 'each'){ const n = (rt.seen || new Set()).size; card.innerHTML = `<h3>Dance plates: ${n} / ${r.inputs.length}</h3>${DISCO_LAYERS.map((nm, k) => { const ok = (rt.seen || new Set()).has(k); return `<div class="step${ok ? ' on' : ''}">${ok ? '&#10003;' : '&#9675;'} ${nm}</div>`; }).join('')}<div class="note">Stand on each plate, one at a time.</div>`; return; }
     if (r.check === 'pulse'){ card.innerHTML = `<h3>Parps</h3><div class="blinks">${[...Array(r.count)].map((_, i) => `<span style="font-size:24px">${i < rt.pulses ? '&#10003;' : '&#9675;'}</span>`).join('')}</div>${r.need === 'lever' ? '<div class="note">Lever ON, OFF, ON</div>' : ''}`; return; }
     if (r.check === 'latch'){ const ph = rt.phase || 0, many = r.inputs.length > 2; card.innerHTML = `<h3>Memory test</h3><div class="note">${ph ? '&#10003; It remembered ON' : '&#9675; ' + (r.setText || 'Step on the plate, then off. Does it stay ON?')}<br>&#9675; Reset: does it stay OFF?${many ? `<br>Plates that work: ${(rt.setsOk || new Set()).size} / ${r.inputs.length - 1}` : ''}</div>`; return; }
     if (r.check === 'count'){ card.innerHTML = `<h3>Dings: ${rt.counting ? rt.dings : (rt.lastDings ?? '?')} (want ${r.count})</h3><div class="note">Press the button ONCE and count. ${[...Array(r.count)].map(() => '&#128276;').join(' ')}</div>`; return; }
@@ -2687,6 +2709,12 @@ function topAt(px, pz){
 }
 function heightAt(px, pz){ let h = 0; for (const ox of [-RAD, RAD]) for (const oz of [-RAD, RAD]) h = Math.max(h, topAt(px+ox, pz+oz)); return h; }
 function playerOnCell(x, y){ if (!inFP() || P.y > floorAt(x, y) + .3) return false; const [cx, cy] = cellAtWorld(P.x, P.z); return cx === x && cy === y; }
+// a pressure plate goes down as soon as any part of your feet is on it, like Java (Tom, 11 Oct: it needed exact placement, the middle of
+// the cell; a plate is nearly the whole block, so stepping on its edge counts)
+const FEET = RAD*.9;
+function playerOnPlate(x, y){ if (!inFP() || P.y > floorAt(x, y) + .3) return false; for (const ox of [-FEET, FEET]) for (const oz of [-FEET, FEET]){ const [cx, cy] = cellAtWorld(P.x + ox, P.z + oz); if (cx === x && cy === y) return true; } return false; }
+// just stepped on a plate that isn't down yet? run the next redstone step now, not up to a tick later
+function plateUnderfoot(){ if (!inFP()) return false; for (const ox of [-FEET, FEET]) for (const oz of [-FEET, FEET]){ const [cx, cy] = cellAtWorld(P.x + ox, P.z + oz), c = at(cx, cy); if (c && c.t === 'plate' && !c.tray && !c.on && P.y <= floorAt(cx, cy) + .3) return true; } return false; }
 function overlapsPlayer(x, y){ if (!inFP()) return false; for (const ox of [-RAD, RAD]) for (const oz of [-RAD, RAD]){ const [cx,cy] = cellAtWorld(P.x+ox, P.z+oz); if (cx===x && cy===y && P.y < 1) return true; } return false; }
 function spawnPlayer(def){
   const pts = [];
@@ -4202,6 +4230,7 @@ function frame(now){
     acc += dt;
     let n = 0;
     const tms = S.slow ? 650 : TICK_MS;
+    if (!S.slow && plateUnderfoot()) acc = Math.max(acc, tms);   // (a plate you just stepped on goes down this frame)
     while (acc >= tms && n < 5){ step(); acc -= tms; n++; }
     if (n) syncVisuals();
   }
@@ -4296,7 +4325,7 @@ const TEMPLE_ROOMS = [
     get hint(){ return `Put the lever down and lay dust from it to the cushion. ${useWord()[0].toUpperCase() + useWord().slice(1)} the lever: ON is a PARP. To parp AGAIN, flip it OFF, then ON.`; },
     win:'PARP! A lever switches power on and off.',
     mc:'Stick a lever on a block in Minecraft and run dust from it. Flick it to switch things on and off.',
-    bonus:{text:'BONUS: make it parp 5 times to win your own Whoopee Cushion!', kind:'pulses', n:5, reward:'fart'},
+    bonus:{text:'BONUS: make it parp 5 times (ON, OFF, ON...) to win your own Whoopee Cushion!', kind:'pulses', n:5, reward:'fart'},
     unlock:['lever'], sol:[K('lever',4,2),D(5,2),D(6,2),D(7,2)] },
   { id:6, need:'button', ch:1, name:'Quick!', give:['dust','button'], check:'pulse', count:3, out:[[7,2]],
     fixed:[K('fart',7,2)],
@@ -4355,15 +4384,18 @@ const TEMPLE_ROOMS = [
     win:'Ooooh! Aaaah! When a wire splits, every branch gets the power at the very same moment.',
     mc:'Firework shows in Minecraft use one button and branching wire to fire lots of dispensers at once.',
     sol:[D(5,3),D(5,2),D(4,3),D(3,3),D(3,2),D(6,3),D(7,3),D(7,2)] },
-  { id:12, ch:4, name:'Monkey Disco', give:['dust'], check:'each', inputs:[[2,2],[8,2],[2,6],[8,6]], out:[[5,4]],
-    fixed:[K('plate',2,2),K('plate',8,2),K('plate',2,6),K('plate',8,6),K('disco',5,4)],
-    troop:{kinds:['mandrill','baboon','howler','spider','proboscis','lemur'], n:18, start:[1,1,9,7], dance:true, danceAt:[5,4], avoidPlates:true},
-    goal:'Wire ALL FOUR dance plates to the disco ball. Every plate that works adds more party: lights, a beat, a mirror ball... then DANCING!',
+  { id:12, ch:4, name:'Monkey Disco', give:['dust'], check:'each', inputs:[[2,7],[4,7],[6,7],[8,7]], out:[[5,3]],
+    // the plates in a row along one side, the ball out in front (Tom, 11 Oct: four plates round the ball made kids wire a pinwheel, a
+    // shape we never want in a kids' game). Now the natural build is a comb: one wire along the plates, one wire up into the ball.
+    fixed:[K('plate',2,7),K('plate',4,7),K('plate',6,7),K('plate',8,7),K('disco',5,3)],
+    troop:{kinds:['mandrill','baboon','howler','spider','proboscis','lemur'], n:18, start:[1,1,9,6], dance:true, danceAt:[5,3], avoidPlates:true,
+      labels:[['LIGHTS', 2, 7], ['MUSIC', 4, 7], ['MIRROR BALL', 6, 7], ['DANCING', 8, 7]]},   // each plate says what it switches on, with its icon floating over it
+    goal:'Wire ALL FOUR dance plates to the disco ball. Each plate switches on its own bit of the party: lights, music, mirror ball, dancing!',
     hello:'The wildest party animals in the jungle! Every dance plate that works adds more party. Get all four for the full disco!',
-    hint:'Run a wire from EVERY plate to the disco ball, then stand on each plate by itself. Wires can join together, just like they can split.',
+    hint:'Put red dust in a line along the plates, so it touches every plate. Then put dust from that line up to the disco ball, so it touches the ball. Then stand on each plate, one at a time.',
     win:'PARTY! This plate OR that plate OR that one: any of them works. That\'s a real thing called an OR gate!',
     mc:'Join wires from lots of plates or buttons and any of them can open the same door. Handy for secret bases!',
-    sol:[...row(2,3,7), D(5,3), ...row(6,3,7), D(5,5)] },
+    sol:[...row(6,2,8), D(5,5), D(5,4)] },
   { id:13, direct:true, ban:['rblock','lever','button','plate'], want:'the Redstone Torch has to do it', ch:2, name:'Torches are power too', give:['torch'], check:'lit', out:[[4,3],[6,3]],
     fixed:[K('lamp',4,3),K('fart',6,3)],
     goal:'You\'ve got a Redstone Torch! It\'s power on a stick. Wake the lamp AND the cushion with ONE torch.',
@@ -6410,7 +6442,7 @@ function setupRoomCells(save, wallKindOf){
     (r.quick || []).forEach(([x0,y0,x1,y1]) => { for (let x=x0;x<=x1;x++) for (let y=y0;y<=y1;y++) S.floor[y*NX+x] = 1; });
   });
   ROOMS.forEach(r => {
-    if (r.exit){ r.exitCells = doorSpan(r.exit, r.box); const vert = r.exit[0] === r.box.x0 || r.exit[0] === r.box.x1; r.exitCells.forEach(([x, y]) => { const d = makeCell('door', x, y, {locked:true, dir:vert ? 1 : 0}); d.room = r.id; d.latched = A.solved.has(r.id); if (r.doorOut){ d.wired = true; d.mid = x === r.exit[0] && y === r.exit[1]; } setCell(x, y, d); }); }
+    if (r.exit){ r.exitCells = doorSpan(r.exit, r.box); const vert = r.exit[0] === r.box.x0 || r.exit[0] === r.box.x1; r.exitCells.forEach(([x, y]) => { const d = makeCell('door', x, y, {locked:true, dir:vert ? 1 : 0}); d.room = r.id; d.latched = A.solved.has(r.id); if (r.doorOut){ d.wired = true; d.mid = x === r.exit[0] && y === r.exit[1]; if (d.mid) d.inside = vert ? [x === r.box.x1 ? -1 : 1, 0] : [0, y === r.box.y1 ? -1 : 1]; /* which way the room is: the door's lamp hangs on that side */ } setCell(x, y, d); }); }
     if (r.tntAt && !A.solved.has(r.id)){ const [x,y] = r.tntAt; setCell(x, y, makeCell('tnt', x, y, {locked:true})); }
     r.fixed.forEach(f => { const c = makeCell(f.t, f.x, f.y, Object.assign({locked:true}, f)); if (f.on) c.on = true; setCell(f.x, f.y, c); });
     r.bridge.forEach(([x,y]) => setCell(x, y, makeCell('bridge', x, y, {locked:true})));
@@ -6940,7 +6972,7 @@ function coopPad(r, x, y){
   }
   P.vy = 6.5; P.ground = false; sfx.boing();   // any other time it just bounces you on the spot
   if (C && !A.solved.has(r.id)){ const sig = buildSig(r); if (C.hopSig !== sig){ C.hopSig = sig; plogEvent('wrong');
-    monkeySay(baroldOnCell(...r.coop.plate) ? 'Not yet! The pad went ON while I\'m still ON my plate. It has to wait until I step OFF!' : 'Wait for me! Let me get on my safety plate first.', 7000); } }
+    monkeySay(baroldOnCell(...r.coop.plate) ? 'Not yet! The pad went ON while I\'m still ON my plate. It has to wait until I step OFF!' + ((t => t ? ' ' + t : '')(coopFix(r, coopTorches(r).some(c => c.attach >= 0 && !c.lit)))) : 'Wait for me! Let me get on my safety plate first.', 11000); } }
 }
 // walk to a cell (true once he's there)
 function coopGo(m, u, mx, my, to, dt, run){
@@ -7010,13 +7042,29 @@ function coopBarold(dt, m, u, r, mx, my){
   else if (C.ph === 'count'){ coopFace(m, u); if (C.t > 2300 && !stillTalking(m)){
     let off = null; for (const [dx, dy] of DIRS){ const x = K.plate[0] + dx, y = K.plate[1] + dy; if (!off && passableCell(x, y) && !at(x, y) && coopSide(r, x, y) === 0) off = [x, y]; }
     if (!off) for (const [dx, dy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]){ const x = K.plate[0] + dx, y = K.plate[1] + dy; if (!off && passableCell(x, y) && !at(x, y) && coopSide(r, x, y) === 0) off = [x, y]; }
-    C.off = off || entryOf(r); C.padAtOff = padLit; set('off'); } }
+    C.off = off || entryOf(r); C.padAtOff = padLit; C.grumpy = coopTorches(r).some(c => c.attach >= 0 && !c.lit); set('off'); } }   // (grumpy: a torch went OFF while he stood on the plate)
   else if (C.ph === 'off'){
     coopGo(m, u, mx, my, C.off, dt);
     if (C.t > 2800){ C.left = false; C.sig = buildSig(r); plogEvent('wrong');
-      monkeySay(padLit ? 'Hmm. The pad was ON the whole time. It should only go ON when I step OFF.' : 'Nothing! When I step OFF my plate, the pad has to switch ON.', 7000); set('go'); }
+      monkeySay(padLit ? 'Hmm. The pad was ON the whole time. It should only go ON when I step OFF.' : coopWhyNothing(r, C) || 'Nothing! When I step OFF my plate, the pad has to switch ON.', 9000); set('go'); }
   }
   else if (C.ph === 'flying'){ if (!(mx === C.off[0] && my === C.off[1])) coopGo(m, u, mx, my, C.off, dt); else coopFace(m, u); }
+}
+// room 19, the pad stayed dark when Barold stepped off: say which part of the NOT gate is wrong, in words a 7-year-old gets
+// (Tom's son: his plate's wire ran into the torch, not the block, and Barold only said "Nothing!")
+function coopTorches(r){ const b = r.box, out = []; for (let x = b.x0 + 1; x < b.x1; x++) for (let y = b.y0 + 1; y < b.y1; y++){ const c = at(x, y); if (c && c.t === 'torch' && !c.locked) out.push(c); } return out; }
+function coopWhyNothing(r, C){ const t = coopFix(r, C.grumpy); return t && 'Nothing! ' + t; }
+// grumpy: did a torch on a block go OFF while Barold stood on his plate?
+function coopFix(r, grumpy){
+  const ts = coopTorches(r), [px, py] = r.coop.pad, [qx, qy] = r.coop.plate;
+  if (!ts.length) return 'You need a grumpy torch: a torch stuck on the side of a block.';
+  if (!ts.some(c => c.attach >= 0)) return 'Stick your torch on the SIDE of a block. Then it can go grumpy.';
+  if (!grumpy){
+    if (!DIRS.some(([dx, dy]) => { const c = at(qx + dx, qy + dy); return c && c.t === 'dust'; })) return 'My plate needs a wire! Put redstone dust from my plate, with its END pointing INTO the stone block. Being next to the block is not enough.';
+    return 'The wire from my plate has to point INTO the block. Not at the torch. Then the torch goes OFF while I stand here.';
+  }
+  if (ts.some(c => c.lit) && !ts.some(c => Math.abs(c.x - px) + Math.abs(c.y - py) === 1)) return 'Your torch is ON, but its power isn\'t getting to the Bounce Pad. Put the torch right next to the pad.';
+  return null;
 }
 // each frame in a co-op room: where your last safe floor was, the bouncy hole, the room's checks
 function coopFrame(dt){
@@ -7260,7 +7308,7 @@ function troopFrame(dt){
   const r = TROOP.room; if (!r || !TROOP.list.length) return;
   const t = r.troop, s = dt/1000, rt = A.rt && A.rt.room === r ? A.rt : null, now = performance.now();
   // what's going on in the room
-  const disp = litOfType(r, 'dispenser'), discoOn = t.dance && litOfType(r, 'disco').length > 0, party = discoOn && discoLayer(r) >= 4, launchers = litOfType(r, 'launcher');
+  const disp = litOfType(r, 'dispenser'), discoOn = t.dance && litOfType(r, 'disco').length > 0, party = discoOn && discoHas(r, 3), launchers = litOfType(r, 'launcher');
   if (t.dance) discoFrame(r, s, discoOn);
   // dispensers fire bananas into the pen
   if (disp.length && !reduceMotion){
@@ -7408,8 +7456,10 @@ function animTroop(m, s, moving, dancing){
 /* ---- room 12's disco: every plate that works switches on one more layer of the party, so what's missing is obvious.
    1 lights (coloured spots sweeping the floor), 2 the beat (musicCue('disco', n)), 3 a big mirror ball, 4 dancers + confetti.
    Nothing strobes: colours drift, nothing flashes faster than the beat; with reduced motion the lights hold still. */
-const DISCO_LAYERS = ['Lights', 'A beat', 'Mirror ball', 'Dancing!'];
-const DISCO_SAY = ['LIGHTS! That plate works. But no music yet... try another plate!', 'A BEAT! Two plates work. Still no mirror ball...', 'A MIRROR BALL! Three plates. But nobody\'s dancing yet. ONE more!'];
+const DISCO_LAYERS = ['Lights', 'Music', 'Mirror ball', 'Dancing!'];
+// each plate switches on its OWN layer (Tom, 11 Oct: "a visual label on them for what they do"): its name tag and the icon over it say which
+const DISCO_SAY = ['LIGHTS! That plate works!', 'MUSIC! That plate works!', 'A MIRROR BALL! That plate works!', 'DANCING! That plate works!'];
+const discoHas = (r, k) => A.solved.has(r.id) || !!(A.rt && A.rt.room === r && A.rt.seen && A.rt.seen.has(k));
 const DISCO = {g:null, n:0, beat:0, bpm:140, next:0, conT:0, lit:false};
 function discoLayer(r){ return A.solved.has(r.id) ? 4 : (A.rt && A.rt.room === r && A.rt.seen ? A.rt.seen.size : 0); }
 function discoBuild(r){
@@ -7429,32 +7479,45 @@ function discoBuild(r){
   const sparkle = new THREE.Points(pg, new THREE.PointsMaterial({color:0xffffff, size:.16, transparent:true, opacity:.85, depthWrite:false})); sparkle.raycast = () => {}; ball.add(sparkle);
   DISCO.ball = ball; DISCO.ballMesh = bm; DISCO.sparkle = sparkle;
   g.visible = false; decorRoot.add(g); DISCO.g = g; DISCO.n = 0; DISCO.lit = false; DISCO.drop = 0;
+  // what each plate does, as a little pixel icon floating over it: dim till that plate works, bright after
+  DISCO.icons = r.inputs.map(([x, y], k) => { const q = cellPos(x, y), sp = new THREE.Sprite(new THREE.SpriteMaterial({map:tex(DISCO_ICON_CV[k]), transparent:true, depthWrite:false}));
+    sp.position.set(q.x, q.y + .8, q.z); sp.scale.set(.55, .55, 1); sp.userData.y0 = q.y + .8; sp.raycast = () => {}; decorRoot.add(sp); return sp; });
 }
-function discoDrop(){ partyDialDrop(); if (DISCO.g){ decorRoot.remove(DISCO.g); DISCO.g.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); }); DISCO.g = null; } DISCO.lit = false; }
+// 16x16 pixel icons: lights (a spotlight), music (a note), the mirror ball, dancing (a monkey with its arms up)
+const DISCO_ICON_CV = [
+  cv16(g => { g.fillStyle = '#2a1745'; g.fillRect(0, 0, 16, 16); g.fillStyle = '#9aa3ad'; g.fillRect(5, 1, 6, 3); g.fillStyle = '#5b6470'; g.fillRect(6, 4, 4, 1);
+    g.fillStyle = '#ffe14a'; for (let y = 5; y < 15; y++){ const w = 2 + Math.floor((y - 5)*1.1); g.fillRect(8 - w, y, w*2, 1); } g.fillStyle = '#fff6b0'; for (let y = 5; y < 15; y++) g.fillRect(7, y, 2, 1); }),
+  cv16(g => { g.fillStyle = '#2a1745'; g.fillRect(0, 0, 16, 16); g.fillStyle = '#ff7fd0'; g.fillRect(9, 2, 2, 9); g.fillRect(11, 2, 3, 2); g.fillRect(13, 4, 1, 2); g.fillRect(5, 10, 6, 3); g.fillRect(6, 13, 4, 1); g.fillRect(6, 9, 4, 1); }),
+  cv16(g => { g.fillStyle = '#2a1745'; g.fillRect(0, 0, 16, 16); g.fillStyle = '#5b6470'; g.fillRect(7, 0, 2, 3); for (let y = 3; y < 15; y++) for (let x = 2; x < 14; x++){ const d = Math.hypot(x - 7.5, y - 8.5); if (d < 6) { g.fillStyle = (x + y) % 2 ? '#f4f8ff' : '#9aa3ad'; g.fillRect(x, y, 1, 1); } } g.fillStyle = '#fff27a'; g.fillRect(12, 3, 1, 3); g.fillRect(11, 4, 3, 1); }),
+  cv16(g => { g.fillStyle = '#2a1745'; g.fillRect(0, 0, 16, 16); g.fillStyle = '#8a5a2b'; g.fillRect(6, 2, 4, 4); g.fillRect(6, 7, 4, 4); g.fillRect(3, 2, 2, 2); g.fillRect(4, 4, 2, 3); g.fillRect(11, 2, 2, 2); g.fillRect(10, 4, 2, 3); g.fillRect(5, 11, 2, 3); g.fillRect(9, 11, 2, 3); g.fillRect(4, 13, 2, 1); g.fillRect(10, 13, 2, 1);
+    g.fillStyle = '#e8c49a'; g.fillRect(7, 3, 2, 2); g.fillStyle = '#2a2a2a'; g.fillRect(7, 3, 1, 1); g.fillRect(8, 3, 1, 1); g.fillStyle = '#ffe14a'; g.fillRect(1, 9, 1, 1); g.fillRect(14, 8, 1, 1); g.fillRect(13, 12, 1, 1); })
+];
+function discoDrop(){ partyDialDrop(); (DISCO.icons || []).forEach(sp => { decorRoot.remove(sp); sp.material.map.dispose(); sp.material.dispose(); }); DISCO.icons = null; if (DISCO.g){ decorRoot.remove(DISCO.g); DISCO.g.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); }); DISCO.g = null; } DISCO.lit = false; }
 function discoFrame(r, s, on){
   if (!DISCO.g) discoBuild(r);
-  const n = on ? discoLayer(r) : 0, rm = reduceMotion;
+  const n = on ? discoLayer(r) : 0, rm = reduceMotion, has = k => on && discoHas(r, k), lights = has(0), beat = has(1), ballOn = has(2), dance = has(3);
   DISCO.n = n;
-  DISCO.lit = on; DISCO.g.visible = n >= 1;
+  DISCO.lit = on; DISCO.g.visible = n >= 1; DISCO.spots.forEach((sp, i) => { sp.visible = lights; DISCO.beams[i].visible = lights; });
+  (DISCO.icons || []).forEach((sp, k) => { const ok = discoHas(r, k); sp.material.opacity = ok ? 1 : .45; sp.position.y = sp.userData.y0 + (rm ? 0 : Math.sin((A.clock || 0)*.003 + k)*.06); });
   const PL = PARTY.lvl, inRoom = !!(A.rt && A.rt.room === r); DISCO.bpm = PARTY_BPM[PL - 1];   // PARTY POWER: faster music, faster lights
-  DISCO.beat += s*DISCO.bpm/60 * (n >= 2 ? 1 : .5);
-  if (n >= 1){
+  DISCO.beat += s*DISCO.bpm/60 * (beat ? 1 : .5);
+  if (lights){
     const tt = DISCO.beat*.25*(PL === 3 ? 1.25 : 1), pul = PL === 1 ? Math.PI*2*DISCO.beat : Math.PI*DISCO.beat;   // the spots drift round (a lap every 16 beats); never flashing faster than every other beat at 2 and 3
     DISCO.spots.forEach((sp, i) => { const a = sp.userData.ph + (rm ? 0 : tt*Math.PI*2*(i % 2 ? 1 : -.8)); sp.position.x = Math.cos(a)*sp.userData.rad; sp.position.z = Math.sin(a)*sp.userData.rad*.8;
-      sp.material.opacity = .3 + (n >= 2 && !rm ? (1 - Math.cos(pul))*[.05, .07, .09][PL - 1] : 0);
+      sp.material.opacity = .3 + (beat && !rm ? (1 - Math.cos(pul))*[.05, .07, .09][PL - 1] : 0);
       if (!sp.userData.col0) sp.userData.col0 = sp.material.color.clone();
       if (PL === 3 && !rm){ sp.material.color.setHSL((i/5 + DISCO.beat/32) % 1, 1, .6); DISCO.beams[i].material.color.copy(sp.material.color); }   // at 3 the colours roll round the rainbow
       else if (!sp.material.color.equals(sp.userData.col0)){ sp.material.color.copy(sp.userData.col0); DISCO.beams[i].material.color.copy(sp.userData.col0); }
       const b = DISCO.beams[i]; b.position.x = sp.position.x/2; b.position.z = sp.position.z/2; b.lookAt(b.position.x*2 + DISCO.g.position.x, DISCO.g.position.y, b.position.z*2 + DISCO.g.position.z); b.rotateX(Math.PI/2); });
   }
   // the mirror ball comes down for layer 3, and goes back up when the party stops
-  const want = n >= 3 ? 3.6 : 7.5; DISCO.ball.position.y += (want - DISCO.ball.position.y)*Math.min(1, s*(rm ? 6 : 3)); DISCO.ball.visible = n >= 3 || DISCO.ball.position.y < 7.2;
+  const want = ballOn ? 3.6 : 7.5; DISCO.ball.position.y += (want - DISCO.ball.position.y)*Math.min(1, s*(rm ? 6 : 3)); DISCO.ball.visible = ballOn || DISCO.ball.position.y < 7.2;
   if (!rm){ DISCO.ballMesh.rotation.y += s*[.6, .9, 1.5][PL - 1]; DISCO.sparkle.rotation.y += s*[.25, .4, .7][PL - 1]; }
   // the beat: one bar at a time, scheduled a little ahead on the audio clock (only while you're in the room)
-  if (n >= 2 && inRoom) discoGroove(n); else partyStop();
-  partyFrame(r, s, n, inRoom);
+  if (beat && inRoom) discoGroove(n); else partyStop();
+  partyFrame(r, s, dance ? 4 : beat ? 2 : n ? 1 : 0, inRoom);
   // dancers + confetti: a pop of confetti every couple of bars
-  if (n >= 4){ DISCO.conT -= s; if (DISCO.conT <= 0){ DISCO.conT = 3.4; if (!rm) confetti3D(cellPos(...r.troop.danceAt).add(new THREE.Vector3(0, 1.5, 0))); } } else DISCO.conT = .4;
+  if (dance){ DISCO.conT -= s; if (DISCO.conT <= 0){ DISCO.conT = 3.4; if (!rm) confetti3D(cellPos(...r.troop.danceAt).add(new THREE.Vector3(0, 1.5, 0))); } } else DISCO.conT = .4;
 }
 function discoGroove(n){
   const a = mbus(); if (!a) return;
@@ -7469,13 +7532,13 @@ function discoNoise(a, t, dur, vol, hp){
   g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur); src.connect(f).connect(g).connect(a.mbus); src.start(t); src.stop(t + dur + .02); mdone([src, f, g], src);
 }
 /* ---- room 12's PARTY POWER dial (Tom: funny as intensity, not a style menu). A big red button on the wall turns it up
-   1 -> 2 -> 3 -> back to 1: 1 DISCO, 2 DUBSTEP (half-time, wobble bass), 3 BELGIAN HOOVER RAVE (fast and hard).
+   1 -> 2 -> 3 -> back to 1: 1 DISCO, 2 DUBSTEP (brostep: half-time, a talking growl bass), 3 BELGIAN HOOVER RAVE (fast and hard).
    Every level still builds layer by layer with the plates (2 drums, 3 bass, 4 the lead and the silly extras).
    All of it is synthesised here (our own riffs; only the style is borrowed), one node chain per instrument per bar,
    so a bar is about 20-35 nodes; it all stops the moment you leave the room. Remembered per device, like the volume. ---- */
 const PARTY = {lvl:1, room:null, dial:null, ptr:null, btn:null, tex:null, ang:0, press:0, srcs:new Set(), bus:null, bar:0, live:0, made:0,
   bitsT:0, bits:null, headBack:false, shook:0, playing:false};
-const PARTY_NAME = ['DISCO', 'DUBSTEP', 'HOOVER RAVE'], PARTY_BPM = [122, 140, 172], PARTY_ANG = [150, 90, 30];
+const PARTY_NAME = ['DISCO', 'DUBSTEP', 'HOOVER RAVE'], PARTY_BPM = [122, 140, 175], PARTY_ANG = [150, 90, 30];
 try { const v = +localStorage.getItem('redstone-academy.partyPower'); if (v >= 1 && v <= 3) PARTY.lvl = v; } catch (e) {}
 // the sign: pixel art flat on the wall. A dial with 1, 2, 3 round the top, a picture under each, a red button in the middle.
 const PARTY_ICONS = {
@@ -7540,8 +7603,8 @@ function partyTurn(){
   PARTY.press = 1; PARTY.bar = 0; if (PARTY.tex){ PARTY.tex.image = partyDialCanvas(PARTY.lvl); PARTY.tex.needsUpdate = true; }
   sfx.button(); partyWhoosh(PARTY.lvl > was);
   partyStop(.06); DISCO.next = 0;   // the new music starts right away
-  const beat = DISCO.n >= 2, L = PARTY.lvl;
-  showToast(`PARTY POWER ${L}: ${PARTY_NAME[L - 1]}!` + (beat ? '' : ' (Get two plates working to hear it.)'));
+  const beat = DISCO.lit && !!A.rt && !!A.rt.room && A.rt.room.check === 'each' && discoHas(A.rt.room, 1), L = PARTY.lvl;
+  showToast(`PARTY POWER ${L}: ${PARTY_NAME[L - 1]}!` + (beat ? '' : ' (Get the MUSIC plate working to hear it.)'));
   if (A.monkey && beat) setTimeout(() => { if (A.on && PARTY.lvl === L) monkeySay(bag('party' + L, [
     ['Ahh, DISCO. Nice and groovy.', 'Back to disco. My knees say thank you.', 'Disco! Everybody do the Barold!'],
     ['DUBSTEP! Wub wub WUB!', 'The floor is wobbling. Is the floor meant to wobble?', 'Wub wub... I\'ve got wubs in my ears!'],
@@ -7608,31 +7671,50 @@ function partyBar(a, n, L, t0){
     if (n >= 3) pVoice(a, out, Array.from({length:8}, (_, i) => [at(i/2), PHZ(root + (i % 2 ? 12 : 0)), b*.45, .55]), {type:'sawtooth', lp:850, q:3, pluck:.09, fenv:[1600, 500, .06]});
     if (n >= 4){ chord.forEach(c => pVoice(a, out, [[at(1.5), PHZ(36 + root + c), b*.35, .12], [at(3.5), PHZ(36 + root + c), b*.35, .12]], {type:'sawtooth', detune:[-7, 7], lp:2600, q:.7, att:.01}));
       if (ph === 3) pVoice(a, out, [[at(2), PHZ(36), b*2, .09, {from:PHZ(24), glide:b*1.6}]], {type:'sawtooth', detune:[-10, 10], lp:3000, att:.3}); }
-  } else if (L === 2){   // DUBSTEP: half-time (big snare on beat 3), a wobble bass whose wobble speeds up and slows down, a sub drop
-    const root = [-4, -4, -8, -6][ph];
-    pKick(a, out, [[at(0), 1]].concat(ph % 2 ? [[at(1.75), .7]] : [], ph === 3 ? [[at(3.5), .6]] : []), 150, 42, .13, end + .4);
-    pNoise(a, out, [[at(2), .9, .13]], 'bandpass', 1800, .8, end + .5); pVoice(a, out, [[at(2), 190, .2, .5, {to:120}]], {type:'triangle', lp:1200, pluck:.06});
-    pNoise(a, out, (ph === 3 ? [0, .5, 1, 1.5, 2, 2.5, 3, 3.33, 3.67] : [0, .5, 1, 1.5, 2, 2.5, 3, 3.5]).map(k => [at(k + (k % 1 === .5 ? .03 : 0)), k % 1 ? .12 : .18, .03]), 'highpass', 8000, .7, end + .2);
-    if (n >= 3){ const w = pVoice(a, out, [[at(0), PHZ(root + 12), b*2.9, .26], [at(3), PHZ(root + 19), b*.95, .26]], {type:'sawtooth', detune:[0, 9], sq:true, lp:300, q:9});
-      const lfo = a.createOscillator(), lg = a.createGain(); lfo.type = 'sine'; lg.gain.value = 1100; lfo.connect(lg).connect(w.f.frequency);
-      const rates = [[1, 1, 2, 2], [3, 3, 2, 4], [1, 2, 1, 3], [4, 4, 6, 8]][ph]; rates.forEach((r, k) => lfo.frequency.setValueAtTime(r*bpm/60*.5, at(k)));
-      lfo.start(t0); lfo.stop(end); pdone([lfo, lg], lfo);
-      pVoice(a, out, [[at(0), PHZ(root), b*2.9, .4], [at(3), PHZ(root + 7), b*.95, .36]], {type:'sine', lp:200}); }
+  } else if (L === 2){   // BROSTEP (140, half-time): a punchy kick, a fat snare on 3, and a mean talking mid bass that changes its voice
+                         // every hit ("yoi", "wah", a tearing stutter, a dive, a screech) over a clean sub. Heavier than the old wobble, calmer than the hoover rave.
+    const root = [-4, -4, -1, -6][ph], drv = PARTY.drive;
+    pKick(a, drv, [[at(0), 1]].concat(ph % 2 ? [[at(1.5), .8]] : [[at(.75), .55]], ph === 3 ? [[at(3.25), .7], [at(3.5), .6]] : []), 185, 44, .12, end + .4);
+    pNoise(a, out, [[at(2), 1, .15]], 'bandpass', 1900, .8, end + .5); pNoise(a, out, [[at(2), .45, .05], [at(2.01), .35, .05]], 'highpass', 2500, .7, end + .3);   // the snare's crack
+    pVoice(a, drv, [[at(2), 210, .2, .6, {to:130}]], {type:'triangle', lp:1400, pluck:.07});   // and its body
+    pNoise(a, out, (ph === 3 ? [0, .5, 1, 1.5, 2.5, 3, 3.17, 3.33, 3.5, 3.67, 3.83] : [0, .5, 1, 1.5, 2.5, 3, 3.5]).map(k => [at(k), k % 1 ? .1 : .16, .025]), 'highpass', 8500, .7, end + .2);
+    if (n >= 3){   // the talking bass: detuned saws and a square, FM for grit, a resonant filter drawn per hit, then driven hard
+      const pats = [[[0, .75, 'yoi', 0], [.75, .25, 'wah', 0], [1, .5, 'zz', 0], [1.5, .5, 'yoi', 3], [2.5, .5, 'wah', 0], [3, .25, 'yoi', 0], [3.25, .25, 'yoi', 0], [3.5, .5, 'dive', 12]],
+        [[0, .5, 'wah', 0], [.5, .5, 'zz', 0], [1.25, .25, 'yoi', 7], [1.5, .5, 'scr', 12], [2.5, .75, 'yoi', 0], [3.25, .75, 'zz', 3]],
+        [[0, .75, 'yoi', 0], [.75, .25, 'yoi', 0], [1, 1, 'zz', 0], [2.5, .5, 'wah', 5], [3, .5, 'yoi', 3], [3.5, .5, 'wah', 0]],
+        [[0, .5, 'scr', 0], [.5, .5, 'wah', 0], [1, .5, 'zz', 0], [1.5, .25, 'yoi', 3], [1.75, .25, 'yoi', 5], [2.5, .5, 'zz', 0], [3, 1, 'dive', 12]]][ph];
+      const sh = a.createWaveShaper(); sh.curve = PARTY.broCurve || (PARTY.broCurve = Float32Array.from({length:512}, (_, i) => Math.tanh(5*(i/255.5 - 1))/Math.tanh(5)));
+      const post = a.createBiquadFilter(), pg = a.createGain(); post.type = 'lowpass'; post.frequency.value = 5500; pg.gain.value = .42; sh.connect(post).connect(pg).connect(out);
+      const w = pVoice(a, sh, pats.map(([k, d, kind, s]) => [at(k), PHZ(12 + root + s), d*b*.95, .3, kind === 'dive' ? {to:PHZ(root + s - 12)} : null]), {type:'sawtooth', detune:[0, 11], sq:true, lp:400, q:11, att:.004});
+      const fm = a.createOscillator(), fg = a.createGain(); fm.type = 'sine'; fg.gain.value = 0; fm.connect(fg); w.oscs.forEach(o => fg.connect(o.frequency));
+      pats.forEach(([k, d, kind, s]) => { const t = at(k), len = d*b, hz = PHZ(12 + root + s), F = w.f.frequency;
+        fm.frequency.setValueAtTime(hz*(kind === 'scr' ? 2.01 : 1), t); fg.gain.setValueAtTime(hz*(kind === 'scr' ? 2.5 : kind === 'zz' ? 1.4 : .7), t);
+        if (kind === 'yoi'){ F.setValueAtTime(220, t); F.exponentialRampToValueAtTime(2600, t + Math.min(len*.6, .14)); }
+        else if (kind === 'wah'){ F.setValueAtTime(2800, t); F.exponentialRampToValueAtTime(260, t + len*.9); }
+        else if (kind === 'zz') for (let j = 0; j*b/8 < len - .01; j++) F.setValueAtTime(j % 2 ? 380 : 2400, t + j*b/8);   // tearing 32nd-note stutter
+        else if (kind === 'dive'){ F.setValueAtTime(3200, t); F.exponentialRampToValueAtTime(350, t + len); }
+        else { F.setValueAtTime(3800, t); F.exponentialRampToValueAtTime(1600, t + len); } });
+      fm.start(t0); fm.stop(end); pdone([fm, fg], fm);
+      setTimeout(() => [sh, post, pg].forEach(x => { try { x.disconnect(); } catch (e) {} }), (end - a.currentTime + .5)*1000);
+      pVoice(a, out, pats.map(([k, d, kind, s]) => [at(k), PHZ(root), d*b*.95, .4]), {type:'sine', lp:180}); }   // a clean sub under every hit
     if (n >= 4){ const mel = [[[0, 15], [.75, 12], [1.5, 10], [2.5, 7]], [[0, 12], [1, 15], [1.5, 17], [3, 15]], [[0, 15], [.75, 12], [1.5, 10], [2.5, 19]], [[0, 22], [.5, 19], [1, 17], [1.5, 15]]][ph];
-      pVoice(a, out, mel.map(([k, s]) => [at(k), PHZ(36 + root + s), b*.6, .11]), {type:'square', lp:2400, q:2, pluck:.12});
-      if (ph === 0) pVoice(a, out, [[at(0), 120, b*1.5, .55, {to:30}]], {type:'sine', lp:400});   // the sub drop
+      pVoice(a, out, mel.map(([k, s]) => [at(k), PHZ(36 + root + s), b*.6, .07]), {type:'triangle', lp:3200, q:1, pluck:.14});   // a little bell over the top
+      if (ph % 2) pVoice(a, out, [[at(3.75), 2400, b*.25, .06, {to:180}]], {type:'square', lp:4000, q:2});   // a laser zap
+      if (ph === 0) pVoice(a, drv, [[at(0), 120, b*1.5, .55, {to:30}]], {type:'sine', lp:400});   // the sub drop
       if (ph === 3){ const s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain(); s.buffer = noiseBuf(a); s.loop = true; f.type = 'bandpass'; f.Q.value = 3;   // a whooshing riser into the drop
-        f.frequency.setValueAtTime(300, t0); f.frequency.exponentialRampToValueAtTime(7000, end); g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(.16, end - .02); g.gain.linearRampToValueAtTime(0, end);
+        f.frequency.setValueAtTime(300, t0); f.frequency.exponentialRampToValueAtTime(7000, end); g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(.14, end - .02); g.gain.linearRampToValueAtTime(0, end);
         s.connect(f).connect(g).connect(out); s.start(t0, Math.random()*2); s.stop(end); pdone([s, f, g], s); } }
-  } else {   // HOOVER RAVE (~172): a pounding driven kick, rolling chopped breaks, a growling talking bass, the hoover, stabs and a siren
+  } else {   // HOOVER RAVE (~175): a pounding driven kick, rolling chopped breaks, a growling talking bass, the hoover (driven), stabs, crashes and a siren
     const root = [-2, -2, 1, -4][ph], drv = PARTY.drive;
-    pKick(a, drv, [0, 1, 2, 3].map(k => [at(k), .95]), 170, 44, .1, end + .3);
+    pKick(a, drv, [0, 1, 2, 3].map(k => [at(k), 1]), 200, 44, .11, end + .3);
+    pNoise(a, drv, [0, 1, 2, 3].map(k => [at(k), .35, .008]), 'highpass', 3000, .7, end + .1);   // the kick's click: hits harder
     const brk = ph === 3 ? '....S..s.S.sSsSS' : ph % 2 ? '....S..s..s.S.ss' : '....S..s.s..S..s';
     const sn = []; [...brk].forEach((ch, i) => { if (ch === 'S') sn.push([at(i/4), .75, .06]); else if (ch === 's') sn.push([at(i/4), .28, .03]); });
     if (ph === 3) for (let i = 0; i < 8; i++) sn.push([at(2 + i/4 + .125), .18 + i*.06, .025]);   // the roll into the next bar: a build
     sn.sort((x, y) => x[0] - y[0]); pNoise(a, drv, sn, 'bandpass', 2300, .9, end + .3);
     pVoice(a, drv, sn.map(([t, v]) => [t, 200 + (ph === 3 ? (t - t0)*90 : 0), .06, v*.5, {to:150}]), {type:'triangle', lp:1500, pluck:.03});
-    pNoise(a, out, Array.from({length:16}, (_, i) => [at(i/4), i % 2 ? .16 : .07, .02]), 'highpass', 8500, .7, end + .1);
+    pNoise(a, out, Array.from({length:16}, (_, i) => [at(i/4), i % 4 === 2 ? .2 : i % 2 ? .14 : .06, i % 4 === 2 ? .07 : .02]), 'highpass', 8000, .7, end + .1);   // 16ths, an open hat on the off-beat
+    if (ph === 0) pNoise(a, out, [[at(0), .3, .45]], 'highpass', 4500, .5, end + .2);   // a crash at the top of every 4 bars
     if (n >= 3){   // the growl: saws, driven, through two moving formant filters ("yow", "wee", "oh"...), gated in a funky rhythm
       const pat = 'x.xx.x.xx.x.xxx.', vow = [[700, 1150], [400, 800], [300, 2200], [600, 1000], [500, 1700]];
       const sh = a.createWaveShaper(); sh.curve = PARTY.growlCurve; const f1 = a.createBiquadFilter(), f2 = a.createBiquadFilter(), mix = a.createGain(); [f1, f2].forEach(f => { f.type = 'bandpass'; f.Q.value = 7; }); mix.gain.value = 1.6;
@@ -7640,12 +7722,15 @@ function partyBar(a, n, L, t0){
       [...pat].forEach((ch, i) => { if (ch !== 'x') return; const [p, q] = vow[(i*3 + ph) % vow.length]; f1.frequency.setValueAtTime(p*.7, at(i/4)); f1.frequency.linearRampToValueAtTime(p, at(i/4 + .2)); f2.frequency.setValueAtTime(q*.6, at(i/4)); f2.frequency.linearRampToValueAtTime(q, at(i/4 + .2)); });
       sh.connect(f1).connect(mix); sh.connect(f2).connect(mix); mix.connect(out); setTimeout(() => [sh, f1, f2, mix].forEach(x => { try { x.disconnect(); } catch (e) {} }), (end - a.currentTime + .5)*1000);
       pVoice(a, out, [...pat].map((ch, i) => ch === 'x' ? [at(i/4), PHZ(root), b*.24, .55] : null).filter(Boolean), {type:'sine', lp:180}); }
-    if (n >= 4){   // THE HOOVER: a stack of detuned saws and a square underneath; every note dives in from above, and bar 4 ends in a huge swoop down
+    if (n >= 4){   // THE HOOVER: five detuned saws and a square underneath, driven till it snarls, an octave on top; every note dives in from above
       const riff = ph % 2 ? [[0, 0, 1.25], [1.5, -2, .5], [2, 3, 1], [3, 5, .9]] : [[0, 0, 1.25], [1.5, 3, .5], [2, 0, .75], [3, 7, .5], [3.5, 5, .45]];
-      const notes = riff.map(([k, s, d]) => [at(k), PHZ(24 + root + s), d*b, .2, {from:PHZ(24 + root + s + 7), glide:.09}]);
+      const notes = riff.map(([k, s, d], i) => [at(k), PHZ(24 + root + s), d*b, .24, {from:PHZ(24 + root + s + (i ? 7 : 12)), glide:i ? .09 : .14}]);
       if (ph === 3){ const last = notes[notes.length - 1]; last[2] = .5*b; last[4].to = PHZ(root); }
-      pVoice(a, out, notes, {type:'sawtooth', detune:[-24, -9, 9, 24], sq:true, lp:2600, q:1.6, att:.01});
-      if (ph === 1) [0, 3, 7, 12].forEach(c => pVoice(a, out, [1, 1.5, 2.5, 3.5].map(k => [at(k), PHZ(36 + root + c), b*.2, .045]), {type:'square', lp:3000, q:1, pluck:.05}));   // rave stabs
+      const hsh = a.createWaveShaper(), hg = a.createGain(); hsh.curve = PARTY.growlCurve; hg.gain.value = .85; hsh.connect(hg).connect(out);
+      pVoice(a, hsh, notes, {type:'sawtooth', detune:[-30, -14, 0, 14, 30], sq:true, lp:3000, q:1.6, att:.01});
+      pVoice(a, out, notes.map(([t, hz, d, v, x]) => [t, hz*2, d, .05, {from:x.from*2, glide:x.glide, to:x.to && x.to*2}]), {type:'sawtooth', detune:[-12, 12], lp:4500, q:.7, att:.01});
+      setTimeout(() => [hsh, hg].forEach(x => { try { x.disconnect(); } catch (e) {} }), (end - a.currentTime + .5)*1000);
+      if (ph % 2) [0, 3, 7, 12].forEach(c => pVoice(a, out, [1, 1.5, 2.5, 3.5].map(k => [at(k), PHZ(36 + root + c), b*.2, .045]), {type:'square', lp:3000, q:1, pluck:.05}));   // rave stabs
       if (ph === 2) pVoice(a, out, Array.from({length:16}, (_, i) => [at(i/4), PHZ(24 + root + [0, 12, 0, 3, 0, 15, 12, 0, 7, 0, 10, 12, 0, 3, 5, 7][i]), b*.2, .07]), {type:'square', lp:900, q:12, pluck:.06, fenv:[2800, 500, .05]});   // a squelchy acid riff
       if (ph === 3){ const s = pVoice(a, out, [[at(0), 640, 4*b, .05]], {type:'triangle', lp:4000}); const l = a.createOscillator(), lg = a.createGain(); l.frequency.value = bpm/60/2; lg.gain.value = 260; l.connect(lg); s.oscs.forEach(o => lg.connect(o.frequency)); l.start(t0); l.stop(end); pdone([l, lg], l); }   // the siren
     }
@@ -8275,8 +8360,8 @@ function recapFor(r){
     else if (ck === 'dingdong'){ if (rt.last){ tried = true; done.push('You pressed the doorbell.'); } next = 'Press the doorbell. DING... then DONG.'; }
   } else next = 'Try it, then watch what happens.';
   if (!built.added && !built.removed && !tried) done.unshift(r.play || !need ? 'Nothing tried yet.' : need > 2 && need <= 30 ? `Nothing built yet. It needs about ${need} parts.` : 'Nothing built yet.');
-  if (/faces the wrong way/.test(wrong)) next = /repeater/.test(wrong) ? 'Break it. Stand behind it and look along the wire.' : /observer|piston/.test(wrong) ? 'Break it. Stand where its face should look.' : 'Break it. Put it back from another side.';   // (c30: "which side?")
-  else if (/hang on a block/.test(wrong)) next = 'Break it. Then click the SIDE of the block.';
+  if (/faces the wrong way/.test(wrong)) next = /repeater/.test(wrong) ? 'Pick it up (HOLD on it). Stand behind it and look along the wire.' : /observer|piston/.test(wrong) ? 'Pick it up (HOLD on it). Stand where its face should look.' : 'Pick it up (HOLD on it). Put it back from another side.';   // (c30: "which side?")
+  else if (/hang on a block/.test(wrong)) next = 'Pick it up (HOLD on it). Then click the SIDE of the block.';
   else if (/burnt out/.test(wrong)){ let rep = false; const b = r.box; for (let x = b.x0 + 1; x < b.x1 && !rep; x++) for (let y = b.y0 + 1; y < b.y1; y++){ const c = at(x, y); if (c && c.t === 'repeater'){ rep = true; break; } }
     next = rep ? 'Tap the repeater to make it slower.' : 'Put a slow repeater in the loop.'; }   // (c15 read "flips too fast" and made the loop longer)
   else if (wrong) next = next && !/^(Fix|Build)/.test(next) ? 'Fix that first. Then ' + next[0].toLowerCase() + next.slice(1) : next;
@@ -11005,7 +11090,7 @@ function hubCard(){
 }
 function hubCardFrame(dt){
   A.hubT = (A.hubT || 0) + dt; if (A.hubT < 300) return; A.hubT = 0;
-  if (A.on){ refreshRoomGoal(); hintStripTick(); hintNudgeTick(300); }
+  if (A.on){ refreshRoomGoal(); fixTipFrame(300); hintStripTick(); hintNudgeTick(300); }
   if (A.on && A.rt && !A.rt.room && !A.rt.heart && A.room !== 'hall') hubCard();
 }
 const roomNum = r => r.ship ? `Skull machine ${r.ship} of ${SHIP_ROOMS.length}` : (r.zone === 'fun' || r.zone === 'ghost') ? `Ride ${ROOMS.indexOf(r) + 1} of ${ROOMS.length}` : r.host ? `${r.zone === 'mine' ? 'Mine room' : r.id > 500 ? 'Classroom' : r.id > 400 ? 'Room' : 'Test'} ${ROOMS.indexOf(r) + 1} of ${ROOMS.length}` : `Room ${r.id} of ${ROOMS.length}`;   // the funfair counts rides 1-20, not 101-120
@@ -11185,8 +11270,8 @@ function checkAdventure(){
   if (MAYA_CHECKS.has(r.check)){ mayaCheck(r, rt); return; }
   if (UNI_CHECKS.has(r.check)){ uniCheck(r, rt); return; }
   if (rt.sigIn === undefined) rt.sigIn = buildSig(r);   // (a room that STARTS with a wire running past, like room 4, waits until you change something)
-  const past = STABLE && !rt.pastSaid && ['lit', 'pulse', 'boom', 'coop'].includes(r.check) && buildSig(r) !== rt.sigIn ? alongsideOut(r) : null;
-  if (past){ rt.pastSaid = true; sfx.nope(); monkeySay(`So close! The wire runs PAST the ${OUT_WORD[past.t] || 'thing'}. Power only comes out of the END of a wire, like an arrow. Make the end point straight INTO it.`, 10000); }
+  const past = STABLE && !rt.pastSaid && ['lit', 'pulse', 'boom', 'coop', 'together'].includes(r.check) && buildSig(r) !== rt.sigIn ? alongsideOut(r) : null;   // (the fireworks too; the disco says it per plate, in its own check)
+  if (past){ rt.pastSaid = true; sfx.nope(); monkeySay(`So close! The wire runs PAST the ${recapOutWord(past.t)}. Power only comes out of the END of a wire, like an arrow. Make the end point straight INTO it.`, 10000); }
   // (else) a wire that ran out of power (rooms 20+ teach "how far" properly, so they don't get this line)
   else if (STABLE && !rt.farSaid && ['lit', 'pulse', 'boom', 'coop'].includes(r.check) && A.act === 1 && r.id < 20 && !r.out.every(([x, y]) => outLit(x, y)) && ranOutIn(r)){ rt.farSaid = true; sfx.nope(); monkeySay('The power ran OUT! It gets a bit weaker on every dust, and after 15 dust there\'s none left. Find a shorter way!', 10000); }
   if (r.check === 'lit'){
@@ -11238,7 +11323,10 @@ function checkAdventure(){
     rt.seen = rt.seen || new Set();
     if (n === 0 && !lit) rt.darkSeen = true;
     if (n === 0 && lit && !rt.cheatShown){ rt.cheatShown = true; plogEvent('cheat'); sfx.nope(); monkeySay('The disco\'s on with nobody dancing! It should only start when someone steps on a plate.', 9000); }
-    if (n === 1 && lit){ const k = pressed.indexOf(true); if (!rt.seen.has(k)){ rt.seen.add(k); sfx.row(); renderCard(); if (rt.seen.size < r.inputs.length) monkeySay(DISCO_SAY[rt.seen.size - 1] || `That plate works! ${r.inputs.length - rt.seen.size} to go.`, 5000); } }
+    if (n === 1 && !lit){ const k = pressed.indexOf(true); rt.deadSaid = rt.deadSaid || new Set();   // a plate that does nothing: say so, once per plate, and why
+      if (!rt.deadSaid.has(k) && playerOnPlate(...r.inputs[k])){ rt.deadSaid.add(k); sfx.nope(); renderCard();
+        monkeySay('Nothing happened! The red dust from this plate doesn\'t reach the disco ball yet. Add more dust until it touches the ball.', 10000); } }
+    if (n === 1 && lit){ const k = pressed.indexOf(true); if (!rt.seen.has(k)){ rt.seen.add(k); sfx.row(); renderCard(); const left = r.inputs.length - rt.seen.size; if (left) monkeySay((DISCO_SAY[k] || 'That plate works!') + ` ${left} to go.`, 5000); } }
     if (rt.seen.size === r.inputs.length && rt.darkSeen){ TROOP.danceUntil = performance.now() + 15000; solveRoom(r); }
   } else if (r.check === 'delay'){
     // the output has to come on a moment AFTER the input, not at the same time: dark when you step on, lit a little later, with the same build all along
@@ -11341,18 +11429,22 @@ function checkAdventure(){
         rt.rows = rt.rows.map((v, i) => !!(v && sim && sim[i] && sim[i].ok)); rt.obs = {}; rt.bad = {}; rt.tested = new Set(); renderCard();
         const lost = had - rt.rows.filter(Boolean).length;
         if (lost && !S.simulating) showToast(sim ? `You changed the wires. ${lost === 1 ? 'One mix' : lost + ' mixes'} must be tested again.` : 'You changed the build. Test every mix again.'); }
+      if (rt.sig !== undefined && sig !== rt.sig) rt.liveKey = r.inputs.map(([x,y]) => { const c = at(x,y); return !!c && (c.on || c.timer > 0); }).join();
       rt.sig = sig; }
     if (STABLE && r.out.some(([x,y]) => { const n = outLit(x,y) && shortcutAt(x, y); return n && n.t === 'rblock'; })){ if (!rt.cheatShown){ rt.cheatShown = true; plogEvent('cheat'); sfx.nope(); monkeySay(cheekyLine(r), 9000); } return; }
     const ins = r.inputs.map(([x,y]) => { const c = at(x,y); return !!c && (c.on || c.timer > 0); });
     const key = ins.join();
     if (rt.prevKey !== null && key !== rt.prevKey){ rt.tested.add(key); rt.pendingTest = true; }
     rt.prevKey = key;
-    if (!STABLE || !rt.tested.has(key)) return;
+    // a fix made with the lever already where it should be counts once it settles (room 16: glass swapped for stone with the lever ON
+    // did nothing until the lever went OFF and ON again). It can only TICK: a half-built machine doesn't get a red cross or a telling-off
+    const live = !rt.tested.has(key) && rt.liveKey === key;
+    if (!STABLE || !(rt.tested.has(key) || live)) return;
     const idx = rowIndex(ins), wantA = [].concat(r.fn(...ins)).map(Boolean), gotA = r.out.map(([x,y]) => outLit(x,y));
     const want = wantA[0], got = gotA[0], match = wantA.every((w, i) => w === gotA[i]);
-    if (match){
-      if (!rt.rows[idx]){ rt.rows[idx] = true; sfx.row(); renderCard(); if (rt.rows.every(Boolean)) solveRoom(r); else monkeySay(r.inputs.length > 1 ? 'Yes! That one works. Try another mix of levers.' : ins.some(Boolean) ? 'Yes! Now try it the other way.' : 'Yes! Now flip it on again.', 4000); }
-    }
+    const tick = () => { if (!rt.rows[idx]){ rt.rows[idx] = true; sfx.row(); renderCard(); if (rt.rows.every(Boolean)) solveRoom(r); else monkeySay(r.inputs.length > 1 ? 'Yes! That one works. Try another mix of levers.' : ins.some(Boolean) ? 'Yes! Now try it the other way.' : 'Yes! Now flip it on again.', 4000); } };
+    if (live){ if (match) tick(); return; }
+    if (match) tick();
     rt.obs = rt.obs || {}; rt.obs[idx] = got;
     rt.bad = rt.bad || {}; if (!match && !rt.rows[idx] && !rt.bad[idx]){ rt.bad[idx] = true; renderCard(); } else if (match && rt.bad[idx]){ delete rt.bad[idx]; renderCard(); }   // (the red cross)
     if (rt.pendingTest){ rt.pendingTest = false; if (!match) plogEvent('wrong'); }
@@ -11387,10 +11479,14 @@ function roomMiss(r){
 }
 // where Max first meets each toy a room bonus gives (Tom: never win a toy he hasn't met). Room 3's MEGA ROBOT came first (Tom's own pick)
 const TOY_MET = {fart:5, lamp:1, firework:11, confetti:12, disco:12, spacetoilet:8, launcher:10};
+// a pulses bonus counts out loud (Tom: Max flipped the lever 5 times and it hadn't parped 5 times: only ON parps, and the
+// room card with the count isn't on the TV yet). The first one also says how to get the next.
+function pulseToast(b, k){ const what = (b.unit || 'parps').replace(/s$/, ''), n = b.n;
+  showToast(`${what === 'parp' ? 'PARP' : 'That\'s'} ${k} of ${n}!` + (k === 1 ? ` Flip it OFF, then ON again, for ${what === 'parp' ? 'the next one' : 'number 2'}.` : '')); }
 function checkBonus(r, rt){
   const b = r.bonus; if (!b || A.bonus.has(r.id)) return;
   let ok = false;
-  if (b.kind === 'pulses'){ const lit = outLit(...r.out[0]); if (lit && !rt.prevOut){ rt.pulses++; renderCard(); } rt.prevOut = lit; ok = rt.pulses >= b.n; }
+  if (b.kind === 'pulses'){ const lit = outLit(...r.out[0]); if (lit && !rt.prevOut){ rt.pulses++; renderCard(); if (rt.pulses < b.n) pulseToast(b, rt.pulses); } rt.prevOut = lit; ok = rt.pulses >= b.n; }
   else if (b.kind === 'dust'){ ok = S.stable && r.out.every(([x,y]) => outLit(x,y)) && countDust(r) <= b.n; }
   else if (b.kind === 'dings'){ countFrame(r, rt, n => { rt.bonusDings = n; }); ok = rt.bonusDings === b.n; }
   else if (b.kind === 'slowclock') ok = slowClockOk(r, rt, b);   // Act 3: a slower clock (wip/leftovers)
@@ -12298,7 +12394,7 @@ function spotTagTap(cx, cy){
   const t = SPOTTAG.list.find(q => q.shown && q.rect && (q.kind === 'put' || q.kind === 'tap') && cx >= q.rect.l - 6 && cx <= q.rect.r + 6 && cy >= q.rect.t - 6 && cy <= q.rect.b + 6);
   if (!t) return false;
   if (t.kind === 'put'){ const gh = t.gh, k = ITEMS.findIndex(i => i.id === gh.t);
-    if (at(gh.x, gh.y)){ sfx.nope(); showToast('Something is there already. Break it first.'); return true; }
+    if (at(gh.x, gh.y)){ sfx.nope(); showToast('Something is already there. Pick it up first: ' + holdWord() + '.'); return true; }
     if (ITEMS[sel].id !== gh.t){ if (k >= 0 && visibleSlots().includes(k) && !bannedHere(gh.t)) select(k); else { sfx.nope(); showToast(`That needs a ${k >= 0 ? ITEMS[k].name : gh.t}.`); return true; } }
     const att = gh.attach ?? -1, blk = att >= 0 ? at(gh.x + DIRS[att][0], gh.y + DIRS[att][1]) : null;
     swing(); place(gh.t, gh.x, gh.y, blk); syncVisuals(); return true; }
@@ -16294,9 +16390,11 @@ function faceSay(c, gh){
   if (FACE_HANG.has(c.t)){
     const wa = want && 'attach' in want ? want.attach : -1, nm = recapName(c.t).toLowerCase();
     if (!want || !('attach' in want) || wa === (c.attach ?? -1)){ uniStandMark(null); return false; }
-    const W = useWord(), Wc = W[0].toUpperCase() + W.slice(1), say = wa >= 0 ? [`That ${nm} must hang on a block.`, `Break it. ${Wc} the glowing block side.`] : [`That ${nm} goes on the floor.`, `Break it. Then ${W} the floor.`];
+    const W = useWord(), Wc = W[0].toUpperCase() + W.slice(1), say = wa >= 0 ? [`That ${nm} must hang on a block.`, `Pick it up: ${holdWord()}.`, `Then ${W} the glowing side of the block.`] : [`That ${nm} goes on the floor.`, `Pick it up: ${holdWord()}.`, `Then ${W} the floor.`];
     sfx.nope(); plogEvent('wrong'); uniProfTell(who, say);
-    if (wa >= 0){ const [dx, dy] = DIRS[wa]; uniStandMark(null, {x:c.x + dx, y:c.y + dy, d:opp(wa), t:c.t}); } else uniStandMark(null);
+    const mark = () => { if (wa >= 0){ const [dx, dy] = DIRS[wa]; uniStandMark(null, {x:c.x + dx, y:c.y + dy, d:opp(wa), t:c.t}); } else uniStandMark(null); }; mark();
+    const blk = wa >= 0 ? at(c.x + DIRS[wa][0], c.y + DIRS[wa][1]) : null, bn = blk ? 'the ' + recapName(blk.t).toLowerCase() : 'the block';
+    fixTipSet(c, who, say, wa >= 0 ? `Your ${nm} is on the floor. It has to stick on the SIDE of ${bn}. Pick it up: ${pickHow()} Then ${W} the glowing yellow side of ${bn}.` : `Your ${nm} is stuck on a block. It has to stand on the floor. Pick it up: ${pickHow()} Then ${W} the floor.`, mark);
     return true;
   }
   const obs = c.t === 'observer', rep = c.t === 'repeater', name = obs ? 'An observer' : rep ? 'A repeater' : c.t === 'spiston' ? 'A sticky piston' : 'A piston';
@@ -16306,13 +16404,27 @@ function faceSay(c, gh){
   const tries = [[1, 0], [2, 0], [3, 0], [2, 1], [2, -1], [3, 1], [3, -1]];   // straight out first; off to one side only from further away (looking at it from a corner, you can't tell which way it would face)
   let spot = null; for (const [k, o] of tries){ const x = c.x + dx*k + (dy ? o : 0), y = c.y + dy*k + (dx ? o : 0); if (ok(x, y)){ spot = [x, y]; break; } }
   // the room's host says it (their lesson), in the box at the bottom (design guide 3), lines of 8 words or fewer
-  const go = spot ? 'Break it. Stand on the glowing square.' : null;
-  const say = rep ? ['Oops! That repeater points the wrong way.', 'It points the way YOU look.', go || 'Break it. Stand behind it. Look along the wire.']
-    : obs ? ['Backwards! An observer\'s eyes look back at YOU.', 'Its eyes watch the side where you stand.', go || 'Break it. Stand where its eyes should look.']
-    : ['Backwards! ' + name + ' faces back at YOU.', 'It pushes towards where you are standing.', go || 'Break it. Stand where it should push to.'];
+  const go = spot ? 'Pick it up. Stand on the glowing square.' : null;
+  const say = rep ? ['Oops! That repeater points the wrong way.', 'It points the way YOU look.', go || 'Pick it up. Stand behind it. Look along the wire.']
+    : obs ? ['Backwards! An observer\'s eyes look back at YOU.', 'Its eyes watch the side where you stand.', go || 'Pick it up. Stand where its eyes should look.']
+    : ['Backwards! ' + name + ' faces back at YOU.', 'It pushes towards where you are standing.', go || 'Pick it up. Stand where it should push to.'];
   sfx.nope(); plogEvent('wrong'); uniProfTell(who, say);
   uniStandMark(spot);
+  fixTipSet(c, who, say, 'Your ' + recapName(c.t).toLowerCase() + ' points the wrong way. Pick it up: ' + pickHow() + (spot ? ' Then stand on the glowing yellow square and put it back in the same place.' : ' Then walk round to the other side of that spot and put it back.'), () => uniStandMark(spot));
   return true;
+}
+// a part that faces (or hangs) the wrong way: "break it" is the bit nobody thinks of (Tom, room 17). Until it's fixed, the goal box says so
+// at the top (FIX FIRST), and the host says it again every 25 s (3 times at most). Fixed, broken, or you left the room: the goal comes back.
+function holdWord(){ return padMode ? 'HOLD ' + PN(PB.brk) + ' on it' : lastTouch ? 'HOLD your finger on it' : 'HOLD the click on it'; }
+function pickHow(){ return padMode ? 'point at it and HOLD ' + PN(PB.brk) + ' until it pops off.' : lastTouch ? 'HOLD your finger on it until it pops off.' : 'point at it and HOLD the mouse button down until it pops off.'; }
+function fixTipSet(c, who, say, line, mark){ const r = A.rt && A.rt.room; if (!r) return; A.fixTip = {room:r.id, x:c.x, y:c.y, t:c.t, attach:c.attach ?? -1, dir:c.dir || 0, who, say:say.slice(), text:'FIX THIS FIRST: ' + line + ' After that: ' + roomGoal(r), mark, wait:0, told:0}; fixTipFrame(0); }
+function fixTipFrame(dt){
+  const F = A.fixTip; if (!F) return;
+  const r = A.rt && A.rt.room, el = $('#goalText'), c = at(F.x, F.y);
+  const still = A.on && r && r.id === F.room && !A.solved.has(r.id) && c && c.t === F.t && (c.attach ?? -1) === F.attach && (c.dir || 0) === F.dir;
+  if (!still){ if (el && el.textContent === F.text && r && r.id === F.room && !A.solved.has(r.id)) el.textContent = roomGoal(r); A.fixTip = null; return; }
+  if (el && el.textContent !== F.text) el.textContent = F.text;
+  F.wait += dt; if (F.wait > 25000 && F.told < 3 && !DLG.on){ F.wait = 0; F.told++; uniProfTell(F.who, F.say); F.mark && F.mark(); }
 }
 // a professor tells you something while you build: a soft box (clicks in the world still build), the latest one replacing the last
 function uniProfTell(who, say){
@@ -17913,7 +18025,7 @@ window.__game = {
     room(){ return A.rt && A.rt.room ? A.rt.room.id : A.room; },
     playerY(){ return P.y; }, flinging(){ return !!P.fling; }, pitch(){ return P.pitch; },
     cellNear(x, z){ return cellAtWorld(x, z); }, robotScale(){ const f = fx.find(q => q.kind === 'robot'); return f ? f.g.scale.x : 0; }, troopFlying(){ return TROOP.list.filter(m => m.userData.fly).length; }, itemName(id){ return (ITEMS.find(i => i.id === id) || {}).name; },
-    troopPoses(){ return TROOP.list.map(m => [m.position.x, m.position.y, m.position.z, m.rotation.y, m.rotation.z]); }, disco(){ return {n:DISCO.n, lit:DISCO.lit, shown:!!(DISCO.g && DISCO.g.visible), ballY:DISCO.ball ? DISCO.ball.position.y : null}; },
+    troopPoses(){ return TROOP.list.map(m => [m.position.x, m.position.y, m.position.z, m.rotation.y, m.rotation.z]); }, disco(){ return {n:DISCO.n, lit:DISCO.lit, shown:!!(DISCO.g && DISCO.g.visible), ballY:DISCO.ball ? DISCO.ball.position.y : null, icons:(DISCO.icons || []).length, spots:!!(DISCO.spots && DISCO.g && DISCO.g.visible && DISCO.spots[0].visible)}; },
     bonus(id){ return A.bonus.has(id); },
     disc(){ return [...A.disc]; }, discList(){ return DISCOVERIES.map(d => d.id || d[0]); },
     monkeyPos(){ return A.monkey ? [...cellAtWorld(A.monkey.position.x, A.monkey.position.z)] : null; }, baroldXZ(){ return A.monkey ? [A.monkey.position.x, A.monkey.position.z, A.monkey.position.y] : null; }, doorStand(){ return A.doorTrapOff ? [ENTRANCE[0], ENTRANCE[1] + 2] : TRAP.stand; }, trapBlock(){ return TRAP.block; },
@@ -17944,7 +18056,7 @@ window.__game = {
     shipState(){ const S2 = A.ship; if (!S2) return null; const P2 = S2.parts; return {peds:S2.peds.map(p => p.gl.visible), fired:S2.peds.map(p => !!p.fire), engines:P2.engines.bells.every(b => b.fl.visible), legs:P2.legs.legs.map(l => +(l.lg.position.y - l.y0).toFixed(2)), roof:+P2.window.k.toFixed(2), fuel:P2.fuel.tiles[0].m.color.getHex() === 0x6dff5a, fuelLen:P2.fuel.n, shake}; },
     launching(){ return !!A.launching; }, launched(){ return !!A.launched; },
     met(){ return !!A.metBarold; },
-    me(){ return cellAtWorld(P.x, P.z); }, thief(){ return !!A.thief || !!A.metBarold; }, introSeen(){ return A.introI; },
+    me(){ return cellAtWorld(P.x, P.z); }, standOff(x, y, dx){ const c = cellPos(x, y); P.x = c.x + dx; P.z = c.z; P.y = c.y; P.vy = 0; }, plateUnderfoot(){ return plateUnderfoot(); }, thief(){ return !!A.thief || !!A.metBarold; }, introSeen(){ return A.introI; },
     inCorridor(){ const [x, y] = cellAtWorld(P.x, P.z); return !roomOf(x, y) && !inHall(x, y) && y < HUB.y0; },
     hint(){ advHint(); $('#why').hidden = true; }, ghosts(){ return (L.ghosts || []).map(gh => ({t:gh.t, x:gh.x, y:gh.y, dir:gh.dir, attach:gh.attach})); },
     pokeNearest(){ const all = [A.monkey, ...(A.extras || []), ...TROOP.list].filter(Boolean); all.sort((m1, m2) => Math.hypot(m1.position.x - P.x, m1.position.z - P.z) - Math.hypot(m2.position.x - P.x, m2.position.z - P.z)); const m = all[0]; if (!m) return false; const [x, y] = cellAtWorld(m.position.x, m.position.z); P.yaw = Math.atan2(-(m.position.x - P.x), -(m.position.z - P.z)); P.pitch = -.2; stepFP(0); return pokeMonkey(); },
