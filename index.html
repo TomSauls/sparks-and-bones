@@ -172,6 +172,13 @@ body.emptyHands #hotbarWrap,body.emptyHands #hand{display:none!important;}
 .slot.sel{border:3px solid #fff;box-shadow:0 0 0 2px #000,inset 0 0 0 2px #000;background:rgba(200,200,200,.6);}
 #dlg{position:absolute;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(640px,calc(100vw - 24px));padding:12px 16px 14px;font-size:21px;line-height:1.3;z-index:30;cursor:pointer;pointer-events:auto;}
 #dlgWho{display:block;color:#7a120a;font-size:16px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:2px;}
+#goalBox{transition:opacity .3s;}
+body.dlgOn #goalBox:not(.open){opacity:.45;}   /* somebody's talking: the goal steps back to its title so the talk box is the one thing to read (Max read the goal and missed Barold) */
+body.dlgOn #goalBox:not(.open) #goalText{display:none;}
+#dlg.nudge{animation:dlgNudge .5s ease-in-out infinite alternate;}
+#dlg.nudge::after{content:attr(data-nudge);display:block;clear:both;margin-top:6px;text-align:center;font-size:16px;font-weight:700;color:#7a120a;}
+@keyframes dlgNudge{from{transform:translateX(-50%) translateY(0);}to{transform:translateX(-50%) translateY(-6px);}}
+@media (prefers-reduced-motion: reduce){ #dlg.nudge{animation:none;outline:4px solid #ffd84a;} }
 #dlgMore{float:right;color:#c8281c;font-size:15px;font-weight:700;animation:objp .7s ease-in-out infinite alternate;margin-left:8px;}
 #beatArrow{position:fixed;top:42%;z-index:31;pointer-events:none;font:700 22px "Atkinson Hyperlegible","Trebuchet MS",sans-serif;color:#3a2410;background:#f6e7c1;border:3px solid #6b4423;box-shadow:0 0 0 3px #2b1a0c,4px 4px 0 3px rgba(0,0,0,.35);padding:6px 12px;animation:beatNudge .6s ease-in-out infinite alternate;}
 #beatArrow.left{left:14px;} #beatArrow.right{right:14px;}
@@ -10445,18 +10452,20 @@ function dlgStart(lines, done, why){
   if (DLG.on && (DLG.hello || (lines.room && DLG.q && DLG.q.room) || (DLG.why && !(A.rt && A.rt.room === DLG.why)))) dlgCancel();   // a hello (a ride's; Barold's room hello to the next room's), or a demo you walked away from, gives way
   if (DLG.on){ DLG.wait.push([lines, done, why]); return; }   // someone's still talking: this one goes next
   DLG.on = true; DLG.q = lines; DLG.i = 0; DLG.done = done; DLG.hello = 0; DLG.why = why || null; DLG.undo = null; dlgShow(); document.body.classList.add('dlgOn'); }
-function dlgEnd(){ DLG.on = false; DLG.done = null; DLG.hello = 0; DLG.why = DLG.undo = null; $('#dlg').hidden = true; document.body.classList.remove('dlgOn'); }   // close it without running its done step
+function dlgEnd(){ DLG.on = false; DLG.done = null; DLG.hello = 0; DLG.why = DLG.undo = null; $('#dlg').hidden = true; dlgNudge(false); document.body.classList.remove('dlgOn'); }   // close it without running its done step
 // stop talking NOW (menu, new act, walked out of a demo): no done step, the demo's levers go back, your view is yours again. all: drop the queue too
 function dlgCancel(all){ const u = DLG.on && DLG.undo; dlgEnd(); u && u(); whyFocus(null); if (all){ DLG.wait = []; A.whyAt = null; } else dlgNext(); }
 function dlgNext(){ const w = !DLG.on && DLG.wait.shift(); if (w) dlgStart(...w); }
-function dlgShow(){ const [who, text, hook] = DLG.q[DLG.i]; if (hook) hook(); DLG.shown = 1; DLG.t = 0; DLG.words = String(text).split(' '); $('#dlgWho').textContent = who; $('#dlgTxt').textContent = DLG.words[0]; $('#dlgMore').hidden = true; $('#dlg').hidden = false; feed('say', who + ': ' + text); beatLine();
+function dlgShow(){ const [who, text, hook] = DLG.q[DLG.i]; if (hook) hook(); DLG.shown = 1; DLG.t = 0; DLG.words = String(text).split(' '); $('#dlgWho').textContent = who; $('#dlgTxt').textContent = DLG.words[0]; $('#dlgMore').hidden = true; dlgNudge(false); $('#dlg').hidden = false; feed('say', who + ': ' + text); beatLine();
   if (who === GUIDE && A.monkey) A.monkey.userData.hop = 1; else if (A.captain && /Captain|Parrot/.test(who)) A.captain.userData.hop = 1; else if (A.hosts && A.hosts[who]) A.hosts[who].userData.hop = 1; if (/Parrot/.test(who)) sfx.ook(900); else sfx.click(); }
 function dlgAdvance(){ if (!DLG.on) return false; if (DLG.shown >= DLG.words.length && beatWaiting()){ beatOffer(); return true; } if (DLG.shown < DLG.words.length){ DLG.shown = DLG.words.length; $('#dlgTxt').textContent = DLG.words.join(' '); $('#dlgMore').hidden = false; DLG.t = 0; return true; }
   DLG.i++; if (DLG.i >= DLG.q.length){ const d = DLG.done; dlgEnd(); d && d(); dlgNext(); return true; } dlgShow(); return true; }
 function dlgFrame(dt){ if (!DLG.on) return; DLG.t += dt;
   if (DLG.shown < DLG.words.length){ const want = Math.min(DLG.words.length, 1 + Math.floor(DLG.t / TYPE_MS)); if (want !== DLG.shown){ DLG.shown = want; $('#dlgTxt').textContent = DLG.words.slice(0, want).join(' '); } if (DLG.shown >= DLG.words.length){ $('#dlgMore').hidden = false; DLG.t = 0; } }
+  else if (DLG.q.hold){ if (DLG.t > READ_MS(DLG.words.length) && !$('#dlg').classList.contains('nudge')) dlgNudge(true); }   // the opening's important lines wait for you: still there after a good read? the box bounces and says how to clear it
   else if (DLG.t > READ_MS(DLG.words.length) + (dlgSoft() ? 2500 : 6000) && !beatWaiting()) dlgAdvance();   // nobody tapping? it moves on by itself, eventually
 }
+function dlgNudge(on){ const el = $('#dlg'); if (!el) return; el.classList.toggle('nudge', on); if (on) el.dataset.nudge = padMode ? 'Press ' + PN(padOK()) + ' when you\'ve read it' : lastTouch ? 'Tap here when you\'ve read it' : 'Click (or press E) when you\'ve read it'; }
 // a "soft" box (Barold telling you something while you play): it's in the dialogue box so you can't miss it, but clicks in the world still build;
 // a tap on the box itself (or a face button, Enter) skips it, and it moves on by itself
 function dlgSoft(){ return DLG.on && !!(DLG.q && DLG.q.soft); }
@@ -10466,7 +10475,7 @@ function baroldTell(text, room){   // room: it's that room's hello (it gives way
   const all = [].concat(text);
   if (!A.monkey || !A.on){ all.forEach(t => monkeySay(t)); return; }
   const who = guideNow(), ml = $('#mline'); if (ml){ ml.hidden = false; ml.innerHTML = '<b>' + who + ':</b> '; ml.appendChild(document.createTextNode(all.join(' '))); }
-  const lines = all.map(t => [who, t]); lines.soft = true; if (room) lines.room = room; dlgStart(lines);
+  const lines = all.map(t => [who, t]); if (A.act === 1 && !A.solved.size) lines.hold = true; else lines.soft = true; if (room) lines.room = room; dlgStart(lines);
 }
 /* ---- STORY BEATS (HANDOFF backlog 3: Max skipped the whole Barold intro and never saw the monkey take the map). A beat is a key moment of the
    story (an intro, a reveal, a promotion, the map coming back...). While one plays: if what it's about is off your screen, your view turns gently
