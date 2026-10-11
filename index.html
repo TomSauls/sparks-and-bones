@@ -11709,7 +11709,8 @@ function openFrame(dt){
   const h = A.crash ? A.crash.position : cellPos(...SPAWN), sp = cellPos(...SPAWN), e = 1 - Math.pow(1 - Math.min(1, t/OPEN_END), 2);
   let pos, look;
   // one continuous move: circle down round the wreck, then glide into your own eyes. The second part starts exactly where the first ends (it used to jump back)
-  const orbit = k => { const a = 2.2 + k*1.6, r = 8 - k*2.5; return new THREE.Vector3(h.x + Math.cos(a)*r, 7.5 - k*4, h.z + Math.sin(a)*r); };
+  // (the wreck sits 2 blocks from the jungle's south edge, so the circle stays on the swamp side, west to north-west, and low under the tree crowns: it used to start out past the edge and swing in through the tree wall and the leaves)
+  const orbit = k => { const a = 3.1 + k*.7, r = 8 - k*2.5; return new THREE.Vector3(h.x + Math.cos(a)*r, 4.5 - k, h.z + Math.sin(a)*r); };
   if (t < 8.6){ pos = orbit(t/8.6); look = new THREE.Vector3(h.x, h.y + .5, h.z); }
   else { const k = Math.min(1, (t - 8.6)/6), e2 = k*k*(3 - 2*k), a = 3.8 + k*.9, r = 5.5 + k*.5; const from = new THREE.Vector3(h.x + Math.cos(a)*r, 3.5 - k*1.9, h.z + Math.sin(a)*r), to = new THREE.Vector3(sp.x, sp.y + EYE, sp.z); pos = from.lerp(to, e2); look = new THREE.Vector3(h.x, h.y + .5, h.z).lerp(new THREE.Vector3(sp.x, sp.y + EYE - .3, sp.z - 6), e2); }
   cineCamera(pos, look); A.openLook = [pos, look];
