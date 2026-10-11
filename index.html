@@ -9319,7 +9319,7 @@ const DECOR_ART = (() => {
   items.sort((a, b) => b.h - a.h); let x = 0, y = 0, rowH = 0;
   items.forEach(it => { if (x + it.w > W){ x = 0; y += rowH + 2; rowH = 0; } it.x = x; it.y = y; x += it.w + 2; rowH = Math.max(rowH, it.h); });
   const H = Math.ceil((y + rowH) / 16) * 16, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-  const tex = new THREE.CanvasTexture(cv); tex.anisotropy = 4;
+  const tex = new THREE.CanvasTexture(cv); tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false;   // no mipmaps: the atlas isn't a power of two, and on Apple devices its mipmaps came out blank, so every sign showed as an empty white board
   const mat = new THREE.MeshLambertMaterial({map:tex, emissive:0xffffff, emissiveMap:tex, emissiveIntensity:.32, polygonOffset:true, polygonOffsetFactor:-2, polygonOffsetUnits:-2});
   const slots = {}; items.forEach(it => slots[it.key] = it);
   const art = {cv, tex, mat, slots, H, W, fit:{}, drawn:0};
