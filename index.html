@@ -3,6 +3,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
 <style>
+/* Pixelify Sans draws 5 almost exactly like S. These faces swap in a square-shouldered pixel 5 (U+35 only); declared after the Google Fonts link, so they win for that one character. */
+@font-face{font-family:"Pixelify Sans";font-weight:400;font-display:swap;src:url(data:font/woff2;base64,d09GMgABAAAAAAJ0AA8AAAAABVAAAAIfAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGyAcKgZgP1NUQVQuADQRCApAVwE2AiQDCAsGAAQgBYRGByAMBxtZBAAuBpyyiwVP5GOos3k1bxgMpZRd8D83QiXnef7X/rfPnfmiDiTXRBdPRPpvRJOkIRNVVic0s1DI72o59+kKjWJOUlpXtam23+o+EOsTj7DxUSpEsrtfGAQEuUSQYMLt6bUlSVsgLeWqLZAgADjC9fT+L6SvbdBNwM8S+A5TSnxtsgDXsCjRF68NNkWigDlgSk+Nx+VoiEbNQt1V0G5SFHd4Mt1CSA0NgKDdshgPhy184Uo6RJjboC5LuaOJ8rqu4UbOks82+gd8+DzHD4UPbFEe9/+lepg5IJCPdTDLK6JVMIjDJM+qIBIHRYWS5A7lNSioMMgrGOQzC9RqwZYW39dXQKTBAgXUCAaBYQBqQAaPpj0dutJZdenUpUO7u/PUBfESeLSd35wf8TOfCgAIwvb3tXt2/w9h9Q++m70e8OfRQqvv4bIKoFkB4TRuecPgtLsCPKVLz9cRaNFiENcS1tfuIq/UbXhMjRj3jaLbJ1T2+kNtXcbRZDyH0WxNzgndtuaSKHTmtZG5f/UhBtMXm0QgIkxBTkEesyVCzJLkDakkvC/MxpXOwSzZDDJ0R5g+FxEZbA4mRkSIydGQlSWQEJHrJuPOoMlCEh4ib1lVkm4a32jNGhK4VFe2vIwcvt00tzA31pwge0XaEr87ij26h2wOiUHHaGeiF32l+xx3NomJODIcElWGwSbIWpiYOsCfC7xAqjEbhZ+n0fHdBA==) format("woff2");unicode-range:U+35;}@font-face{font-family:"Pixelify Sans";font-weight:500;font-display:swap;src:url(data:font/woff2;base64,d09GMgABAAAAAAJ0AA8AAAAABVAAAAIfAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGyAcKgZgP1NUQVQuADQRCApAVwE2AiQDCAsGAAQgBYRGByAMBxtZBAAuBpyyiwVP5GOos3k1bxgMpZRd8D83QiXnef7X/rfPnfmiDiTXRBdPRPpvRJOkIRNVVic0s1DI72o59+kKjWJOUlpXtam23+o+EOsTj7DxUSpEsrtfGAQEuUSQYMLt6bUlSVsgLeWqLZAgADjC9fT+L6SvbdBNwM8S+A5TSnxtsgDXsCjRF68NNkWigDlgSk+Nx+VoiEbNQt1V0G5SFHd4Mt1CSA0NgKDdshgPhy184Uo6RJjboC5LuaOJ8rqu4UbOks82+gd8+DzHD4UPbFEe9/+lepg5IJCPdTDLK6JVMIjDJM+qIBIHRYWS5A7lNSioMMgrGOQzC9RqwZYW39dXQKTBAgXUCAaBYQBqQAaPpj0dutJZdenUpUO7u/PUBfESeLSd35wf8TOfCgAIwvb3tXt2/w9h9Q++m70e8OfRQqvv4bIKoFkB4TRuecPgtLsCPKVLz9cRaNFiENcS1tfuIq/UbXhMjRj3jaLbJ1T2+kNtXcbRZDyH0WxNzgndtuaSKHTmtZG5f/UhBtMXm0QgIkxBTkEesyVCzJLkDakkvC/MxpXOwSzZDDJ0R5g+FxEZbA4mRkSIydGQlSWQEJHrJuPOoMlCEh4ib1lVkm4a32jNGhK4VFe2vIwcvt00tzA31pwge0XaEr87ij26h2wOiUHHaGeiF32l+xx3NomJODIcElWGwSbIWpiYOsCfC7xAqjEbhZ+n0fHdBA==) format("woff2");unicode-range:U+35;}@font-face{font-family:"Pixelify Sans";font-weight:600;font-display:swap;src:url(data:font/woff2;base64,d09GMgABAAAAAAJ8AA8AAAAABVAAAAInAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGyAcKgZgP1NUQVQqADQRCAo8VwE2AiQDCAsGAAQgBYROByAMBxtdBCguBuyW5SiWeonSfTh+5jS/w2HuGl4jVHIevvZ7PXffBpjKpDIVCgB9XeqAXFnVCMDxVcCKyKL+1++39uGJTGJeRMyTWbZvvh8JDVKmMp0U7O5KPJ6+XW9/E0eeCGd6euuUC0SjhJtnlFzuXFrlyPl8N5/ftBO4Pgag8SAMcA2LEj3x2mCTEgk0QA2YMm/ZZ++bmclJTirFcFOBar2CyPT64RJ8MpQGCFQbF+KgzPwn9qIKAXYd5LQ8PbZJj+c8LhaTeC/jH1TwQce3w1Nefl3/f4HiZoaAgHg1jzHIKYRKgVYEvRwnD/NIIM2QvA8JBVo5BVq5DAJZFlja5u/rQ0CI0hyQQEagFWgHIAOidWNUR42aqC3q1KpTo9rl6o1bbqf8ee/1s333qg1bv9wIAIHg1uymhjX/K53FL8DngRcAfvyu1NX7pWCaAcolEFzGTe8Yqd5GwJPG+jDb1XXSijQEdFWb4RS5CrdpELo9kNR7isI6L2Sz0o0y3ZlGucnssuoty2lbUBuP/+2sMp7o0uguTAIOD1EZKRlp1BKPQU0JzhgyAeuCWthSWagpk0bE2ENUmw3xNCYLFcJDSGepSEriCBDPtpOwp1EkMQQsBjpLakW8bninJXMMjk22ZUpLSMXTVWMTY33VFY6XxC324WH84BrDZBFoVJQ8FWH4m66z7JkEOmRJsAhkCRoTJ2liYGiD+d2rOjSyAydQelwI3o9SLl8C) format("woff2");unicode-range:U+35;}@font-face{font-family:"Pixelify Sans";font-weight:700;font-display:swap;src:url(data:font/woff2;base64,d09GMgABAAAAAAJ8AA8AAAAABVAAAAInAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGyAcKgZgP1NUQVQqADQRCAo8VwE2AiQDCAsGAAQgBYROByAMBxtdBCguBuyW5SiWeonSfTh+5jS/w2HuGl4jVHIevvZ7PXffBpjKpDIVCgB9XeqAXFnVCMDxVcCKyKL+1++39uGJTGJeRMyTWbZvvh8JDVKmMp0U7O5KPJ6+XW9/E0eeCGd6euuUC0SjhJtnlFzuXFrlyPl8N5/ftBO4Pgag8SAMcA2LEj3x2mCTEgk0QA2YMm/ZZ++bmclJTirFcFOBar2CyPT64RJ8MpQGCFQbF+KgzPwn9qIKAXYd5LQ8PbZJj+c8LhaTeC/jH1TwQce3w1Nefl3/f4HiZoaAgHg1jzHIKYRKgVYEvRwnD/NIIM2QvA8JBVo5BVq5DAJZFlja5u/rQ0CI0hyQQEagFWgHIAOidWNUR42aqC3q1KpTo9rl6o1bbqf8ee/1s333qg1bv9wIAIHg1uymhjX/K53FL8DngRcAfvyu1NX7pWCaAcolEFzGTe8Yqd5GwJPG+jDb1XXSijQEdFWb4RS5CrdpELo9kNR7isI6L2Sz0o0y3ZlGucnssuoty2lbUBuP/+2sMp7o0uguTAIOD1EZKRlp1BKPQU0JzhgyAeuCWthSWagpk0bE2ENUmw3xNCYLFcJDSGepSEriCBDPtpOwp1EkMQQsBjpLakW8bninJXMMjk22ZUpLSMXTVWMTY33VFY6XxC324WH84BrDZBFoVJQ8FWH4m66z7JkEOmRJsAhkCRoTJ2liYGiD+d2rOjSyAydQelwI3o9SLl8C) format("woff2");unicode-range:U+35;}
 /* Layout: full-screen 3D island; HUD floats on top (goal + truth card above, hotbar below); menu, book and celebration are stone-GUI panels. Single committed look. */
 :root{
   --sky:#8fc3ff;
@@ -155,6 +157,12 @@ body.emptyHands #hotbarWrap,body.emptyHands #hand{display:none!important;}
 #hotbar.gift{animation:gift 1.6s ease-out 1;}
 @keyframes gift{0%{transform:scale(.3);filter:brightness(3)}40%{transform:scale(1.25);filter:brightness(2)}100%{transform:none;filter:none}}
 .pwList{display:flex;flex-direction:column;gap:6px;}
+.passShow{font-size:30px;font-weight:700;letter-spacing:.12em;min-height:52px;padding:6px 12px;background:#fff;color:#222;border:3px solid #333;box-sizing:border-box;width:100%;white-space:pre;overflow:hidden;}
+.passKeys{display:flex;flex-direction:column;gap:6px;margin:8px 0;}   /* rows of keys in .row divs: the TV app lays a .row out side by side */
+.passKeys .row{display:flex;gap:6px;margin:0;}
+.passKeys .btn{flex:1 1 0;min-width:0;padding:6px 0;font-size:22px;}
+.passKeys .row:nth-child(4)::after{content:"";flex:2 1 0;}   /* V to Z under the letters above */
+.passKeys .row:last-child .btn{font-size:18px;} .passKeys .passGo{flex-grow:2;font-size:24px;}
 .pwBtn{display:flex;flex-direction:column;align-items:flex-start;text-align:left;font-size:18px;}
 .pwBtn small{font-size:13px;opacity:.8;font-weight:400;}
 #hotbar{pointer-events:auto;display:flex;gap:2px;padding:3px;background:rgba(20,20,20,.55);border:3px solid #2a2a2a;box-shadow:0 0 0 2px #8a8a8a;}
@@ -172,6 +180,13 @@ body.emptyHands #hotbarWrap,body.emptyHands #hand{display:none!important;}
 .slot.sel{border:3px solid #fff;box-shadow:0 0 0 2px #000,inset 0 0 0 2px #000;background:rgba(200,200,200,.6);}
 #dlg{position:absolute;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(640px,calc(100vw - 24px));padding:12px 16px 14px;font-size:21px;line-height:1.3;z-index:30;cursor:pointer;pointer-events:auto;}
 #dlgWho{display:block;color:#7a120a;font-size:16px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:2px;}
+#goalBox{transition:opacity .3s;}
+body.dlgOn #goalBox:not(.open){opacity:.45;}   /* somebody's talking: the goal steps back to its title so the talk box is the one thing to read (Max read the goal and missed Barold) */
+body.dlgOn #goalBox:not(.open) #goalText{display:none;}
+#dlg.nudge{animation:dlgNudge .5s ease-in-out infinite alternate;}
+#dlg.nudge::after{content:attr(data-nudge);display:block;clear:both;margin-top:6px;text-align:center;font-size:16px;font-weight:700;color:#7a120a;}
+@keyframes dlgNudge{from{transform:translateX(-50%) translateY(0);}to{transform:translateX(-50%) translateY(-6px);}}
+@media (prefers-reduced-motion: reduce){ #dlg.nudge{animation:none;outline:4px solid #ffd84a;} }
 #dlgMore{float:right;color:#c8281c;font-size:15px;font-weight:700;animation:objp .7s ease-in-out infinite alternate;margin-left:8px;}
 #beatArrow{position:fixed;top:42%;z-index:31;pointer-events:none;font:700 22px "Atkinson Hyperlegible","Trebuchet MS",sans-serif;color:#3a2410;background:#f6e7c1;border:3px solid #6b4423;box-shadow:0 0 0 3px #2b1a0c,4px 4px 0 3px rgba(0,0,0,.35);padding:6px 12px;animation:beatNudge .6s ease-in-out infinite alternate;}
 #beatArrow.left{left:14px;} #beatArrow.right{right:14px;}
@@ -1020,12 +1035,12 @@ function cartsStep(){
 }
 function step(){
   if (S.gridDirty) layout();
-  let cells = S.grid.filter(Boolean);
+  let cells = S.simCells || S.grid.filter(Boolean);   // (a try-out of one room's circuit steps only that room: eggSim)
   for (const c of cells) if (c.t === 'drail'){ const was = c.on || c.timer > 0; c.on = cartOnCell(c.x, c.y); if (c.on){ c.timer = DRAIL_TICKS; if (!was && !S.simulating) sfx.plate(); } }   // a cart on a detector rail; it stays on a moment after the cart has gone
   for (const c of cells) if (c.t === 'plate'){ const was = c.on || c.timer > 0; c.on = c.tray ? trayOnCell(c) : playerOnCell(c.x, c.y) || (typeof troopOnCell === 'function' && troopOnCell(c.x, c.y)) || uniMobOn(c.x, c.y); if (c.on){ c.timer = PLATE_TICKS; if (!was && !S.simulating) sfx.plate(); } }   // you or a monkey press it; like Java it stays down about a second after they step off
   // like Java: a torch, lever or button pops off when the block it's stuck on is gone
   for (const c of cells) if ((c.t === 'torch' || c.t === 'lever' || c.t === 'button') && c.attach >= 0 && !c.locked && !S.simulating && at(c.x, c.y) === c){ const b = nb(c, c.attach); if (!b || !SOLID.has(b.t)){ setCell(c.x, c.y, null); S.events.push(['popoff', c]); } }
-  if (S.gridDirty){ layout(); cells = S.grid.filter(Boolean); }
+  if (S.gridDirty){ layout(); cells = S.simCells || S.grid.filter(Boolean); }
   const dust = cells.filter(c => c.t==='dust');
   powerPass(cells, dust);
   // torches that flip in the same tick flip one after another, each seeing the ones before (Java runs them in order too),
@@ -1599,6 +1614,9 @@ CV.frieze = cv16(g => { g.fillStyle = '#c8602c'; g.fillRect(0,0,16,16); g.fillSt
 CV.vine = (() => { const c = document.createElement('canvas'); c.width = c.height = 16; const g = c.getContext('2d'); const pal = ['#3f7a22','#4f9430','#2f6018']; for (let x=1; x<16; x+=3){ const len = 6 + ((x*7) % 10); for (let y=0; y<len; y++){ g.fillStyle = pal[(x+y) % 3]; g.fillRect(x + ((y % 4) < 2 ? 0 : 1), y, 1, 1); if (y % 3 === 0){ g.fillRect(x - 1 + ((y % 4) < 2 ? 0 : 2), y, 1, 1); } } } return c; })();
 M.brick = lam(CV.brick); M.mossy = lam(CV.mossy); M.cracked = lam(CV.cracked); M.glyph = lam(CV.glyph); M.glyphs = CV.glyphs.map(c => lam(c)); M.frieze = lam(CV.frieze);
 M.vine = new THREE.MeshLambertMaterial({map:tex(CV.vine, null, true), transparent:true, alphaTest:.5, side:THREE.DoubleSide});
+// the climbable spots are Minecraft-style ladders (two rails, a rung every quarter block), so they read as "climb here" (decor vines stay vines)
+CV.ladder = (() => { const c = document.createElement('canvas'); c.width = c.height = 16; const g = c.getContext('2d'); g.fillStyle = '#8a6438'; g.fillRect(2,0,2,16); g.fillRect(12,0,2,16); for (let y=1; y<16; y+=4) g.fillRect(4,y,8,2); g.fillStyle = '#5c3f1e'; g.fillRect(2,0,1,16); g.fillRect(13,0,1,16); for (let y=1; y<16; y+=4) g.fillRect(4,y+1,8,1); g.fillStyle = '#b08850'; g.fillRect(3,0,1,16); g.fillRect(12,0,1,16); return c; })();
+M.ladder = new THREE.MeshLambertMaterial({map:tex(CV.ladder, [1, 1], true), transparent:true, alphaTest:.5, side:THREE.DoubleSide});
 M.lip = new THREE.MeshLambertMaterial({color:0x6e6c62});
 CV.vein = cv16(g => { g.drawImage(CV.brick, 0, 0); g.fillStyle = '#9a2a1c'; [[2,0],[2,1],[3,2],[3,3],[4,4],[5,5],[5,6],[6,7],[8,8],[9,8],[10,9],[11,10],[11,11],[12,12],[13,13],[13,14],[13,15],[7,6],[8,5],[9,4],[10,4]].forEach(([x,y]) => g.fillRect(x, y, 1, 1)); g.fillStyle = '#d83a22'; [[3,2],[6,7],[10,9],[12,12]].forEach(([x,y]) => g.fillRect(x, y, 1, 1)); });
 M.gatePaint = new THREE.MeshLambertMaterial({color:0xd8381c, emissive:0x3a0a02}); M.gateWhite = new THREE.MeshLambertMaterial({color:0xf4efe0, emissive:0x202018});   // a fence gate's paint (bright, so it shows across a dim room)
@@ -2101,7 +2119,7 @@ function serializeBuild(){
 }
 let saveTimer = 0;
 function saveBuildSoon(){
-  if (A.on) return advSaveSoon();
+  if (A.on) return advSaveSoon(true);   // building: a quiet save once you pause (advSaveSoon)
   if (!L || S.simulating || L.def.gym) return;
   const id = L.def.id; clearTimeout(saveTimer);
   saveTimer = setTimeout(() => { if (L && L.def.id === id) writeBuild(id, serializeBuild()); }, 400);
@@ -2768,7 +2786,8 @@ function quicksandFrame(s){
     if (P.sink >= 1.45) die('GLUG GLUG! The quicksand got you!');
   } else { P.sink = Math.max(0, (P.sink || 0) - s*1.6); if (!P.sink) P.sandWarned = false; }
 }
-function look(dx, dy, k){ const s = stickScale(P.yaw - dx*k, P.pitch - dy*k); P.yaw -= dx*k*s; P.pitch = Math.max(-1.5, Math.min(1.45, P.pitch - dy*k*s)); }
+function look(dx, dy, k){ if (LOOK_UP.on && (Math.abs(dx) + Math.abs(dy))*k > .002) LOOK_UP.on = false;   // (a turn of your own lets go of the look up at a show)
+  const s = stickScale(P.yaw - dx*k, P.pitch - dy*k); P.yaw -= dx*k*s; P.pitch = Math.max(-1.5, Math.min(1.45, P.pitch - dy*k*s)); }
 /* ---- camera stick (design guide 3): when you're looking at the right thing (where to go, whoever is talking) or a box has just popped up,
    turning AWAY is a little stiffer for a moment, so a nudge doesn't lose it. Never a lock (you can always turn away), never long (about a second).
    Mouse, touch and pad all turn through look(), so one rule covers all three. Use lookStick(target) anywhere: target is a cell [x, y] (a beam: only
@@ -3499,6 +3518,7 @@ function buildMenuScene(){
 function menuSceneFrame(now){ if (!MENU3D.g) return; const on = !MENU3D.el.hidden && !A.on; MENU3D.g.visible = on; if (on && cam.sway && !reduceMotion){ cam.theta = Math.sin(now*.00011)*.32; updateCam(); } }
 function loadShowcase(){
   setWorld(16, 16, 'lab'); buildWalls(); buildFloorDecor(false);
+  advRootsShow(false); sbClear();   // the adventure's walkways, lava and torches would float over the menu's jungle with nothing under them
   L = null; clearWorld(); syncVisuals();
   buildMenuScene().visible = true;
   cam.target.set(0, 9, -16); cam.r = 50; cam.phi = 1.3; cam.theta = 0; cam.auto = false; cam.sway = true; updateCam();
@@ -3586,7 +3606,7 @@ const IDB = { db:null, open(){ return new Promise(res => { try { const rq = inde
   async get(k){ const db = IDB.db || await IDB.open(); if (!db) return null; return new Promise(res => { try { const rq = db.transaction('kv').objectStore('kv').get(k); rq.onsuccess = () => res(rq.result || null); rq.onerror = () => res(null); } catch (e) { res(null); } }); },
   async put(k, v){ const db = IDB.db || await IDB.open(); if (!db) return; try { db.transaction('kv', 'readwrite').objectStore('kv').put(v, k); } catch (e) {} } };
 let lastMirror = '';
-function mirrorNow(){ const o = snapKeys(), j = JSON.stringify(o); if (j === lastMirror || !hasProgress(o)) return; lastMirror = j; IDB.put('snap', {t:Date.now(), keys:o}); }
+function mirrorNow(){ if (typeof indexedDB === 'undefined' || !indexedDB) return; const o = snapKeys(), j = JSON.stringify(o); if (j === lastMirror || !hasProgress(o)) return; lastMirror = j; IDB.put('snap', {t:Date.now(), keys:o}); }
 setInterval(mirrorNow, 15000);
 // an iPad app can be put to sleep at any moment: save where you are, copy it to the backup store, send it to the family server (if there is one)
 function saveAllNow(){ try { if (A.on) advSaveNow(); } catch (e) {} mirrorNow(); syncFlush(); }
@@ -3627,11 +3647,11 @@ function slotNew(name, opt){   // a new, empty save; it becomes the one you're p
 function slotLoad(id){ const e = slotEntry(id); if (!e) return null; let v = null;
   try { v = kvGet(e.key); const s = v ? migrateFun(JSON.parse(v)) : null; if (s && s.mended){ slotBroken(e, v); delete s.mended; } return s; } catch (err) { slotBroken(e, v); return null; } }
 function slotBroken(e, raw){ if (raw) kvSet(e.key + '.broken', raw); }   // a save we can't read is kept for a grown-up, never just overwritten
-function slotWrite(id, s){   // the one place a game gets saved
+function slotWrite(id, s, quiet){   // the one place a game gets saved (quiet: no "Saving...", and the shared copy later)
   const x = slotIdx(), e = slotEntry(id, x); if (!e) return false;
   const raw = JSON.stringify(s); if (raw === kvGet(e.key)) return true;   // nothing new
   kvSet(e.key, raw); const now = Date.now(); e.updatedAt = Math.max(now, (e.updatedAt || 0) + 1); e.played = now; e.sum = slotSum(s); slotIdxPut(x);
-  savedFx(); syncSoon(); if (!A.on && !$('#menu').hidden) try { buildTiles(); } catch (err) {}   // the menu shows the new progress
+  if (quiet) syncSoon(15000); else { savedFx(); syncSoon(); } if (!A.on && !$('#menu').hidden) try { buildTiles(); } catch (err) {}   // the menu shows the new progress
   return true;
 }
 function slotWipe(id, keepTut){ const x = slotIdx(), e = slotEntry(id, x); if (!e) return; kvDel(e.key); if (!keepTut) e.tut = 0; e.sum = null; e.updatedAt = Math.max(Date.now(), (e.updatedAt || 0) + 1); slotIdxPut(x); mirrorNow(); }
@@ -3920,18 +3940,31 @@ $('#btnPass').addEventListener('click', () => {
   sfx.click();
   const kept = pwKept().filter(w => { const pw = pwFind(w); return pw && (pw.act !== FUN_ACT || FUN_READY); });   // (Act 3's are listed once it plays end to end)
   const list = kept.length ? `<p><b>Your passwords</b> (tap one to jump back there):</p><div class="pwList">${kept.map(w => { const pw = pwFind(w); return `<button class="btn pwBtn" data-w="${w}">${w}<small>${pw.after === 'launch' ? 'after the liftoff' : 'rooms 1 to ' + pw.after + ' done'}</small></button>`; }).join('')}</div>` : '<p><i>No passwords yet. The temple gives you one every few rooms.</i></p>';
-  openPane('Passwords', `<p><b>What's a password?</b> It's a secret code the game gives you every few rooms. Old games used them instead of saving!</p><p>When you get one, grab a <b>pencil and paper</b> and <b>write it down</b> (ask a grown-up to help). Keep the paper safe: stick it on the fridge! If the game ever forgets where you were, or you play on a different computer or tablet, type it in here and you'll jump straight back.</p>${list}<p><b>Type a password:</b></p><input id="passIn" autocomplete="off" style="font-size:22px;width:100%;padding:8px;text-transform:uppercase" placeholder="e.g. ONE SILLY WORD"><div class="row"><button class="btn red" id="passGo">Go!</button><span id="passMsg" class="msg" role="status"></span></div><div id="passWhere" hidden></div>`);
-  let busy = false;
-  const start = how => { if (busy) return; const sv = usePassword($('#passIn').value, how); if (!sv){ $('#passMsg').textContent = `You've got ${SLOT_MAX} saves already! Delete one in Saves to make room.`; sfx.nope(); return; }
+  openPane('Passwords', `<p><b>What's a password?</b> It's a secret code the game gives you every few rooms. Old games used them instead of saving!</p><p>When you get one, grab a <b>pencil and paper</b> and <b>write it down</b> (ask a grown-up to help). Keep the paper safe: stick it on the fridge! If the game ever forgets where you were, or you play on a different computer or tablet, type it in here and you'll jump straight back.</p>${list}<p><b>Type a password:</b></p><div id="passShow" class="passShow" role="textbox" aria-label="Password" aria-live="polite"></div><div class="passKeys">${['ABCDEFG', 'HIJKLMN', 'OPQRSTU', 'VWXYZ'].map(r => `<div class="row">${r.split('').map(c => `<button class="btn passKey" data-k="${c}">${c}</button>`).join('')}</div>`).join('')}<div class="row"><button class="btn passKey" data-k="del" aria-label="Rub out a letter">&#9003; Rub out</button><button class="btn passKey" data-k="clr">Clear</button><button class="btn red passGo" id="passGo">Go!</button></div></div><div class="row"><span id="passMsg" class="msg" role="status"></span></div><div id="passWhere" hidden></div>`);
+  let busy = false, typed = '';
+  const start = how => { if (busy) return; const sv = usePassword(typed, how); if (!sv){ $('#passMsg').textContent = `You've got ${SLOT_MAX} saves already! Delete one in Saves to make room.`; sfx.nope(); return; }
     busy = true; $('#passWhere').hidden = true; $('#passMsg').textContent = 'Yes! Off you go...'; sfx.chime(); setTimeout(() => { $('#pane').hidden = true; ac(); playWithLoader(() => startAdventure(sv)); }, 700); };
-  const go = () => { if (busy) return; if (!passFind($('#passIn').value)){ $('#passWhere').hidden = true; $('#passMsg').textContent = 'Hmm, that\'s not one of the temple\'s passwords. Check the spelling?'; sfx.nope(); return; }
+  const go = () => { if (busy) return; if (!typed){ $('#passWhere').hidden = true; $('#passMsg').textContent = 'Press the letters of your password first, then Go!'; sfx.nope(); return; }   // (on the TV an empty Go! sent Tom back to the helicopter: it read a text box the TV doesn't draw)
+    if (!passFind(typed)){ $('#passWhere').hidden = true; $('#passMsg').textContent = 'Hmm, that\'s not one of the temple\'s passwords. Check the spelling?'; sfx.nope(); return; }
     const x = slotIdx(), cur = slotEntry(x.cur, x); if (!cur || !slotSum(slotLoad(cur.id)).started) return start('here');   // no game to lose: straight in
     const full = x.slots.length >= SLOT_MAX, w = $('#passWhere'); $('#passMsg').textContent = ''; sfx.chime();   // never swap the game you're on without asking
     w.innerHTML = `<p><b>Yes! That's a real password.</b> Where shall it go?</p><div class="row"><button class="btn red" id="passNew"${full ? ' disabled' : ''}>Start a new save</button><button class="btn" id="passHere">Put it in "${escH(cur.name)}"</button></div><p style="font-size:15px">${full ? `You've got ${SLOT_MAX} saves, so a new one won't fit. ` : ''}"${escH(cur.name)}" would jump to the password's place. Rooms you've done stay done.</p>`;
     w.hidden = false; $('#passNew').onclick = () => { sfx.click(); start('new'); }; $('#passHere').onclick = () => { sfx.click(); start('here'); };
     const first = full ? $('#passHere') : $('#passNew'); if (padMode) padFocus(first); else first.focus(); };
-  document.querySelectorAll('.pwBtn').forEach(bt => bt.onclick = () => { $('#passIn').value = bt.dataset.w; go(); });
-  $('#passGo').onclick = go; $('#passIn').onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter') go(); }; setTimeout(() => $('#passIn').focus(), 50);
+  document.querySelectorAll('.pwBtn').forEach(bt => bt.onclick = () => { typed = bt.dataset.w; showTyped(); go(); });
+  // letters are buttons, not a text box: the Apple TV app draws no text box at all, and a controller can't type into one (Tom, on the TV,
+  // couldn't enter a password). A keyboard still types (keys go to the letters while this pane is open); touch and the pad press the keys.
+  const showTyped = () => { const el = $('#passShow'); if (el) el.textContent = typed || ' '; $('#passWhere').hidden = true; $('#passMsg').textContent = ''; };
+  const key = k => { if (busy) return; if (k === 'del') typed = typed.slice(0, -1); else if (k === 'clr') typed = ''; else if (typed.length < 24) typed += k; showTyped(); };
+  document.querySelectorAll('.passKey').forEach(bt => bt.onclick = e => { e.stopPropagation(); sfx.click(); key(bt.dataset.k); });
+  const onKey = e => {
+    if (!$('#passShow') || $('#pane').hidden){ document.removeEventListener('keydown', onKey, true); return; }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const k = e.key || '';
+    if (/^[a-z]$/i.test(k)) key(k.toUpperCase()); else if (k === 'Backspace') key('del'); else if (k === 'Enter' && typed) go(); else return;
+    e.preventDefault(); e.stopPropagation(); };
+  document.addEventListener('keydown', onKey, true);
+  $('#passGo').onclick = go; showTyped(); padMem.pane = $('.passKey');   // a controller starts on A, not Done
 });
 $('#btnCopy').addEventListener('click', () => {
   const t = $('#saveOut'), done = () => { $('#copyMsg').textContent = 'Copied!'; };
@@ -4283,14 +4316,14 @@ const TEMPLE_ROOMS = [
     mc:'Pressure plates in Minecraft switch on when you (or a mob!) stand on them. Brilliant for automatic doors.',
     bonus:{text:'BONUS: can you light all three with 7 dust or fewer? Win your own Lamp!', kind:'dust', n:7, reward:'lamp'},
     unlock:['plate'], sol:[K('plate',5,6),D(5,5),D(5,4),D(5,3),D(4,4),D(3,4),D(3,3),D(6,4),D(7,4),D(7,3)] },
-  { id:8, ch:1, name:'The Great Golden Toilet', toiletExit:true, tntAt:[7,1], check:'boom', out:[[7,1]],
+  { id:8, ch:1, name:'The Great Golden Toilet', toiletExit:true, tntAt:[5,0], check:'boom', out:[[5,0]],   // the TNT sits right up against the toilet, so it's clear what it's for
     fixed:[],
     goal:'A giant golden toilet blocks the door! Power the Boom Block (TNT!) next to it to blast the toilet away.',
     hello:'Who put a GIANT TOILET in the doorway?! There\'s a Boom Block right next to it... I wonder what happens if it gets power...',
     hint:'Put down a lever, run dust from it to the Boom Block, then flip the lever. Maybe don\'t stand RIGHT next to it...',
-    win:'KA-BLOOOM! It\'s raining UNDERPANTS! And look: VINES where the toilet was! Walk into them to climb up. Boom Blocks are yours now!',
+    win:'KA-BLOOOM! It\'s raining UNDERPANTS! And look: a LADDER where the toilet was! Walk into it to climb up. Boom Blocks are yours now!',
     mc:'Minecraft TNT explodes when it gets redstone power. Always wire it from far away!',
-    unlock:['tnt'], sol:[K('lever',7,4),D(7,3),D(7,2)] },
+    unlock:['tnt'], sol:[K('lever',5,4),D(5,3),D(5,2),D(5,1)] },
   // ---------------- Chapter 2: THE GRUMPY TORCH ----------------
   // ---------------- The Monkey Business wing: troops of monkeys you control with circuits ----------------
   { id:9, ch:4, name:'Feeding Time', give:['dust'], check:'pen', out:[[2,4],[4,2]],
@@ -4818,7 +4851,7 @@ const PIER = {totem:[11, 137], arch:[8, 135], wheel:[24, 152], carousel:[48, 158
 // ---- the look: a moonlit seaside pier, put together by pirates in an afternoon (everything at haphazard angles) ----
 function buildFunDecor(){
   freeKids(decorRoot);
-  ['crash', 'jungle', 'crown', 'glove', 'cog', 'beacon', 'reggie', 'heart', 'facade', 'thief', 'zest', 'greg', 'digby', 'general'].forEach(k => A[k] = null);
+  ['crash', 'jungle', 'crown', 'glove', 'punchAt', 'cog', 'beacon', 'reggie', 'heart', 'facade', 'thief', 'zest', 'greg', 'digby', 'general'].forEach(k => A[k] = null);
   A.chestMeshes = []; A.crystalsMesh = []; A.noteMeshes = []; A.extras = []; A.bolts = []; A.nearLabels = []; A.flies = []; A.eyes = []; A.bubbles = []; A.pickups = []; A.hosts = {}; A.cartMeshes = [];
   A.monkey = makeSkeleton(); A.monkey.userData.bubble = null; piratHat(A.monkey);   // Barold: away until he turns up in his pirate hat
   if (A.baroldBack){ decorRoot.add(A.monkey); A.monkey.position.copy(cellPos(FUN_SPAWN[0] + 2, FUN_SPAWN[1] - 1)); }
@@ -5910,7 +5943,7 @@ function makeGreg(){
 }
 function buildApeDecor(){
   freeKids(decorRoot);
-  ['crash', 'jungle', 'crown', 'glove', 'cog', 'beacon', 'reggie', 'heart', 'facade', 'thief', 'captain'].forEach(k => A[k] = null);
+  ['crash', 'jungle', 'crown', 'glove', 'punchAt', 'cog', 'beacon', 'reggie', 'heart', 'facade', 'thief', 'captain'].forEach(k => A[k] = null);
   A.chestMeshes = []; A.crystalsMesh = []; A.noteMeshes = []; A.extras = []; A.bolts = []; A.nearLabels = []; A.flies = []; A.eyes = []; A.bubbles = []; A.pickups = []; A.crew = [];
   A.monkey = makeSkeleton(); decorRoot.add(A.monkey); A.monkey.userData.bubble = null; A.monkey.position.copy(cellPos(APE_SPAWN[0] + 2, APE_SPAWN[1] - 1));
   const g = new THREE.Group(); decorRoot.add(g); A.apeDecor = g;
@@ -6320,7 +6353,7 @@ function discover(id){
 }
 const A = { on:false, disc:new Set(), bonus:new Set(), solved:new Set(), crystals:new Set(), unlocked:new Set(['rblock']), found:new Set(['dust']), room:null, rt:{}, crystalsMesh:[], monkey:null, rocket:null, launched:false };
 function advLoad(){ return slotLoad(slotCur()); }   // the save you're playing (see the save slots, near the menu code)
-function advWrite(s){ slotWrite(slotCur(true), s); }
+function advWrite(s, quiet){ slotWrite(slotCur(true), s, quiet); }
 // Act 2 grew from 10 rides to 20: old saves used 101-110 for what are now these rides
 function migrateFun(s){
   if (!s || typeof s !== 'object') throw new Error('not a save');
@@ -6344,9 +6377,20 @@ function advSerialize(){
     levers: Object.fromEntries(S.grid.filter(c => c && c.locked && c.t === 'lever').map(c => [c.x + ',' + c.y, c.on ? 1 : 0])),
     player: {x:+P.x.toFixed(2), z:+P.z.toFixed(2), yaw:+P.yaw.toFixed(2)} };
 }
-let advTimer = 0;
-function advSaveSoon(){ if (!A.on || S.simulating) return; clearTimeout(advTimer); advTimer = setTimeout(advSaveNow, 500); }
-function advSaveNow(){ if (!A.on || A.openCine) return; advWrite(advSerialize()); }   // (nothing to keep while the opening plays)
+let advTimer = 0, advQuiet = false, advQuietSince = 0;
+// Something worth keeping (a room solved, a crystal, a new room): saved half a second later, with "Saving..." in the corner.
+// Building (every block placed or broken): a QUIET save, once you've stopped building for 4 s (or every 20 s while you keep
+// going), with no "Saving..." and the iCloud/server copy a while later. Saving on every block made the Apple TV save every
+// few seconds while you built, and each save there costs a lot more than in a browser (Tom, 11 Oct: "it REALLY hangs on save").
+// Leaving the game (pagehide, the app put away) still saves at once (saveAllNow).
+function advSaveSoon(quiet){
+  if (!A.on || S.simulating) return;
+  if (quiet && advTimer && !advQuiet) return;   // a proper save is already on its way, and sooner
+  const now = performance.now(); if (!quiet || !advTimer) advQuietSince = now;
+  clearTimeout(advTimer); advQuiet = !!quiet;
+  advTimer = setTimeout(() => { advTimer = 0; advSaveNow(advQuiet); }, quiet ? Math.max(0, Math.min(4000, advQuietSince + 20000 - now)) : 500);
+}
+function advSaveNow(quiet){ clearTimeout(advTimer); advTimer = 0; if (!A.on || A.openCine) return; advWrite(advSerialize(), quiet); }   // (nothing to keep while the opening plays)
 
 function roomOf(x, y){ for (const r of ROOMS){ const b = r.box; if (x > b.x0 && x < b.x1 && y > b.y0 && y < b.y1) return r; } return shipRoomAt(x, y); }
 function inHall(x, y){ return A.act !== UNI_ACT && ((x > HALL.x0 && x < HALL.x1 && y > HALL.y0 && y < HALL.y1) || (ROOMS === TEMPLE_ROOMS && inShipCorr(x, y))); }   // the corridor to the Skull's machines counts as the chamber
@@ -6539,9 +6583,11 @@ function buildTerrain(){
   // rope-bridge planks, with posts and rope rails
   const dk = inst(cbox(1, .14, .96), M.plank, decks, (mtx, [x, y, e]) => { const p = cellPos(x, y); mtx.makeTranslation(p.x, e - .07, p.z); }); if (dk) dk.userData.terrain = true;
   inst(cbox(.08, .9, .08), M.wood, decks.flatMap(d => [[...d, -1], [...d, 1]]), (mtx, [x, y, e, sd]) => { const p = cellPos(x, y), h = S.deck[y*NX + x - 1] || S.deck[y*NX + x + 1]; mtx.makeTranslation(p.x + (h ? 0 : sd*.48), e + .45, p.z + (h ? sd*.48 : 0)); });
-  // vine ladders up the wall in front of them
-  ladders.forEach(l => { let hi = l[2]; for (const [dx, dy] of DIRS){ const nx = l[0]+dx, ny = l[1]+dy; if (inb(nx, ny) && !S.walls[ny*NX + nx]) hi = Math.max(hi, S.elev[ny*NX + nx]); } l.push(Math.max(4, hi - l[2] + 1.5)); });
-  ladders.forEach(([x, y, e, h]) => { const p = cellPos(x, y), v = new THREE.Mesh(new THREE.PlaneGeometry(.9, h), M.vine); v.position.set(p.x, e + h/2, p.z); v.raycast = () => {}; terrainRoot.add(v); const v2 = v.clone(); v2.rotation.y = Math.PI/2; terrainRoot.add(v2); });
+  // ladders flat on each wall face you can climb (the texture repeats once a block, like Minecraft's)
+  const ladderGeo = (h) => { const gq = new THREE.PlaneGeometry(.8, h), uv = gq.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setY(k, uv.getY(k)*h); return gq; };
+  const ladderAt = (x, y, e, h, dx, dy) => { const p = cellPos(x, y), v = new THREE.Mesh(ladderGeo(h), M.ladder); v.position.set(p.x + dx*.46, e + h/2, p.z + dy*.46); v.rotation.y = dx ? Math.PI/2 : 0; v.raycast = () => {}; v.userData.ladder = true; terrainRoot.add(v); };
+  ladders.forEach(([x, y, e]) => { let n = 0, hi = e; for (const [dx, dy] of DIRS){ const nx = x+dx, ny = y+dy; if (!inb(nx, ny) || S.walls[ny*NX + nx]) continue; const ne = S.elev[ny*NX + nx]; hi = Math.max(hi, ne); if (ne > e + 1){ ladderAt(x, y, e, Math.round(ne - e) + .3, dx, dy); n++; } }
+    if (!n){ const h = Math.max(4, Math.round(hi - e) + 1); ladderAt(x, y, e, h, 0, 0); const v2 = terrainRoot.children[terrainRoot.children.length - 1].clone(); v2.rotation.y = Math.PI/2; terrainRoot.add(v2); } });
   // ceilings over the crypt and tunnels (hidden when you look from above)
   const rf = inst(cbox(1, .3, 1), M.cobble, roofs, (mtx, [x, y, yy]) => { const p = cellPos(x, y); mtx.makeTranslation(p.x, yy + .15, p.z); }); if (rf){ rf.userData.roof = true; rf.raycast = () => {}; }
   // wall torches wherever it's torch-lit
@@ -7080,7 +7126,7 @@ function sayOn(m, text, ms){
 }
 
 /* ---- troops: dozens of small monkeys in the Monkey Business rooms, steered by what Max builds ---- */
-const TROOP = {room:null, list:[], bananas:[], spawnT:0, labels:[]};
+const TROOP = {room:null, list:[], bananas:[], spawnT:0, labels:[], parked:{}};
 function troopPassable(x, y, r){
   if (!inb(x, y) || wallAt(x, y) || isQuick(x, y)) return false;
   const c = at(x, y); if (!c) return true;
@@ -7117,25 +7163,86 @@ function spawnTroop(r){
   // pillar beside it)
   // (now a label on the screen's label layer, beside the thing with an arrow: spotTag, like the room's other name tags)
   (t.labels || []).forEach(([text, x, y]) => { const tg = spotTag('name', text, {cell:[x, y], hgt:1, alive:() => TROOP.labels.includes(tg)}); if (tg) TROOP.labels.push(tg); });
+  // already there (seen through the doorway on the way in, or left behind last time): the same monkeys wake up and carry on (Tom: they
+  // used to pop in out of nowhere the moment you stepped inside)
+  const pk = troopUnpark(r);
+  if (pk){ TROOP.list = pk; TROOP.stage = pk.length < t.n ? 1 : 2; return; }
   troopAdd(r, n0, false);
 }
-// more of the troop: they hop down over the far wall (a pop of scale, then a short drop)
-function troopAdd(r, n, hopIn){
-  const t = r.troop, rect = t.seats || t.start, cells = [];
+// troops in the rooms you're near but not in: standing about, already there before you walk in (only looking around; nobody presses plates)
+function troopMake(r, n, hopIn){
+  const t = r.troop, rect = t.seats || t.start, cells = [], out = [];
   for (let x = rect[0]; x <= rect[2]; x++) for (let y = rect[1]; y <= rect[3]; y++) if (troopPassable(x, y, r) && !(t.pen && troopIn(t.pen, x, y))) cells.push([x, y]);
-  if (!cells.length) return;
+  if (!cells.length) return out;
   for (let i = 0; i < n; i++){
     const kind = t.kinds[i % t.kinds.length], m = makeWild(kind, .85 + Math.random()*.25), u = m.userData;
     const [x, y] = cells[i % cells.length], p = cellPos(x, y);
     m.position.set(p.x + (Math.random() - .5)*.5, p.y, p.z + (Math.random() - .5)*.5);
     u.troop = true; u.mode = t.seats ? 'sit' : 'roam'; u.wait = Math.random()*2; u.speed = 1.3 + Math.random()*.7; u.foodT = 2 + Math.random()*10;
     if (t.seats){ u.seat = [p.x + (Math.random() - .5)*.4, p.z + (Math.random() - .5)*.3]; m.rotation.y = Math.PI; }
+    else m.rotation.y = Math.random()*Math.PI*2;
     if (hopIn){ m.position.y += 2.5 + Math.random()*2; u.fly = {vx:0, vz:0, vy:-1 - Math.random()*2, spin:0}; }
-    decorRoot.add(m); TROOP.list.push(m);
+    decorRoot.add(m); out.push(m);
+  }
+  if (!hopIn) for (let k = 0; k < 30; k++) troopSeparate(out, r, .08);   // spread out where they start (more monkeys than cells share one)
+  return out;
+}
+// personal space: two monkeys closer than their bodies allow both step apart (Tom: they clipped into each other too much). Never through a
+// wall, a shut gate or out of the room, and never in or out of the pen (that's for the bananas to decide). Seated monkeys stay put.
+function troopSeparate(list, r, step){
+  const t = r.troop, b = r.box, ok = (m, x, z) => { const [ox, oy] = cellAtWorld(m.position.x, m.position.z), [nx, ny] = cellAtWorld(x, z);
+    if (nx === ox && ny === oy) return true;
+    return nx > b.x0 + 1 && nx < b.x1 - 1 && ny > b.y0 + 1 && ny < b.y1 - 1 && troopPassable(nx, ny, r) && !(t.pen && troopIn(t.pen, ox, oy) !== troopIn(t.pen, nx, ny)); };
+  const mv = (m, ex, ez) => { const p = m.position; for (const [qx, qz] of [[ex, ez], [ex, 0], [0, ez]]) if ((qx || qz) && ok(m, p.x + qx, p.z + qz)){ p.x += qx; p.z += qz; return true; } return false; };
+  list.forEach(m => { m.userData.crowd = false; });
+  for (let i = 0; i < list.length; i++){
+    const a = list[i], ua = a.userData; if (ua.fly) continue;
+    for (let j = i + 1; j < list.length; j++){
+      const c = list[j], uc = c.userData; if (uc.fly) continue;
+      let dx = c.position.x - a.position.x, dz = c.position.z - a.position.z, d = Math.hypot(dx, dz);
+      const minD = .32*(a.scale.x + c.scale.x); if (d >= minD) continue;
+      if (d < 1e-4){ const an = (i*2.4 + j*1.3) % (Math.PI*2); dx = Math.cos(an); dz = Math.sin(an); } else { dx /= d; dz /= d; }
+      const wa = ua.mode === 'sit' ? 0 : 1, wc = uc.mode === 'sit' ? 0 : 1; if (!wa && !wc) continue;
+      const all = Math.min(step, minD - d);
+      ua.crowd = uc.crowd = true;
+      // each takes half; one backed against a wall leaves the other to take it all (sliding along the wall if it must)
+      const movedA = wa && mv(a, -dx*(wc ? all/2 : all), -dz*(wc ? all/2 : all));
+      if (wc && !mv(c, dx*(movedA ? all/2 : all), dz*(movedA ? all/2 : all)) && movedA) mv(a, -dx*all/2, -dz*all/2);
+    }
   }
 }
-function despawnTroop(){
-  TROOP.list.forEach(m => decorRoot.remove(m)); TROOP.list = []; discoDrop();
+function troopPark(r, list){
+  if (!r || !list.length || !ROOMS.includes(r)) { list.forEach(m => decorRoot.remove(m)); return; }
+  list.forEach(m => { const u = m.userData; if (u.fly){ u.fly = null; const [cx, cy] = cellAtWorld(m.position.x, m.position.z); m.position.y = cellPos(cx, cy).y; m.rotation.x = 0; m.rotation.z = 0; } u.hop = 0; if (u.bubble){ m.remove(u.bubble); u.bubble = null; } });
+  TROOP.parked[r.id] = {r, list};
+}
+function troopUnpark(r){
+  const pk = TROOP.parked[r.id]; if (!pk) return null;
+  delete TROOP.parked[r.id];
+  if (pk.r !== r || !pk.list.every(m => m.parent === decorRoot)){ pk.list.forEach(m => { if (m.parent === decorRoot) decorRoot.remove(m); }); return null; }   // (the decor was rebuilt since)
+  return pk.list;
+}
+function troopDropParked(){ Object.keys(TROOP.parked).forEach(k => { const pk = TROOP.parked[k]; pk.list.forEach(m => { if (m.parent === decorRoot) decorRoot.remove(m); }); delete TROOP.parked[k]; }); }
+const TROOP_NEAR = 14, TROOP_FAR = 26;   // cells from a room's walls: close enough to see in through its doorway / far enough to tidy away
+function troopNearFrame(dt){
+  if (!A.on) return;
+  const now = A.clock || 0;
+  for (const k in TROOP.parked) TROOP.parked[k].list.forEach(m => { const u = m.userData; if (u.head) u.head.rotation.y = Math.sin(now*.0011 + u.phase)*.45; });   // looking about while they wait
+  if ((TROOP.nearT = (TROOP.nearT || 0) - dt) > 0) return; TROOP.nearT = 400;
+  const [cx, cy] = cellAtWorld(P.x, P.z);
+  for (const r of ROOMS){
+    if (!r.troop || r === TROOP.room) continue;
+    const b = r.box, d = Math.max(b.x0 - cx, cx - b.x1, b.y0 - cy, cy - b.y1, 0), pk = TROOP.parked[r.id];
+    if (pk && (pk.r !== r || !pk.list.every(m => m.parent === decorRoot))){ troopUnpark(r); continue; }
+    if (!pk && d <= TROOP_NEAR){ const t = r.troop; troopPark(r, troopMake(r, t.warmup && !A.solved.has(r.id) ? t.warmup : t.n, false)); }
+    else if (pk && d > TROOP_FAR){ troopUnpark(r).forEach(m => decorRoot.remove(m)); }
+  }
+}
+// more of the troop: they hop down over the far wall (a pop of scale, then a short drop)
+function troopAdd(r, n, hopIn){ TROOP.list.push(...troopMake(r, n, hopIn)); }
+function despawnTroop(hard){
+  if (hard){ TROOP.list.forEach(m => decorRoot.remove(m)); troopDropParked(); } else troopPark(TROOP.room, TROOP.list);   // walking out: they stay in their room
+  TROOP.list = []; discoDrop();
   TROOP.labels.forEach(spotTagDrop); TROOP.labels = [];
   TROOP.bananas.forEach(b => fxRoot.remove(b.g)); TROOP.bananas = [];
   TROOP.room = null;
@@ -7252,13 +7359,14 @@ function troopFrame(dt){
       else {
         const p = cellPos(next[0], next[1]), ox = (u.phase % 1 - .5)*.3, tx = p.x + (next === u.goal ? ox : 0), tz = p.z + (next === u.goal ? ox : 0);
         const dx = tx - m.position.x, dz = tz - m.position.z, d = Math.hypot(dx, dz);
-        if (d < .06 && next === u.goal){ if (u.goalKind === 'roam') u.goal = null; if (u.goalKind === 'dance') u.goal = null; }
+        if ((d < .06 || (u.crowd && d < .6)) && next === u.goal){ if (u.goalKind === 'roam') u.goal = null; if (u.goalKind === 'dance') u.goal = null; }   // (close enough and someone's already there: stop, don't keep shoving)
         else if (d >= .06){ const k = Math.min(1, u.speed*speedK*s/d); m.position.x += dx*k; m.position.z += dz*k; moving = true; const want = Math.atan2(dx, dz); m.rotation.y += Math.atan2(Math.sin(want - m.rotation.y), Math.cos(want - m.rotation.y)) * Math.min(1, s*10); }
       }
     }
     if (u.goalKind === 'eat'){ u.wait -= s; if (u.wait <= 0) u.goalKind = null; }
     animTroop(m, s, moving, dancing && t.dance);
   }
+  troopSeparate(TROOP.list, r, 4*s);
   if (rt) rt.inPen = inLure;
   // feedback for the pen room
   if (rt && r.check === 'pen' && !A.solved.has(r.id)){
@@ -7340,7 +7448,7 @@ function discoFrame(r, s, on){
       const b = DISCO.beams[i]; b.position.x = sp.position.x/2; b.position.z = sp.position.z/2; b.lookAt(b.position.x*2 + DISCO.g.position.x, DISCO.g.position.y, b.position.z*2 + DISCO.g.position.z); b.rotateX(Math.PI/2); });
   }
   // the mirror ball comes down for layer 3, and goes back up when the party stops
-  const want = n >= 3 ? 3.6 : 7.5; DISCO.ball.position.y += (want - DISCO.ball.position.y)*Math.min(1, s*(rm ? 6 : 1.8)); DISCO.ball.visible = n >= 3 || DISCO.ball.position.y < 7.2;
+  const want = n >= 3 ? 3.6 : 7.5; DISCO.ball.position.y += (want - DISCO.ball.position.y)*Math.min(1, s*(rm ? 6 : 3)); DISCO.ball.visible = n >= 3 || DISCO.ball.position.y < 7.2;
   if (!rm){ DISCO.ballMesh.rotation.y += s*[.6, .9, 1.5][PL - 1]; DISCO.sparkle.rotation.y += s*[.25, .4, .7][PL - 1]; }
   // the beat: one bar at a time, scheduled a little ahead on the audio clock (only while you're in the room)
   if (n >= 2 && inRoom) discoGroove(n); else partyStop();
@@ -7835,7 +7943,7 @@ function plogFrame(dt){
     F.offerAt = now; L2.offers++; const hb = $('#btnHint'); if (hb) hb.classList.add('glow');
     monkeySay(['Ooh, this one\'s a toughie. Press the lightbulb if you want a clue. (I won\'t tell anyone.)', 'Want a clue? The glowing lightbulb button has one. Or tap me, from the front!', 'Tricky, eh? Even I needed a clue for this one. Well. I would have. Lightbulb button!'][L2.offers % 3], 9000);
   }
-  plogT += dt; if (plogT > 5000){ plogT = 0; plogSave(); }
+  plogT += dt; if (plogT > 30000){ plogT = 0; plogSave(); }
 }
 function plogReport(){
   const rows = ROOMS.map(r => { const L2 = PLOG.rooms[r.id]; if (!L2) return null;
@@ -8275,7 +8383,7 @@ function roomRestart(){
   s.cellsAct = A.act || 1; s.layout = LAYOUT;
   const [ex, ey] = entryOf(r), c = cellPos(ex, ey); s.player = {x:+c.x.toFixed(2), z:+c.z.toFixed(2), yaw:+P.yaw.toFixed(2)};
   const cards = CARDQ.slice(); RECAP.restart = true;
-  if (TROOP.room) despawnTroop();   // (the act's decor is rebuilt: the room's animals and their name tags come back with it on the way in)
+  despawnTroop(true);   // (the act's decor is rebuilt: the room's animals and their name tags come back with it on the way in)
   advWrite(s); startAdventure(s);
   cards.forEach(q => { if (!CARDQ.some(z => z[0] === q[0] && z[1] === q[1])) CARDQ.push(q); });   // (a card waiting its turn is never lost)
   P.x = c.x; P.z = c.z; P.y = floorAt(ex, ey); P.vy = 0; P.fling = null; stepFP(0);   // (the act's start checks would send you to its spawn: you stay at this room's door)
@@ -8321,7 +8429,7 @@ function plogTouch(){
   PSESS.end = Date.now(); if (A.on){ PSESS.played = true; PSESS.act = A.act || 1; const w = plogWhere(); PSESS.at = w; if (typeof w === 'number') PSESS.lastRoom = w; PSESS.solved = A.solved ? A.solved.size : 0; }
   plogDirty = true;
 }
-function plogTouchFrame(dt){ QA.touchT += dt; if (QA.touchT < 5000) return; QA.touchT = 0; plogTouch(); plogSave(); }
+function plogTouchFrame(dt){ QA.touchT += dt; if (QA.touchT < 30000) return; QA.touchT = 0; plogTouch(); plogSave(); }
 addEventListener('pagehide', () => { plogTouch(); plogSave(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden){ plogTouch(); plogSave(); } });
 { const base = bonk; bonk = function(){ PLOG.bonks++; PSESS.bonks++; plogDirty = true; return base.apply(this, arguments); }; }
@@ -8488,7 +8596,7 @@ function jungleFrame(dt){
   if (A.shaftMat){ const want = A.thiefLeading && A.thiefLeading() ? .035 : .14; A.shaftMat.opacity += (want - A.shaftMat.opacity)*Math.min(1, s*2); }
   A.flies.forEach(f => { f.s.position.set(f.o.x + Math.sin(t*f.sp + f.ph)*1.2, f.o.y + Math.sin(t*f.sp*1.7 + f.ph)*.4, f.o.z + Math.cos(t*f.sp*.8 + f.ph)*1.2); const k = .2 + Math.max(0, Math.sin(t*2.2 + f.ph*3))*.25; f.s.scale.set(k, k, 1); });
   A.eyes.forEach(e => { if (e.gone) return; e.t -= s; const blink = e.t < .15; e.g.scale.y = blink ? .1 : 1; if (e.t < 0) e.t = 2 + Math.random()*4;
-    if (Math.hypot(e.g.position.x - P.x, e.g.position.z - P.z) < 3.2){ e.gone = true; e.g.visible = false; noise(.25, .05, 900); if ((A.thiefLeading && A.thiefLeading()) || !playerSees(e.g.position.x, e.g.position.y, e.g.position.z)) return;   // (not while you chase the map thief, or it looks like the thief ran off)
+    if (Math.hypot(e.g.position.x - P.x, e.g.position.z - P.z) < 3.2){ e.gone = true; e.g.visible = false; noise(.25, .05, 900); if (A.metBarold || (A.thiefLeading && A.thiefLeading()) || !playerSees(e.g.position.x, e.g.position.y, e.g.position.z)) return;   // (not while you chase the map thief, or it looks like the thief ran off; and only on the first walk up the trail: back at the helicopter later, Tom got "Something scampered off!" all over again)
       sfx.ook(700); showToast(bag('eyes', ['Eek! Something scampered off!', 'Whatever it was, it\'s more scared of you!', 'Rustle rustle... just a shy monkey.', 'Two shiny eyes... and then, gone.'])); } });
   // bubbles glugging up from the sunken helicopter, frogs, and the odd spooky hoot
   if (A.crash && !reduceMotion){ A.bubT = (A.bubT || 0) - dt; if (A.bubT <= 0){ A.bubT = 500 + Math.random()*900; const b = new THREE.Mesh(new THREE.SphereGeometry(.09, 6, 4), new THREE.MeshLambertMaterial({color:0x9fbf8a, transparent:true, opacity:.7})); b.position.set(A.crash.position.x + (Math.random() - .5)*2.4, .15, A.crash.position.z + (Math.random() - .5)*2.4); b.raycast = () => {}; A.jungle.add(b); A.bubbles.push({m:b, t:0}); } }
@@ -9319,7 +9427,7 @@ const DECOR_ART = (() => {
   items.sort((a, b) => b.h - a.h); let x = 0, y = 0, rowH = 0;
   items.forEach(it => { if (x + it.w > W){ x = 0; y += rowH + 2; rowH = 0; } it.x = x; it.y = y; x += it.w + 2; rowH = Math.max(rowH, it.h); });
   const H = Math.ceil((y + rowH) / 16) * 16, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-  const tex = new THREE.CanvasTexture(cv); tex.anisotropy = 4;
+  const tex = new THREE.CanvasTexture(cv); tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false;   // no mipmaps: the atlas isn't a power of two, and on Apple devices its mipmaps came out blank, so every sign showed as an empty white board
   const mat = new THREE.MeshLambertMaterial({map:tex, emissive:0xffffff, emissiveMap:tex, emissiveIntensity:.32, polygonOffset:true, polygonOffsetFactor:-2, polygonOffsetUnits:-2});
   const slots = {}; items.forEach(it => slots[it.key] = it);
   const art = {cv, tex, mat, slots, H, W, fit:{}, drawn:0};
@@ -9611,7 +9719,7 @@ const DECOR_HOOKS = {
 
 function buildDecor(){
   freeKids(decorRoot);
-  ['glove', 'cog', 'beacon', 'captain', 'funWheel', 'funCarousel', 'funShip', 'funDecor'].forEach(k => A[k] = null); A.crew = [];
+  ['glove', 'punchAt', 'cog', 'beacon', 'captain', 'funWheel', 'funCarousel', 'funShip', 'funDecor'].forEach(k => A[k] = null); A.crew = [];
   A.chestMeshes = [];
   A.crystalsMesh = [];
   // monkey
@@ -9626,12 +9734,12 @@ function buildDecor(){
   A.bolts = [];
   ROOMS.forEach(r => { if (A.solved.has(r.id)) addRoomMonkey(r); });
   // over the gap at the top of the vines (rooms 9, 21): the way out is DOWN (c03 backed down room 9's vines without knowing they were the door)
-  ladderTops().forEach(({r}) => { const p = cellPos(...r.entry), sg = textSprite('WAY OUT: down the vines', {w:300, fs:26, bg:'#e8d8a8', ink:'#3a2a10', scale:1.2, depth:true}); sg.position.set(p.x, p.y + 1.5, p.z); sg.userData.ladderTop = r.id; decorRoot.add(sg); });
+  ladderTops().forEach(({r}) => { const p = cellPos(...r.entry), sg = textSprite('WAY OUT: down the ladder', {w:300, fs:26, bg:'#e8d8a8', ink:'#3a2a10', scale:1.2, depth:true}); sg.position.set(p.x, p.y + 1.5, p.z); sg.userData.ladderTop = r.id; decorRoot.add(sg); });
   // entrance sign
   { const p = cellPos(...ENTRANCE), plate = new THREE.Group(), back = new THREE.Mesh(cbox(6.5, 1.6, .12), M.gold); back.raycast = () => {}; plate.add(back);   // a gold name plate fixed flat to the gatehouse (it used to float in the air)
     const f = artPlane('wall:name', 6.2, 1.36); f.position.z = .065; plate.add(f); plate.position.set(p.x, p.y + 6.2, p.z + .88); decorRoot.add(plate); }
   // the Great Golden Toilet
-  ROOMS.forEach(r => { if (r.toilet && !A.solved.has(r.id)){ const t = makeToilet(); t.position.copy(cellPos(...r.toilet)); const [x, y] = r.toilet, b = r.box; t.rotation.y = y === b.y0 ? -Math.PI/2 : y === b.y1 ? Math.PI/2 : x === b.x1 ? Math.PI : 0; decorRoot.add(t); A.toiletMesh = t; } });
+  ROOMS.forEach(r => { if (r.toilet && !A.solved.has(r.id)){ const t = makeToilet(true); t.position.copy(cellPos(...r.toilet)); const [x, y] = r.toilet, b = r.box; t.rotation.y = y === b.y0 ? -Math.PI/2 : y === b.y1 ? Math.PI/2 : x === b.x1 ? Math.PI : 0; decorRoot.add(t); A.toiletMesh = t; } });
   // the Crystal Skull
   A.heart = makeHeart(); A.heart.position.copy(cellPos(HEART.x, HEART.y)); decorRoot.add(A.heart);
   // crystals waiting to be picked up
@@ -9819,10 +9927,12 @@ function spawnCrystal(r){
   const halo = glow(new THREE.SpriteMaterial({map:M.glowGold.map, color:0xd08aff, blending:THREE.AdditiveBlending, depthWrite:false, transparent:true}), 1.6, 0); m.add(halo);
   decorRoot.add(m); A.crystalsMesh.push(m);
 }
-function makeToilet(){
+// block: the Great Golden Toilet stands on a whole gold block (1 x 1 x 1 once scaled), not the little stalk the space toilet has
+function makeToilet(block){
   const g = new THREE.Group(), white = new THREE.MeshPhongMaterial({color:0xffffff, shininess:90}), dark = new THREE.MeshLambertMaterial({color:0x2a3b4a});
-  const p = (w,h,d,m,x,y,z) => { const q = new THREE.Mesh(cbox(w,h,d), m); q.position.set(x,y,z); q.raycast = () => {}; g.add(q); return q; };
-  p(.5,.5,.5, M.gold, 0,.25,0);            // pedestal
+  const B = 1/1.5, lift = block ? B - .5 : 0;
+  const p = (w,h,d,m,x,y,z) => { const q = new THREE.Mesh(cbox(w,h,d), m); q.position.set(x,y + lift,z); q.raycast = () => {}; g.add(q); return q; };
+  if (block) p(B,B,B, M.gold, 0,B/2 - lift,0); else p(.5,.5,.5, M.gold, 0,.25,0);            // pedestal
   p(.95,.4,.9, M.gold, .05,.7,0);           // bowl
   p(.75,.06,.7, dark, .05,.91,0);           // water
   p(.9,.06,.1, white, .05,.93,.4); p(.9,.06,.1, white, .05,.93,-.4); p(.1,.06,.8, white, .5,.93,0); // seat
@@ -9909,21 +10019,40 @@ function confetti3D(p){
     fx.push({g:m, t:0, kind:'conf', vx:Math.cos(a)*sp, vy:6 + Math.random()*5, vz:Math.sin(a)*sp, spin:3 + Math.random()*6});
   }
 }
-function launchFirework(p){
+function launchFirework(p, more){
   const r = new THREE.Mesh(cbox(.16,.5,.16), M.hotOn); r.position.set(p.x, p.y + .8, p.z); fxRoot.add(r);
   fx.push({g:r, t:0, kind:'fw', top:p.y + 9 + Math.random()*3});   // high above its own floor (the upstairs rooms used to burst at knee height)
-  lookUpAt(new THREE.Vector3(p.x, p.y + 9.5, p.z));
+  if (more){ if (LOOK_UP.on) LOOK_UP.hold = LOOK_UP.t + LOOK_UP_HOLD; }   // the rest of a show: keeps the view up if it still is, never grabs it again
+  else lookUpAt(new THREE.Vector3(p.x, p.y + 9.5, p.z));
 }
-// a show overhead while he's looking at the floor (the button he just pressed): turn the view up to it, gently, once.
-// Never a lock: it eases for under a second and lets go; he can look away at any time.
-const LOOK_UP = {on:false, t:0, pts:[], last:-1e9};
+// room 11's show goes on after the first three rockets, and the troop ooh and aah at every bang (Tom, 11 Oct: "the display should
+// last longer... have the monkeys audibly react and celebrate"). Runs on the adventure clock; leaving the adventure drops it.
+const SHOW = {q:[]};
+function showAt(sec, fn){ SHOW.q.push({at:(A.clock || 0) + sec*1000, fn}); }
+function showFrame(){
+  if (!SHOW.q.length) return; if (!A.on){ SHOW.q = []; return; }
+  const now = A.clock || 0, due = SHOW.q.filter(e => now >= e.at); if (!due.length) return;
+  SHOW.q = SHOW.q.filter(e => now < e.at); due.forEach(e => { try { e.fn(); } catch (err) {} });
+}
+function troopOoh(n, big){ troopCheer(); for (let i = 0; i < n; i++) showAt(i*.16 + Math.random()*.05, () => sfx.ook(big && i % 2 ? 900 : 380 + Math.random()*200)); }   // (spaced: one ook per 120 ms gets through)
+const SHOW_VOLLEYS = [1.3, 1.9, 2.4, 3.1, 3.6, 4.2], SHOW_FINALE = 5;   // (s after the button; then all three together for the finale)
+function fireworkShow(r){
+  const pads = r.out.map(([x, y]) => cellPos(x, y)), bang = .85;   // (a rocket bursts ~.85 s after it goes up)
+  showAt(bang, () => troopOoh(3));
+  SHOW_VOLLEYS.forEach((t, i) => showAt(t, () => { sfx.firework(); launchFirework(pads[(i*2) % pads.length], true); showAt(bang, () => troopOoh(2)); }));
+  showAt(SHOW_FINALE, () => { sfx.firework(); pads.forEach(p => launchFirework(p, true)); showAt(bang, () => troopOoh(7, true)); });
+}
+// a show overhead while he's looking at the floor (the button he just pressed): turn the view up to it, gently, and keep it there
+// till the bursts have faded (Tom, 11 Oct: the next-beam turn pulled the view back down mid-show, so he never saw them go off).
+// Never a lock: any turn of your own lets go at once (look()).
+const LOOK_UP = {on:false, t:0, hold:0, pts:[], last:-1e9}, LOOK_UP_HOLD = 2.8;   // (s: the rockets rise ~.8 s, the sparks fade over 1.6 s)
 function lookUpAt(pos){
   if (!A.on || S.mode !== 'adventure' || !inFP()) return;
   const now = A.clock || 0, d = Math.hypot(pos.x - P.x, pos.z - P.z);
   if (d > 16) return;
   if (LOOK_UP.on && LOOK_UP.t < .25){ LOOK_UP.pts.push(pos); return; }   // the rest of the same show
-  if (LOOK_UP.on || now - LOOK_UP.last < 8000 || P.pitch > .5) return;
-  LOOK_UP.on = true; LOOK_UP.t = 0; LOOK_UP.pts = [pos]; LOOK_UP.last = now;
+  if (LOOK_UP.on || now - LOOK_UP.last < 4000 || P.pitch > .5) return;
+  LOOK_UP.on = true; LOOK_UP.t = 0; LOOK_UP.hold = LOOK_UP_HOLD; LOOK_UP.pts = [pos]; LOOK_UP.last = now;
 }
 function lookUpFrame(dt){
   if (!LOOK_UP.on) return;
@@ -9931,9 +10060,9 @@ function lookUpFrame(dt){
   const c = L2.pts.reduce((a, q) => a.add(q), new THREE.Vector3()).multiplyScalar(1/L2.pts.length);
   const ey = P.y + EYE, dx = c.x - P.x, dz = c.z - P.z, flat = Math.max(.5, Math.hypot(dx, dz));
   const wantYaw = Math.atan2(-dx, -dz), wantPitch = Math.min(1.25, Math.atan2(c.y - ey, flat));
-  const k = Math.min(1, s*(reduceMotion ? 8 : 5));
+  const k = Math.min(1, s*(reduceMotion ? 8 : 6));
   P.yaw += Math.atan2(Math.sin(wantYaw - P.yaw), Math.cos(wantYaw - P.yaw))*k; P.pitch += (wantPitch - P.pitch)*k;
-  if (L2.t > 1.1 || S.dead) L2.on = false;
+  if (L2.t > L2.hold || S.dead) L2.on = false;
 }
 const sparkGeo = new THREE.BoxGeometry(.14,.14,.14);
 function fireworkBurst(pos){
@@ -10033,10 +10162,13 @@ function doorTrapFrame(dt){
   if (A.cog && gear) A.cog.rotation.z += dt*.004;
   // while it has power, the glove keeps punching the air in front of the door (looks only: the knockback below never asks the glove)
   A.gloveT = Math.max(0, (A.gloveT || 0) - dt/1000); if (on && A.gloveT <= 0) A.gloveT = 1.2;
-  { const ext = A.gloveT > .95 ? 1 : A.gloveT > .6 ? (A.gloveT - .6)/.35 : 0, u = A.glove.userData, g = A.glove; let reach = .35 + ext*4.1, yaw = Math.PI/2, tilt = 0;   // reaches right across the doorway
-    if (A.punchAt && A.gloveT > .6){ const t = A.punchAt, dx = t.x - g.position.x, dz = t.z - g.position.z, h = Math.hypot(dx, dz); yaw = Math.atan2(dx, dz); tilt = -Math.atan2(t.y - g.position.y, h); reach = .35 + ext*Math.max(.5, Math.min(7, Math.hypot(h, t.y - g.position.y) - .35)); }   // a hit: aimed right at you
+  // each punch is a quick LUNGE out (it used to just appear fully out, so you never saw it coming), a hold, then a slow pull back
+  { const ext = A.gloveT > GLOVE_HIT ? (1.2 - A.gloveT)/(1.2 - GLOVE_HIT) : A.gloveT > .95 ? 1 : A.gloveT > .6 ? (A.gloveT - .6)/.35 : 0, u = A.glove.userData, g = A.glove; let reach = .35 + ext*4.1, yaw = Math.PI/2, tilt = 0;   // reaches right across the doorway
+    if (A.punchAt && A.punchAt.live) A.punchAt = Object.assign(punchTarget(), {live:true});   // still swinging: it follows you, so it can't miss
+    if (A.punchAt && A.gloveT > .6){ const t = A.punchAt, dx = t.x - g.position.x, dz = t.z - g.position.z, h = Math.hypot(dx, dz); yaw = Math.atan2(dx, dz); tilt = -Math.atan2(t.y - g.position.y, h); reach = .35 + ext*Math.max(.5, Math.min(7.5, Math.hypot(h, t.y - g.position.y) - .8)); }   // a hit: the front of the glove stops right on your nose
     else A.punchAt = null;
     g.rotation.set(tilt, yaw, 0, 'YXZ'); u.fist.position.z = reach; u.arm.scale.z = Math.max(.05, reach); u.arm.position.z = reach/2; }
+  if (A.punchAt && A.punchAt.live && A.gloveT <= GLOVE_HIT){ A.punchAt = {x:A.punchAt.x, y:A.punchAt.y, z:A.punchAt.z}; bonkLand(); }   // the glove has reached you: NOW you go flying
   if (A.gloveT > 1.15 && Math.hypot(P.x - A.glove.position.x, P.z - A.glove.position.z) < 9) noise(.06, .03, 900);
   if (A.knock){ const k = A.knock, [kx, ky] = cellAtWorld(P.x, P.z); k.t -= dt/1000;
     if (bonkZone(kx, ky) && P.y < (TRAP.landing || 2) + .3 && P.vy < 6) P.vy = 9;   // still down in the hole: keep lifting you out (whatever else happened this frame)
@@ -10048,8 +10180,11 @@ function doorTrapFrame(dt){
   if (tut && tut.list === 'B' && A.gotKit && py <= 131 && px >= 4 && px <= 12) endTutorial();
   if (!A.trapMet && A.metBarold && A.gotKit && A.leadToDoor && py <= 131 && px >= 4 && px <= 12){ A.trapMet = true; renderCard(); baroldTell(['Here\'s the side door! See the RED BLOCK? It\'s a power block. Always ON.', 'Its wire goes to the door. But look: the wire has a GAP!', 'And see that HOLE? It only fills up when the door gets power.']); }
   if (gear && on && !A.bothSaid){ A.bothSaid = true; renderCard(); setTimeout(() => baroldTell(['Uh-oh! The wire SPLITS in two.', 'One way goes to the DOOR. The other way goes to the boxing GLOVE.', 'The hole only fills if the glove gets NO power. Hmm...']), 600); }
-  if (gear && !on && S.stable && !trapGapMended() && !A.sideSaid){ A.sideSaid = true; plogEvent('cheat'); sfx.nope(); baroldTell(['Ooh, round the side of the red block! Sneaky! But the door only listens to its OWN wire. Fill the GAP in it!']); }
-  A.okT = gear && !on && S.stable && trapGapMended() ? (A.okT || 0) + dt : 0;   // has to HOLD (power still travelling along a wire doesn't count)
+  if (gear && !on && !trapGapMended() && !A.sideSaid){ A.sideSaid = true; plogEvent('cheat'); sfx.nope(); renderCard(); baroldTell(['Ooh, round the side of the red block! Sneaky! But the door only listens to its OWN wire. Fill the GAP in it!']); }
+  if (A.sideSaid && (!gear || trapGapMended())) A.sideSaid = false;   // the sneaky wire is gone (or the gap is mended): if it comes back, Barold says so again
+  // it has to HOLD (power still travelling along a wire doesn't count). Not S.stable: that compares every cell on the map, so anything ticking
+  // anywhere kept it false, and the hole never filled while the card said 'Watch the hole fill in...'
+  A.okT = gear && !on && trapGapMended() ? (A.okT || 0) + dt : 0;
   if (A.okT > 800 && !A.filling){ A.filling = {t:0, k:0}; sfx.row(); renderCard(); baroldTell(['YES! Power to the door, but NOT to the glove! Look at the hole!']); }
   if (A.filling) fillFrame(dt);
   A.bonkCD = Math.max(0, (A.bonkCD || 0) - dt);
@@ -10057,9 +10192,14 @@ function doorTrapFrame(dt){
 }
 // the Bonk-o-Matic's reach: the chasm and the doorway behind it, at ANY height (walk in, fall in or jump in: it always gets you)
 function bonkZone(px, py){ return (px >= 6 && px <= 10 && py >= 126 && py <= 128) || (px >= 7 && px <= 9 && py === 129); }   // (the top step right in front of the door counts too: walk up to the door and it gets you)
-// the knockback is its own system: it never depends on the glove's animation or position, so it can't miss. The glove just punches at the same moment, for show
+// the glove lunges at your face first, and you go flying the moment it lands (before, the knock came first and the glove punched the empty spot you'd just left).
+// it follows you while it swings and always lands on the same clock, so it still can't miss
+const GLOVE_HIT = 1.06;   // the lunge: gloveT counts down from 1.2, so it lands .14 s after the bonk starts
+function punchTarget(){ return {x:P.x - Math.sin(P.yaw)*.6, y:P.y + EYE - .15, z:P.z - Math.cos(P.yaw)*.6}; }   // just in front of your eyes, whichever way you're looking
 function bonk(){
-  A.bonkCD = 1500; A.gloveT = 1.2; A.punchAt = {x:P.x, y:P.y + 1.15, z:P.z};   // the glove swings round and smacks you right where you are (for show: the knock below never waits for it)
+  A.bonkCD = 1500; A.gloveT = 1.2; A.punchAt = Object.assign(punchTarget(), {live:true});
+}
+function bonkLand(){
   A.knock = {vx:0, vz:7, t:.6}; P.vy = 11; P.ground = false;   // up and out of the chasm, back down the stairs
   sfx.boing(); noise(.12, .22, 500, 'lowpass', 0, 2); shake = Math.max(shake, .35); showToast(bag('bonk', BONKS)); discover('bonk'); powFlash();
 }
@@ -10089,7 +10229,7 @@ const unfound = r => (r.give || []).filter(t => !A.found.has(t));
 const GLOW_GOAL = 'Something new is glowing in here! Walk over it to pick it up.';
 const roomGoal = r => A.solved.has(r.id) ? doneGoal(r) : unfound(r).length ? GLOW_GOAL : r.goal;
 // once it's done, the goal panel says so and points the way on (the toilet room's way on is up the vines)
-const doneGoal = r => A.act === UNI_ACT ? uniDoneGoal(r) : A.act === MAYA_ACT ? mayaDoneGoal(r) : A.act === APE_ACT ? (r.id === APE_LAST ? 'Done! Follow the beam of light out of the Institute.' : 'Done! Follow the beam of light to the next test.') : A.act === FUN_ACT ? (r.id === FUN_LAST ? 'Done! The show is on! RUN!' : r.id === GT_LAST ? 'The ghost train is FIXED! Through the door: walk onto the cart for a ride.' : 'Done! Follow the beam of light to the next ride.') : r.toilet ? 'Done! Climb the VINES where the toilet was to get to the next room.' : r === ROOMS[ROOMS.length - 1] ? 'Done! Follow the beam of light to the Crystal Skull Chamber.' : 'Done! Follow the beam of light to the next room.';
+const doneGoal = r => A.act === UNI_ACT ? uniDoneGoal(r) : A.act === MAYA_ACT ? mayaDoneGoal(r) : A.act === APE_ACT ? (r.id === APE_LAST ? 'Done! Follow the beam of light out of the Institute.' : 'Done! Follow the beam of light to the next test.') : A.act === FUN_ACT ? (r.id === FUN_LAST ? 'Done! The show is on! RUN!' : r.id === GT_LAST ? 'The ghost train is FIXED! Through the door: walk onto the cart for a ride.' : 'Done! Follow the beam of light to the next ride.') : r.toilet ? 'Done! Climb the LADDER where the toilet was to get to the next room.' : r === ROOMS[ROOMS.length - 1] ? 'Done! Follow the beam of light to the Crystal Skull Chamber.' : 'Done! Follow the beam of light to the next room.';
 // the goal panel only says "glowing" while something really is: the moment it's picked up, the room's real goal shows
 function refreshRoomGoal(){ const r = A.rt && A.rt.room, el = $('#goalText'); if (r && el && el.textContent === GLOW_GOAL && roomGoal(r) !== GLOW_GOAL) el.textContent = roomGoal(r); }
 function pickupSpot(r){ const [ex, ey] = entryOf(r), dx = Math.sign(r.box.x0 + 6 - ex), dy = Math.sign(r.box.y0 + 5 - ey); const c = [ex + (Math.abs(dx) > Math.abs(dy) || ey === r.box.y0 + 1 || ey === r.box.y1 - 1 ? 0 : dx), ey];
@@ -10440,23 +10580,25 @@ function bubblesFrame(dt){   // each new word redraws the same canvas and textur
 // conversations go in a dialogue box at the bottom: tap (or click, or Enter) to finish the line, tap again for the next
 function dlgArrow(){ return '<svg viewBox="0 0 9 6" shape-rendering="crispEdges" aria-hidden="true"><path fill="#2b1a0c" d="M0 0h9v2H8v1H7v1H6v1H5v1H4V5H3V4H2V3H1V2H0z"/><path fill="#ffd84a" d="M1 1h7v1H7v1H6v1H5v1H4V4H3V3H2V2H1z"/><path fill="#fff6c0" d="M1 1h3v1H2v1H1z"/></svg>'; }   // the box's "next": a little bouncing pixel arrow
 const DLG = {on:false, q:[], i:0, shown:0, t:0, done:null, hello:0, why:null, undo:null, wait:[]};   // hello: the ride whose Captain hello is showing (it gives way to the next ride); why: the ride whose demo is playing (undo puts its levers back); wait: queued dialogues
-function dlgStart(lines, done, why){
+function dlgStart(lines, done, why){   // (an opening line that waits to be read still gives way when something NEW is said: it never holds up the story)
   if (lines.room) DLG.wait = DLG.wait.filter(w => !w[0].room);   // Barold's hello for a room you've already left is stale: the new one replaces it
-  if (DLG.on && (DLG.hello || (lines.room && DLG.q && DLG.q.room) || (DLG.why && !(A.rt && A.rt.room === DLG.why)))) dlgCancel();   // a hello (a ride's; Barold's room hello to the next room's), or a demo you walked away from, gives way
+  if (DLG.on && (DLG.hello || (DLG.q && DLG.q.hold) || (lines.room && DLG.q && DLG.q.room) || (DLG.why && !(A.rt && A.rt.room === DLG.why)))) dlgCancel();   // a hello (a ride's; Barold's room hello to the next room's), or a demo you walked away from, gives way
   if (DLG.on){ DLG.wait.push([lines, done, why]); return; }   // someone's still talking: this one goes next
   DLG.on = true; DLG.q = lines; DLG.i = 0; DLG.done = done; DLG.hello = 0; DLG.why = why || null; DLG.undo = null; dlgShow(); document.body.classList.add('dlgOn'); }
-function dlgEnd(){ DLG.on = false; DLG.done = null; DLG.hello = 0; DLG.why = DLG.undo = null; $('#dlg').hidden = true; document.body.classList.remove('dlgOn'); }   // close it without running its done step
+function dlgEnd(){ DLG.on = false; DLG.done = null; DLG.hello = 0; DLG.why = DLG.undo = null; $('#dlg').hidden = true; dlgNudge(false); document.body.classList.remove('dlgOn'); }   // close it without running its done step
 // stop talking NOW (menu, new act, walked out of a demo): no done step, the demo's levers go back, your view is yours again. all: drop the queue too
 function dlgCancel(all){ const u = DLG.on && DLG.undo; dlgEnd(); u && u(); whyFocus(null); if (all){ DLG.wait = []; A.whyAt = null; } else dlgNext(); }
 function dlgNext(){ const w = !DLG.on && DLG.wait.shift(); if (w) dlgStart(...w); }
-function dlgShow(){ const [who, text, hook] = DLG.q[DLG.i]; if (hook) hook(); DLG.shown = 1; DLG.t = 0; DLG.words = String(text).split(' '); $('#dlgWho').textContent = who; $('#dlgTxt').textContent = DLG.words[0]; $('#dlgMore').hidden = true; $('#dlg').hidden = false; feed('say', who + ': ' + text); beatLine();
+function dlgShow(){ const [who, text, hook] = DLG.q[DLG.i]; if (hook) hook(); DLG.shown = 1; DLG.t = 0; DLG.words = String(text).split(' '); $('#dlgWho').textContent = who; $('#dlgTxt').textContent = DLG.words[0]; $('#dlgMore').hidden = true; dlgNudge(false); $('#dlg').hidden = false; feed('say', who + ': ' + text); beatLine();
   if (who === GUIDE && A.monkey) A.monkey.userData.hop = 1; else if (A.captain && /Captain|Parrot/.test(who)) A.captain.userData.hop = 1; else if (A.hosts && A.hosts[who]) A.hosts[who].userData.hop = 1; if (/Parrot/.test(who)) sfx.ook(900); else sfx.click(); }
 function dlgAdvance(){ if (!DLG.on) return false; if (DLG.shown >= DLG.words.length && beatWaiting()){ beatOffer(); return true; } if (DLG.shown < DLG.words.length){ DLG.shown = DLG.words.length; $('#dlgTxt').textContent = DLG.words.join(' '); $('#dlgMore').hidden = false; DLG.t = 0; return true; }
   DLG.i++; if (DLG.i >= DLG.q.length){ const d = DLG.done; dlgEnd(); d && d(); dlgNext(); return true; } dlgShow(); return true; }
 function dlgFrame(dt){ if (!DLG.on) return; DLG.t += dt;
   if (DLG.shown < DLG.words.length){ const want = Math.min(DLG.words.length, 1 + Math.floor(DLG.t / TYPE_MS)); if (want !== DLG.shown){ DLG.shown = want; $('#dlgTxt').textContent = DLG.words.slice(0, want).join(' '); } if (DLG.shown >= DLG.words.length){ $('#dlgMore').hidden = false; DLG.t = 0; } }
-  else if (DLG.t > READ_MS(DLG.words.length) + (dlgSoft() ? 2500 : 6000) && !beatWaiting()) dlgAdvance();   // nobody tapping? it moves on by itself, eventually
+  else if (DLG.q.hold && A.act === 1 && !A.solved.size){ if (DLG.t > READ_MS(DLG.words.length) && !$('#dlg').classList.contains('nudge')) dlgNudge(true); }   // the opening's important lines wait for you: still there after a good read? the box bounces and says how to clear it
+  else if (DLG.t > READ_MS(DLG.words.length) + (dlgSoft() ? 2500 : 6000) && !beatWaiting()){ dlgNudge(false); dlgAdvance(); }   // nobody tapping? (a held line whose room got solved is stale: it goes like any other) it moves on by itself, eventually
 }
+function dlgNudge(on){ const el = $('#dlg'); if (!el) return; el.classList.toggle('nudge', on); if (on) el.dataset.nudge = padMode ? 'Press ' + PN(padOK()) + ' when you\'ve read it' : lastTouch ? 'Tap here when you\'ve read it' : 'Click (or press E) when you\'ve read it'; }
 // a "soft" box (Barold telling you something while you play): it's in the dialogue box so you can't miss it, but clicks in the world still build;
 // a tap on the box itself (or a face button, Enter) skips it, and it moves on by itself
 function dlgSoft(){ return DLG.on && !!(DLG.q && DLG.q.soft); }
@@ -10466,7 +10608,7 @@ function baroldTell(text, room){   // room: it's that room's hello (it gives way
   const all = [].concat(text);
   if (!A.monkey || !A.on){ all.forEach(t => monkeySay(t)); return; }
   const who = guideNow(), ml = $('#mline'); if (ml){ ml.hidden = false; ml.innerHTML = '<b>' + who + ':</b> '; ml.appendChild(document.createTextNode(all.join(' '))); }
-  const lines = all.map(t => [who, t]); lines.soft = true; if (room) lines.room = room; dlgStart(lines);
+  const lines = all.map(t => [who, t]); lines.soft = true; if (A.act === 1 && !A.solved.size) lines.hold = true; if (room) lines.room = room; dlgStart(lines);   // (soft: you can still build; hold: in the opening it waits until you clear it, Max read the goal and left Barold's lines unread)
 }
 /* ---- STORY BEATS (HANDOFF backlog 3: Max skipped the whole Barold intro and never saw the monkey take the map). A beat is a key moment of the
    story (an intro, a reveal, a promotion, the map coming back...). While one plays: if what it's about is off your screen, your view turns gently
@@ -10811,10 +10953,10 @@ function advFrame(dt, now){
   lightFrame(dt); artFrame(dt);
   { // fell into a pit? after a moment, someone shouts down a tip
     const [qx, qy] = cellAtWorld(P.x, P.z);
-    if (isPit(qx, qy)){ A.pitT = (A.pitT || 0) + dt; if (A.pitT > 4500 && !A.pitShout){ A.pitShout = true; baroldTell(bag('pit', ['Are you OK down there?! Climb the VINES by the bridge! Walk into them!', 'OOF! See the vines? Walk into them and you\'ll climb right up!', 'Don\'t panic! Vines! By the end of the bridge! Push into them!'])); sfx.ook(300); } }
+    if (isPit(qx, qy)){ A.pitT = (A.pitT || 0) + dt; if (A.pitT > 4500 && !A.pitShout){ A.pitShout = true; baroldTell(bag('pit', ['Are you OK down there?! Climb the LADDER by the bridge! Walk into it!', 'OOF! See the ladder? Walk into it and you\'ll climb right up!', 'Don\'t panic! A ladder! By the end of the bridge! Push into it!'])); sfx.ook(300); } }
     else { A.pitT = 0; A.pitShout = false; }
   }
-  musicFrame(); troopFrame(dt); labelsFrame(); objectiveFrame(dt); hubCardFrame(dt); pickupsFrame(dt); plogFrame(dt);
+  musicFrame(); troopFrame(dt); troopNearFrame(dt); labelsFrame(); objectiveFrame(dt); hubCardFrame(dt); pickupsFrame(dt); plogFrame(dt);
   if (A.act === FUN_ACT) funFrame(dt);
   else if (A.act === APE_ACT){ if (typeof apeFrame === 'function') apeFrame(dt); }
   else if (A.act === MAYA_ACT) mayaFrame(dt);
@@ -10822,7 +10964,7 @@ function advFrame(dt, now){
   else { plazaSecretsFrame(); notesFrame(dt); smokeFrame(dt); jungleFrame(dt); doorTrapFrame(dt); thiefFrame(dt); introFrame(dt); reggieFrame(dt); lavaFrame(dt); secretsFrame(); }
   hostWalkFrame(dt);   // (after the act's frame: a host walking you to the first room faces the way he walks)
   if (A.crown && !reduceMotion) A.crown.userData.gem.rotation.y += dt*.001;
-  launcherPlayer(dt); lookUpFrame(dt);
+  launcherPlayer(dt); lookUpFrame(dt); showFrame();
   tutFrame(dt); openingFrame(dt);
   loreFrame(dt);
   actEndFrame(dt);
@@ -10859,7 +11001,7 @@ function hubCard(){
   if (A.act === APE_ACT){ set(num, 'The Ape Planet'); set(nm, A.apeDone ? 'All tests passed!' : 'The ape city'); set(goal, !A.apeMet ? 'Someone in a white coat is coming. Go and say hello.' : A.solved.has(APE_LAST) ? 'Every test passed! Follow the beam.' : 'Pass Dr Zest\'s tests. Follow the beam of light to the next one.'); return; }
   set(num, A.act === FUN_ACT ? 'The funfair' : 'The jungle');
   set(nm, A.act === FUN_ACT ? (A.funDone ? 'Escaped!' : 'The space dock') : A.metBarold ? 'The temple steps' : 'Crash site');
-  set(goal, A.act === FUN_ACT ? (!A.funMet ? 'Someone is waving from the dock. Go and say hello.' : A.solved.has(FUN_LAST) ? (A.funDone ? 'You escaped! More adventures on the way.' : 'Run for the fuel depot! Follow the beam!') : 'Fix the rides to earn spark crystals for the ship. Follow the beam of light to the next ride.') : A.trapMet && !A.doorTrapOff && !A.solved.size ? (gearOn() && trapOn() ? 'The wire splits! The door needs power. The glove must NOT get any. Hmm...' : gearOn() ? 'Watch the hole fill in...' : 'The side door needs power. Fill the GAP in the red wire with dust.') : A.solved.size ? 'Build anything here with the parts you\'ve won. Follow the beam of light to your next room.' : A.metBarold ? (!A.gotKit ? 'Barold has something for you.' : tut && tutList()[tut.i].id !== 'follow' ? 'Try out the redstone dust with Barold.' : 'Follow Barold to the SIDE DOOR. Look for the tall beam of light.') : A.thiefGrabbing() ? 'HEY! Something is grabbing your map!' : A.thief && A.thiefLeading() ? 'Follow that monkey! It\'s got your map!' : heardBarold() ? 'Somebody is calling! Follow the voice.' : 'Follow the dirt trail through the jungle.');
+  set(goal, A.act === FUN_ACT ? (!A.funMet ? 'Someone is waving from the dock. Go and say hello.' : A.solved.has(FUN_LAST) ? (A.funDone ? 'You escaped! More adventures on the way.' : 'Run for the fuel depot! Follow the beam!') : 'Fix the rides to earn spark crystals for the ship. Follow the beam of light to the next ride.') : A.trapMet && !A.doorTrapOff && !A.solved.size ? (gearOn() && trapOn() ? 'The wire splits! The door needs power. The glove must NOT get any. Hmm...' : gearOn() ? (trapGapMended() ? 'Watch the hole fill in...' : 'The door only listens to its OWN wire. Fill the GAP next to the red block with dust.') : 'The side door needs power. Fill the GAP in the red wire with dust.') : A.solved.size ? 'Build anything here with the parts you\'ve won. Follow the beam of light to your next room.' : A.metBarold ? (!A.gotKit ? 'Barold has something for you.' : tut && tutList()[tut.i].id !== 'follow' ? 'Try out the redstone dust with Barold.' : 'Follow Barold to the SIDE DOOR. Look for the tall beam of light.') : A.thiefGrabbing() ? 'HEY! Something is grabbing your map!' : A.thief && A.thiefLeading() ? 'Follow that monkey! It\'s got your map!' : heardBarold() ? 'Somebody is calling! Follow the voice.' : 'Follow the dirt trail through the jungle.');
 }
 function hubCardFrame(dt){
   A.hubT = (A.hubT || 0) + dt; if (A.hubT < 300) return; A.hubT = 0;
@@ -10871,7 +11013,7 @@ function enterArea(r, where){
   advSaveSoon();   // autosave on the way between rooms
   { const pr = A.rt && A.rt.room;   // walked OUT of a room you were busy in, without finishing it (cold-return testers backed out by mistake and didn't notice)
     if (pr && pr !== r && ROOMS.includes(pr) && !pr.ship && !A.solved.has(pr.id) && !A.freeze && (recapBuilt(pr).added || (A.clock || 0) - (A.rt.inAt || 0) > 15000))
-      showToast(`You walked out of ${pr.name}${/[!?.]$/.test(pr.name) ? '' : '!'} ` + (ladderTops().some(q => q.r === pr) ? 'Climb the vines back up.' : 'Its door is behind you.')); }
+      showToast(`You walked out of ${pr.name}${/[!?.]$/.test(pr.name) ? '' : '!'} ` + (ladderTops().some(q => q.r === pr) ? 'Climb the ladder back up.' : 'Its door is behind you.')); }
   if (DLG.on && (DLG.why || (DLG.hello && !(r && r.id === DLG.hello)))) dlgCancel();   // walked out of a demo (or a ride's hello): stop it, give the view back
   if (r) zoneTitle(r.zone);
   if (r && r.zone === 'sky' && !A.flungDone && A.metBarold){ A.flungDone = true; setTimeout(catapultBarold, 2500); } else if (where === 'hall') zoneTitle('hall');
@@ -11080,12 +11222,16 @@ function checkAdventure(){
     if (any && !rt.prevOut){
       const b = r.box; let switched = false;
       for (let x=b.x0+1;x<b.x1;x++) for (let y=b.y0+1;y<b.y1;y++){ const c = at(x,y); if (c && ((c.t === 'button' && c.timer > 0) || (c.t === 'lever' && c.on) || (c.t === 'plate' && (c.on || c.timer > 0)))) switched = true; }
-      if (all && switched){ troopCheer(); solveRoom(r); }
+      if (all && switched){ troopCheer(); solveRoom(r); fireworkShow(r); }
       else if (!all){ troopCheer(); if (!rt.cheatShown){ rt.cheatShown = true; plogEvent('cheat'); sfx.nope(); monkeySay('Whoosh... and the others? The troop wants ALL the fireworks at the SAME time!', 9000); } }
       else if (!rt.needShown){ rt.needShown = true; sfx.nope(); monkeySay('Ooh! But a show needs a button to start it. Make the BUTTON set them all off.', 9000); }
     }
     rt.prevOut = any;
   } else if (r.check === 'each'){
+    // standing on a plate: the plate you just came off lets go now, not a second later (Tom, 11 Oct: the plates took AGES to
+    // add their layer, as the one you'd left still counted as pressed). A plate you're not on can't be the one making it light.
+    const onIdx = r.inputs.findIndex(([x, y]) => { const c = at(x, y); return !!c && c.on; });
+    if (onIdx >= 0) r.inputs.forEach(([x, y], i) => { const c = at(x, y); if (i !== onIdx && c && !c.on && c.timer > 0){ c.timer = 0; S.gridDirty = true; } });
     if (!STABLE) return;
     const pressed = r.inputs.map(([x,y]) => { const c = at(x,y); return !!c && (c.on || c.timer > 0); });
     const n = pressed.filter(Boolean).length, lit = outLit(...r.out[0]);
@@ -11299,7 +11445,7 @@ function solveRoom(r){
     doorSpan(r.toilet, r.box).forEach(([x, y]) => setWall(x, y, 0, 1)); buildWalls();
     if (A.toiletMesh){ const tp = A.toiletMesh.position.clone(); decorRoot.remove(A.toiletMesh); A.toiletMesh = null; burst(new THREE.Vector3(tp.x, 1, tp.z), 0xf0c43a, 30); }
     underpantsRain(new THREE.Vector3(P.x, 0, P.z)); setTimeout(() => sfx.flush(), 600);
-    { const nx = ROOMS[ROOMS.indexOf(r) + 1]; if (nx) setTimeout(() => { if (A.on && !A.solved.has(nx.id) && P.y < ROOM_ELEV[nx.id] - 1 && !(A.rt && A.rt.room === nx)) monkeySay('Up the VINES! Walk right into them where the toilet was, and keep going up!', 8000); }, 25000); }
+    { const nx = ROOMS[ROOMS.indexOf(r) + 1]; if (nx) setTimeout(() => { if (A.on && !A.solved.has(nx.id) && P.y < ROOM_ELEV[nx.id] - 1 && !(A.rt && A.rt.room === nx)) monkeySay('Up the LADDER! Walk right into it where the toilet was, and keep going up!', 8000); }, 25000); }
   }
   sfx.chime(); confetti(); spawnCrystal(r); setTimeout(() => { if (A.on) addRoomMonkey(r); }, 2500);
   monkeySay(r.win + (r.bonus ? ' ' + r.bonus.text : ''), 14000);   // (not looking at him? it shows in the strip at the bottom too: offLineFrame)
@@ -11709,7 +11855,8 @@ function openFrame(dt){
   const h = A.crash ? A.crash.position : cellPos(...SPAWN), sp = cellPos(...SPAWN), e = 1 - Math.pow(1 - Math.min(1, t/OPEN_END), 2);
   let pos, look;
   // one continuous move: circle down round the wreck, then glide into your own eyes. The second part starts exactly where the first ends (it used to jump back)
-  const orbit = k => { const a = 2.2 + k*1.6, r = 8 - k*2.5; return new THREE.Vector3(h.x + Math.cos(a)*r, 7.5 - k*4, h.z + Math.sin(a)*r); };
+  // (the wreck sits 2 blocks from the jungle's south edge, so the circle stays on the swamp side, west to north-west, and low under the tree crowns: it used to start out past the edge and swing in through the tree wall and the leaves)
+  const orbit = k => { const a = 3.1 + k*.7, r = 8 - k*2.5; return new THREE.Vector3(h.x + Math.cos(a)*r, 4.5 - k, h.z + Math.sin(a)*r); };
   if (t < 8.6){ pos = orbit(t/8.6); look = new THREE.Vector3(h.x, h.y + .5, h.z); }
   else { const k = Math.min(1, (t - 8.6)/6), e2 = k*k*(3 - 2*k), a = 3.8 + k*.9, r = 5.5 + k*.5; const from = new THREE.Vector3(h.x + Math.cos(a)*r, 3.5 - k*1.9, h.z + Math.sin(a)*r), to = new THREE.Vector3(sp.x, sp.y + EYE, sp.z); pos = from.lerp(to, e2); look = new THREE.Vector3(h.x, h.y + .5, h.z).lerp(new THREE.Vector3(sp.x, sp.y + EYE - .3, sp.z - 6), e2); }
   cineCamera(pos, look); A.openLook = [pos, look];
@@ -12045,7 +12192,7 @@ function advStart(given){
   setTimeout(() => { if (A.on && !tut && !A.openCine) [...A.gates].filter(k => GATE_QUIZ[k] && !A.quizDone.has(k)).forEach(k => showCard('NEW GATE CARD: ' + GATE_CARDS[k].name + '!', gateCardHTML(k, true) + quizHTML(k))); }, 2000);   // a Gate Card is never lost: one you didn't finish comes back
 }
 function stopAdventure(){ dlgCancel(true); if (A.youMark) A.youMark.visible = false; document.body.classList.remove("emptyHands"); if (A.openCine){ A.openCine = false; cineEnd(); }
-  A.freeze = false; A.endSeq = null; A.countdown = null; $('#mapCard').hidden = true; despawnTroop(); musicSet(null); const ml = $('#mline'); if (ml) ml.hidden = true;
+  A.freeze = false; A.endSeq = null; A.countdown = null; $('#mapCard').hidden = true; despawnTroop(true); musicSet(null); const ml = $('#mline'); if (ml) ml.hidden = true;
   if (tut) { if (tut.marker) decorRoot.remove(tut.marker); tut = null; $('#tut').hidden = true; } if (A.on){ advSaveNow(); A.on = false; } recapTagsDrop(); RECAP.tagRoom = null; $('#crystals').hidden = true; if (space.floor) setSpaceLevel(0); shake = 0; }
 // ---- tags that point at a spot in the world: PUT IT HERE (the hint's ghost piece), TAP HERE (a block's side), STAND HERE (a floor square),
 // and the room's name tags (LEVER, LAMP, GATE, START LEVER, PLATFORM, THE 4 LEVER...).
@@ -12181,7 +12328,7 @@ function advHint(){
   }
   if (!r && A.act === 1 && A.room !== 'hall' && !A.solved.size){
     showCard('Hint', !A.metBarold ? (A.thief && A.thiefLeading() ? chaseHint() : heardBarold() ? 'Somebody is calling. Follow the voice to the big stairs.' : 'Have a look around. There\'s a dirt trail leading into the jungle.') : !A.gotKit || (tut && tutList()[tut.i].id !== 'follow') ? 'Barold is showing you something. Do what the yellow box says.' : 'Barold is waiting by the SIDE DOOR. Walk up to the tall beam of light.'); return; }
-  if (!r && A.room !== 'hall' && A.solved.size && A.act === 1){ const c = objectiveCell(); if (c){ forceTrail(c); const vines = S.ladder[c[1]*NX + c[0]]; showCard('Hint', vines ? 'Climb the VINES! Walk right into them and keep going.' : 'Follow the glowing trail to the next room. It ends at the tall beam of light.'); return; } }
+  if (!r && A.room !== 'hall' && A.solved.size && A.act === 1){ const c = objectiveCell(); if (c){ forceTrail(c); const vines = S.ladder[c[1]*NX + c[0]]; showCard('Hint', vines ? 'Climb the LADDER! Walk right into it and keep going.' : 'Follow the glowing trail to the next room. It ends at the tall beam of light.'); return; } }
   if (!r){ showCard('Hint', A.room === 'hall' ? HEART.hint : 'The temple is north. Walk in through the golden pillars.'); return; }
   if (r !== HEART && A.solved.has(r.id)) return hintDone(r);
   if (r.nudge && A.rt && !A.rt.nudged){ A.rt.nudged = true; showCard('Hint', r.nudge + '<br><small>Still stuck? Press again for a bigger clue.</small>'); return; }   // the first press is a nudge, not the answer
@@ -12265,7 +12412,7 @@ function hintDone(r){
   if (!c){ showCard('All done here!', `You've finished this ${word}! Well done.`); return; }
   forceTrail(c);
   const vines = A.act === 1 && S.ladder[c[1]*NX + c[0]];
-  showCard('All done here!', `You've finished this ${word}! ` + (vines ? `Now climb the VINES${r.toilet ? ' where the toilet was' : ''}. Walk right into them and keep going!` : `Follow the glowing trail to the next ${word}. It ends at the tall beam of light.`));
+  showCard('All done here!', `You've finished this ${word}! ` + (vines ? `Now climb the LADDER${r.toilet ? ' where the toilet was' : ''}. Walk right into it and keep going!` : `Follow the glowing trail to the next ${word}. It ends at the tall beam of light.`));
 }
 // a hint that says "take THIS away": the piece to pick up glows red
 function hintCut(r){
@@ -13162,12 +13309,19 @@ function eggSwitches(c){
   }
   return sw.slice(0, 4);
 }
-function eggSim(fn){
-  const saved = S.grid.map(c => c && Object.assign({}, c, {buf:c.buf ? c.buf.slice() : null, pts:c.pts ? c.pts.slice() : c.pts, offs:c.offs ? c.offs.slice() : c.offs}));
-  const keep = {tick:S.tick, lastSnap:S.lastSnap, stable:S.stable, ev:S.events.length, py:P.y}, was = S.simulating;
+// box: try out only the cells inside it (the room you're in). Tom, room 7: the achievement check tried each of three lamps on the
+// WHOLE temple, a thousand-odd steps of every cell in the game, and the game froze for 5+ seconds after the lamps lit
+let EGG_BOX = null;
+function eggSim(fn, box){
+  box = box || EGG_BOX;
+  const was = S.simulating, wasCells = S.simCells, sub = box && !wasCells ? [] : null;
+  if (sub) for (let y = Math.max(0, box.y0); y <= Math.min(NY - 1, box.y1); y++) for (let x = Math.max(0, box.x0); x <= Math.min(NX - 1, box.x1); x++){ const c = S.grid[y*NX + x]; if (c) sub.push(c); }
+  const list = sub || wasCells || S.grid, saved = list.map(c => c && Object.assign({}, c, {buf:c.buf ? c.buf.slice() : null, pts:c.pts ? c.pts.slice() : c.pts, offs:c.offs ? c.offs.slice() : c.offs}));
+  const keep = {tick:S.tick, lastSnap:S.lastSnap, stable:S.stable, ev:S.events.length, py:P.y};
   S.simulating = true; P.y = 1e5; SBX.noFeet = true;   // nobody's feet on the plates while the circuit is tried out (the switches are set by hand)
+  if (sub) S.simCells = sub;
   try { return fn(); }
-  finally { S.simulating = was; P.y = keep.py; SBX.noFeet = false; S.grid.forEach((c, i) => { if (c && saved[i]) Object.assign(c, saved[i]); }); S.tick = keep.tick; S.lastSnap = keep.lastSnap; S.stable = keep.stable; S.events.length = keep.ev; }
+  finally { S.simulating = was; S.simCells = wasCells; P.y = keep.py; SBX.noFeet = false; list.forEach((c, i) => { if (c && saved[i]) Object.assign(c, saved[i]); }); S.tick = keep.tick; S.lastSnap = keep.lastSnap; S.stable = keep.stable; S.events.length = keep.ev; }
 }
 function eggSet(sw, v){ if (sw.t === 'lever') sw.on = v; else { sw.timer = v ? 999 : 0; sw.on = false; } }
 function eggGate(c, litFn, asLamp, firing){   // firing: the toy is going off right now, so the gate's answer right now must be ON
@@ -14516,7 +14670,7 @@ function achCount(k){
   if (GYM.on) return; achSync();
   const v = ACHS.n[k] = (ACHS.n[k] || 0) + 1, rule = ACH_COUNT[k];
   if (rule && v >= rule[0] && ach(rule[1])) return;
-  if (A.on) advSaveSoon(); else if (rule && v <= rule[0]) achWrite();
+  if (A.on) advSaveSoon(true); else if (rule && v <= rule[0]) achWrite();
 }
 const achNHas = (k, v) => (ACHS.n[k] || []).includes(v);
 function achNAdd(k, v){ const a = Array.isArray(ACHS.n[k]) ? ACHS.n[k] : (ACHS.n[k] = []); if (!a.includes(v)){ a.push(v); if (A.on) advSaveSoon(); } }
@@ -14584,7 +14738,7 @@ function achFrame(dt){
 }
 const achMode = () => A.on ? 'adv' : isFree() ? 'free' : 'lab';
 function achPoll(){
-  const mode = achMode(); if (mode !== ACHF.mode){ ACHF.mode = mode; ACHF.solved = null; ACHF.sig = ''; ACHF.scanned = true; ACHF.sw = ''; ACHF.outs = null; ACHF.room = null; }
+  const mode = achMode(); if (mode !== ACHF.mode){ ACHF.mode = mode; ACHF.solved = null; ACHF.sig = ''; ACHF.scanned = true; ACHF.sw = ''; ACHF.outs = null; ACHF.room = null; ACHF.gateQ = null; }
   const now = A.clock || 0;
   if (A.on){
     const r = A.rt && A.rt.room; if (r !== ACHF.room){ ACHF.room = r; ACHF.roomT = now; }
@@ -14595,7 +14749,8 @@ function achPoll(){
   achLiveChecks();
   achSwitches(now);
   // the build changed: once it settles, see what he's made
-  const sig = achBuildSig(); if (sig !== ACHF.sig){ ACHF.sig = sig; ACHF.sigT = now; ACHF.scanned = false; }
+  const sig = achBuildSig(); if (sig !== ACHF.sig){ ACHF.sig = sig; ACHF.sigT = now; ACHF.scanned = false; ACHF.gateQ = null; }
+  else if (ACHF.gateQ) achGateNext();
   else if (!ACHF.scanned && now - ACHF.sigT > 1200){ ACHF.scanned = true; achScanBuild(); }
 }
 function achBuildSig(){ let h = 0, n = 0; for (let i = 0; i < S.grid.length; i++){ const c = S.grid[i]; if (c && !c.locked){ n++; h = (h*31 + i*7 + c.t.charCodeAt(0) + (c.dir || 0)*3 + (c.attach + 1) + (c.delay || 0)*5) | 0; } } return n + ':' + h; }
@@ -14651,7 +14806,8 @@ function achSwitches(now){
   ACHF.outs = outs;
 }
 // the build has settled: a long wire? a gate he built himself? a 4-lever lock?
-function achScanBuild(){
+function achScanBuild(now){   // now: try every gate straight away (the tests); otherwise one per poll, so no single frame pays for them all
+  ACHF.gateQ = null;
   const b = achBox(); if (!b) return;
   const pre = achPreKeys();
   if (!achHas('wirewiz')){ const seen = new Set(); for (let x = Math.max(0, b.x0); x <= Math.min(NX - 1, b.x1); x++) for (let y = Math.max(0, b.y0); y <= Math.min(NY - 1, b.y1); y++){ const c = at(x, y); if (!c || c.t !== 'dust' || seen.has(c) || !achOwn(c, pre)) continue; const w = achDust(c).filter(n => achOwn(n, pre)); w.forEach(n => seen.add(n)); if (w.length >= 15){ ach('wirewiz'); break; } } }
@@ -14659,7 +14815,14 @@ function achScanBuild(){
   if (!want) return;
   const outs = [];
   for (let x = Math.max(0, b.x0); x <= Math.min(NX - 1, b.x1); x++) for (let y = Math.max(0, b.y0); y <= Math.min(NY - 1, b.y1); y++){ const c = at(x, y); if (ACH_OUT(c) && achMostlyOwn(c, pre)) outs.push(c); }
-  outs.slice(0, 8).forEach(o => achGateOf(o));
+  ACHF.gateQ = {box:A.on ? b : null, outs:outs.slice(0, 8)};   // in the adventure, his gates are tried out on this room only
+  if (now) while (ACHF.gateQ) achGateNext();
+}
+function achGateNext(){
+  const q = ACHF.gateQ; if (!q) return;
+  const o = q.outs.shift(); if (!q.outs.length) ACHF.gateQ = null;
+  if (!o) return;
+  EGG_BOX = q.box; try { achGateOf(o); } finally { EGG_BOX = null; }
 }
 function achGateOf(o){
   let g = null; try { g = eggGate(o); } catch (e) { g = null; }
@@ -15344,7 +15507,7 @@ function makeEngineer(banana){
 }
 function buildMayaDecor(){
   freeKids(decorRoot);
-  ['crash', 'jungle', 'crown', 'glove', 'cog', 'beacon', 'reggie', 'heart', 'facade', 'thief', 'captain', 'zest', 'greg', 'digby', 'general', 'heartMap', 'ballMesh', 'courtMonkeys', 'sunModel', 'beam', 'sunSprite'].forEach(k => A[k] = null);
+  ['crash', 'jungle', 'crown', 'glove', 'punchAt', 'cog', 'beacon', 'reggie', 'heart', 'facade', 'thief', 'captain', 'zest', 'greg', 'digby', 'general', 'heartMap', 'ballMesh', 'courtMonkeys', 'sunModel', 'beam', 'sunSprite'].forEach(k => A[k] = null);
   A.chestMeshes = []; A.crystalsMesh = []; A.noteMeshes = []; A.extras = []; A.bolts = []; A.nearLabels = []; A.flies = []; A.eyes = []; A.bubbles = []; A.pickups = []; A.crew = []; A.cartMeshes = [];
   A.monkey = makeSkeleton(); decorRoot.add(A.monkey); A.monkey.userData.bubble = null; A.monkey.position.copy(cellPos(MAYA_SPAWN[0] + 2, MAYA_SPAWN[1] - 1));
   const g = new THREE.Group(); decorRoot.add(g); A.mayaDecor = g;
@@ -16747,7 +16910,7 @@ function portraitCanvas(name, col, hat, barold){
 }
 function buildUniDecor(){
   decorRoot.children.forEach(o => artDrop(o)); freeKids(decorRoot);
-  ['crash', 'jungle', 'crown', 'glove', 'cog', 'beacon', 'reggie', 'heart', 'facade', 'thief', 'captain', 'zest', 'greg', 'digby', 'general', 'heartMap'].forEach(k => A[k] = null);
+  ['crash', 'jungle', 'crown', 'glove', 'punchAt', 'cog', 'beacon', 'reggie', 'heart', 'facade', 'thief', 'captain', 'zest', 'greg', 'digby', 'general', 'heartMap'].forEach(k => A[k] = null);
   A.chestMeshes = []; A.crystalsMesh = []; A.noteMeshes = []; A.extras = []; A.bolts = []; A.nearLabels = []; A.flies = []; A.eyes = []; A.bubbles = []; A.pickups = []; A.crew = []; A.cartMeshes = [];
   A.monkey = makeSkeleton(); decorRoot.add(A.monkey); A.monkey.userData.bubble = null; A.monkey.position.copy(cellPos(UNI_SPAWN[0] + 2, UNI_SPAWN[1] - 1));
   const g = new THREE.Group(); decorRoot.add(g); A.uniDecor = g;
@@ -17769,7 +17932,7 @@ window.__game = {
     door(id){ const r = ROOMS.find(q => q.id === id); const d = r.exit && at(...r.exit); return d ? !!(d.latched || d.lit) : !wallAt(...r.toilet); },
     cell(x, y){ const c = at(x, y); return c ? {t:c.t, lit:c.lit, on:c.on, pw:c.pw, attach:c.attach, dir:c.dir, open:c.open} : null; },
     wall(x, y){ return wallAt(x, y); }, elevAt(x, y){ return floorAt(x, y); }, slideAt(x, y){ const v = S.slide[y*NX + x]; return S.ladder[y*NX + x] ? 'L' : v >= 0 ? 'v<>^'[[3,1,0,2].indexOf(v)] || v : ' '; },
-    troop(){ return {n:TROOP.list.length, shown:TROOP.list.filter(m => m.parent).length, tags:TROOP.labels.map(l => l.text), room:TROOP.room && TROOP.room.id, inPen:A.rt && A.rt.inPen, launches:A.rt && A.rt.launches, hand:A.rt && A.rt.handLaunches, danceUntil:TROOP.danceUntil || 0, kinds:TROOP.list.map(m => m.userData.kind)}; },
+    troop(){ return {n:TROOP.list.length, shown:TROOP.list.filter(m => m.parent).length, parked:Object.fromEntries(Object.entries(TROOP.parked).map(([k, pk]) => [k, pk.list.filter(m => m.parent).length])), ids:TROOP.list.map(m => m.id), tags:TROOP.labels.map(l => l.text), room:TROOP.room && TROOP.room.id, inPen:A.rt && A.rt.inPen, launches:A.rt && A.rt.launches, hand:A.rt && A.rt.handLaunches, danceUntil:TROOP.danceUntil || 0, kinds:TROOP.list.map(m => m.userData.kind)}; },
     get rooms(){ return ROOMS.map(r => ({launchAt:r.launchAt, platformAt:r.platformAt, journey:r.journey || JOURNEY[r.id], id:r.id, name:r.name, check:r.check, count:r.count, inputs:r.inputs || [], out:r.out || [], exit:r.exit, toilet:r.toilet, entry:r.entry, box:r.box, sol:r.sol, naive:r.naive, after:r.after, tntAt:r.tntAt, quick:r.quick, fixed:r.fixed, loose:r.loose, gate:r.gate, play:!!r.play, why:r.why || null, playBeat:r.playBeat || null})); },
     entryCell(id){ return entryOf(ROOMS.find(r => r.id === id)); },
     visAudit(id, pitch){ return visAudit(ROOMS.find(r => r.id === id), pitch); }, peeks(){ return (A.peeks || []).map(s2 => [s2.userData.x, s2.userData.y]); }, peekTime(id){ const r = ROOMS.find(q => q.id === id); roomPeek(r); let worst = 0; while (A.peekJob){ const t0 = performance.now(); A.rt = A.rt || {}; const rt0 = A.rt.room; A.rt.room = r; peekJobFrame(); A.rt.room = rt0; worst = Math.max(worst, performance.now() - t0); } return worst; }, peekBusy(){ return !!A.peekJob; }, gapSparks(){ return (A.gapSparks || []).slice(); }, sparkEnds(){ return (A.sparkEnds || []).slice(); },
@@ -18036,7 +18199,7 @@ window.__game.sbx = {
 // test hooks for achievements and the gate gym (test-achievements.js, test-gym.js)
 window.__game.achv = {
   list(){ return ACH_LIST.map(d => ({id:d.id, cat:d.cat, name:d.name, live:achLive(d), old:!!d.old})); }, got(){ return [...achCtx().got]; }, n(){ return JSON.parse(JSON.stringify(ACHS.n)); },
-  give(id){ return ach(id); }, count(k){ achCount(k); }, poll(){ ACHF.t = 1e9; achFrame(0); }, scan(){ ACHF.sig = achBuildSig(); ACHF.scanned = true; achScanBuild(); }, solvedCheck(id, before){ achSolvedRoom(ROOMS.find(q => q.id === id), new Set(before || [])); },
+  give(id){ return ach(id); }, count(k){ achCount(k); }, poll(){ ACHF.t = 1e9; achFrame(0); }, scan(){ ACHF.sig = achBuildSig(); ACHF.scanned = true; achScanBuild(true); }, solvedCheck(id, before){ achSolvedRoom(ROOMS.find(q => q.id === id), new Set(before || [])); },
   page(){ achOpen(); }, html(){ return achPageHTML(); }, queue(){ return ACHQ.map(d => d.name); }, toast(id){ achToast(ACH_BY[id]); }, clearQ(){ ACHQ.length = 0; const el = $('#achToast'); if (el) el.classList.remove('show'); },
   gateOf(x, y){ const c = at(x, y); return c ? achGateOf(c) : null; }, tntBang:achTntBang, blastWatch:achBlastWatch, state:achState, mode:() => ACHF.mode,
   reset(){ ACHS.got.clear(); ACHS.n = {}; ACHQ.length = 0; ACHF.mode = ''; if (!A.on){ const sv = advLoad(); if (sv && (sv.ach || sv.achN)){ delete sv.ach; delete sv.achN; advWrite(sv); } } }, advance(ms){ A.clock = (A.clock || 0) + ms; }, head(r){ const h = A.monkey && A.monkey.userData.head; if (h) h.rotation.y = r; }, discover(id){ discover(id); }, roomAgo(ms){ ACHF.roomT = (A.clock || 0) - ms; },
