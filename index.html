@@ -3929,7 +3929,8 @@ $('#btnPass').addEventListener('click', () => {
   let busy = false, typed = '';
   const start = how => { if (busy) return; const sv = usePassword(typed, how); if (!sv){ $('#passMsg').textContent = `You've got ${SLOT_MAX} saves already! Delete one in Saves to make room.`; sfx.nope(); return; }
     busy = true; $('#passWhere').hidden = true; $('#passMsg').textContent = 'Yes! Off you go...'; sfx.chime(); setTimeout(() => { $('#pane').hidden = true; ac(); playWithLoader(() => startAdventure(sv)); }, 700); };
-  const go = () => { if (busy) return; if (!passFind(typed)){ $('#passWhere').hidden = true; $('#passMsg').textContent = 'Hmm, that\'s not one of the temple\'s passwords. Check the spelling?'; sfx.nope(); return; }
+  const go = () => { if (busy) return; if (!typed){ $('#passWhere').hidden = true; $('#passMsg').textContent = 'Press the letters of your password first, then Go!'; sfx.nope(); return; }   // (on the TV an empty Go! sent Tom back to the helicopter: it read a text box the TV doesn't draw)
+    if (!passFind(typed)){ $('#passWhere').hidden = true; $('#passMsg').textContent = 'Hmm, that\'s not one of the temple\'s passwords. Check the spelling?'; sfx.nope(); return; }
     const x = slotIdx(), cur = slotEntry(x.cur, x); if (!cur || !slotSum(slotLoad(cur.id)).started) return start('here');   // no game to lose: straight in
     const full = x.slots.length >= SLOT_MAX, w = $('#passWhere'); $('#passMsg').textContent = ''; sfx.chime();   // never swap the game you're on without asking
     w.innerHTML = `<p><b>Yes! That's a real password.</b> Where shall it go?</p><div class="row"><button class="btn red" id="passNew"${full ? ' disabled' : ''}>Start a new save</button><button class="btn" id="passHere">Put it in "${escH(cur.name)}"</button></div><p style="font-size:15px">${full ? `You've got ${SLOT_MAX} saves, so a new one won't fit. ` : ''}"${escH(cur.name)}" would jump to the password's place. Rooms you've done stay done.</p>`;
