@@ -2245,18 +2245,22 @@ function feed(kind, text){ FEED.push({t:Math.round(A.clock || 0), kind, text:Str
 // Cards QUEUE: one never replaces another (Max lost the OR Gate Card when the password card came straight after it). The one
 // exception is a card you asked for yourself (a hint, the ? tool), which the next hint or ? may swap in place. The button arms after
 // a moment, so a double tap can't skip a card.
-const CARD_ARM_MS = 600;
+const CARD_ARM_MS = 600, QUIZ_ARM_MS = 1500;
 let cardArmT = 0;
 const cardSoft = head => /^(Hint|Not yet|What is this|Grass)/.test(head);   // you asked for it; the next one you ask for takes its place
-function cardArmed(){ return $('#why').hidden || performance.now() - cardArmT >= CARD_ARM_MS; }
+let cardArmMs = CARD_ARM_MS;
+function cardArmed(){ return $('#why').hidden || performance.now() - cardArmT >= cardArmMs; }
 function showCard(head, html){
   const w = $('#why');
   if (!w.hidden && !(cardSoft(head) && cardSoft($('#whyHead').textContent))){ if (!CARDQ.some(([h, t]) => h === head && t === html)) CARDQ.push([head, html]); return; }   // a card is up: this one waits its turn
   const quiz = html.includes('class="gq"');
   feed('card', head + ': ' + html); $('#whyHead').textContent = head; $('#whyText').innerHTML = html; $('#whyOk').textContent = padMode ? 'Got it! (' + PN(padOK()) + ')' : locked ? 'Got it! (click)' : 'Got it!';
   w.classList.toggle('quiz', quiz); $('#whyOk').hidden = quiz; w.hidden = false; w.scrollTop = 0; placeToast();
-  cardArmT = performance.now(); $('#whyOk').disabled = true; setTimeout(() => { $('#whyOk').disabled = false; }, CARD_ARM_MS);
-  w.classList.add('arming'); const armT = cardArmT; setTimeout(() => { if (cardArmT === armT) w.classList.remove('arming'); }, CARD_ARM_MS);   // every button on it (answers, Back to the menu...) waits too
+  // a Gate Card's question waits longer (Tom, 11 Oct: the ✕ that finished Barold's talk picked the first answer at once, and the
+  // card was gone before Max saw it); quizPick ignores an answer until then, which works on the Apple TV too (it doesn't read the CSS)
+  cardArmMs = quiz ? QUIZ_ARM_MS : CARD_ARM_MS;
+  cardArmT = performance.now(); $('#whyOk').disabled = true; setTimeout(() => { $('#whyOk').disabled = false; }, cardArmMs);
+  w.classList.add('arming'); const armT = cardArmT; setTimeout(() => { if (cardArmT === armT) w.classList.remove('arming'); }, cardArmMs);   // every button on it (answers, Back to the menu...) waits too
   if (quiz && locked) try { document.exitPointerLock(); } catch (_) {}   // let the mouse reach the answers
 }
 function closeCard(){ if (!cardArmed() || $('#why').hidden) return false; const head = $('#whyHead').textContent; $('#why').hidden = true; sfx.click(); tapQuiet();
@@ -2420,7 +2424,7 @@ function quizLive(){
   return null;
 }
 function quizPick(b){
-  const box = b.closest('.gq'), k = box && box.dataset.gate, Q = GATE_QUIZ[k]; if (!Q || box.classList.contains('done') || b.disabled) return;
+  const box = b.closest('.gq'), k = box && box.dataset.gate, Q = GATE_QUIZ[k]; if (!Q || box.classList.contains('done') || b.disabled || (box.closest('#why') && !cardArmed())) return;
   const o = Q.opts[+b.dataset.i], fb = box.querySelector('.gqFb');
   feed('quiz', k + ': ' + o.t + (o.ok ? ' (right)' : ' (not this one)'));
   if (o.ok){
@@ -2431,7 +2435,7 @@ function quizPick(b){
     else { const sv = advLoad(); if (sv){ sv.quiz = [...new Set([...(sv.quiz || []), k])]; advWrite(sv); } }   // answered on the menu's Gate Cards page (written to the save you're on)
     sfx.chime(); if (A.on && A.monkey) A.monkey.userData.hop = 1.5;
     if (!box.closest('#why')){ const G = GATE_CARDS[k]; box.insertAdjacentHTML('beforeend', `<p style="margin:4px 0"><b>Spot it in real life:</b> ${G.home}</p><p style="margin:4px 0;font-size:13px"><i>${G.spot}</i></p>`); }   // the menu's card shows its example once you've spotted one
-    else { const ok = $('#whyOk'); ok.hidden = false; $('#why').classList.remove('quiz'); cardArmT = performance.now(); ok.disabled = true; setTimeout(() => { ok.disabled = false; }, CARD_ARM_MS);   /* Got it! arms too: the tap on the answer can't also close the card */ if (padMode) padFocus(ok); else if (box.contains(document.activeElement)) ok.focus(); }
+    else { const ok = $('#whyOk'); ok.hidden = false; $('#why').classList.remove('quiz'); cardArmMs = CARD_ARM_MS; cardArmT = performance.now(); ok.disabled = true; setTimeout(() => { ok.disabled = false; }, CARD_ARM_MS);   /* Got it! arms too: the tap on the answer can't also close the card */ if (padMode) padFocus(ok); else if (box.contains(document.activeElement)) ok.focus(); }
   } else {
     b.classList.add('wrong'); b.disabled = true;
     fb.className = 'gqFb'; fb.textContent = 'Not this one! ' + o.why + ' Try another!';
@@ -3326,6 +3330,7 @@ const PADN = {nintendo:['B','A','Y','X','L','R','ZL','ZR','−','+'], xbox:['A',
 let padFam = 'xbox', padId = '', padSwap = false, padEat = false, padBrkT = 0, padNavDir = -1, padNavT = 0, padFocusEl = null, padOddWarned = false;
 const padMem = {};
 const PN = i => i >= 12 ? ['↑','↓','←','→'][i - 12] : i === 8 && padFam === 'ps' && /dualsense|0ce6|0df2/i.test(padId) ? 'Create' : PADN[padFam][i];   // a button's name on this pad
+const ON_TV = navigator.platform === 'AppleTV';   // the Apple TV app (apple/SparksAndBonesTV/Runtime/dom-shim.js)
 const padOK = () => padFam === 'nintendo' ? 1 : 0, padBack = () => 1 - padOK();
 function padIdent(gp){
   if (!gp || gp.id === padId) return; padId = gp.id;
@@ -3416,7 +3421,8 @@ function padMenu(layer, now, press, lx, ly, dt){
   else if (dir !== padNavDir){ padNavDir = dir; padNavT = 380; padNudge(items, dir); }
   else if ((padNavT -= dt) <= 0){ padNavT = 150; padNudge(items, dir); }
   if (layer.id === 'book'){ if (press(PB.prev) && $('#bkPrev')) $('#bkPrev').click(); if (press(PB.next) && $('#bkNext')) $('#bkNext').click(); }
-  if (press(padOK())){ const el = padFocusEl; if (/INPUT|TEXTAREA|SELECT/.test(el.tagName)) el.focus(); else el.click(); }
+  if (press(padOK()) && ON_TV) {}   // the Apple TV app: its own focus (the box tvOS draws) presses the button; a second press here clicked another one too
+  else if (press(padOK())){ const el = padFocusEl; if (/INPUT|TEXTAREA|SELECT/.test(el.tagName)) el.focus(); else el.click(); }
   else if (press(padBack()) || (press(PB.start) && layer.id !== 'menu')) padClose(layer);
   else if (press(PB.start)) $('#btnPlay').click();   // + on the menu: back into the game
 }
@@ -3504,9 +3510,19 @@ function buildTiles(){
     const st = progress.done[l.id] || 0, open = lessonOpen(l.id);
     if (!open) b.classList.add('locked');
     b.innerHTML = `<span class="num">${l.kind==='free'?'Reward':'Mission '+l.id}</span><span class="nm">${l.name}</span><span class="gt">${l.gate==='free'?'Sandbox':l.gate==='wire'?'Wire':l.gate==='buffer'?'Repeater':l.gate==='clock'?'Clock':l.gate.toUpperCase()+' gate'}</span>${!open?`<span class="lk">Finish all ${LAST_MISSION} missions to unlock</span>`:l.kind!=='free'?`<span class="stars">${[0,1,2].map(i=>svgStar(i<st)).join('')}</span>`:''}<svg class="sym" viewBox="0 0 200 100">${gateSVG(l.gate)}</svg>`;
-    b.addEventListener('click', () => { ac(); if (!lessonOpen(l.id)){ sfx.nope(); return; } startLesson(l.id); });
+    b.addEventListener('click', () => { ac(); if (!lessonOpen(l.id)){ sfx.nope(); return; } if (started) lessonAsk(l); else startLesson(l.id); });
     t.appendChild(b);
   });
+}
+// a Puzzle Lab tile with an adventure on the go: ask first (Tom, 11 Oct: one press on the TV's menu jumped Max out of his game
+// into a mission and he thought his progress was gone). "No" comes first, so it's where the controller starts.
+function lessonAsk(l){
+  sfx.click(); const what = l.kind === 'free' ? 'Free build' : 'Mission ' + l.id;
+  openPane('Play ' + what + '?', `<p class="svBig">Do you want to leave your adventure and play ${what}?</p><p>Don't worry: your adventure is saved. To go back to it, pick <b>Continue</b> on this menu.</p><div class="row"><button class="btn" id="lessonNo">No, go back</button><button class="btn red" id="lessonYes">Yes, play ${what}</button></div>`);
+  $('#paneClose').hidden = true;
+  $('#lessonNo').onclick = () => { sfx.click(); $('#pane').hidden = true; $('#paneClose').hidden = false; };
+  $('#lessonYes').onclick = () => { sfx.click(); $('#pane').hidden = true; $('#paneClose').hidden = false; startLesson(l.id); };
+  padMem.pane = $('#lessonNo'); if (padMode) padFocus($('#lessonNo'));
 }
 // behind the menu: the jungle and the front of the temple (built once, a few dozen meshes and two instanced batches, cheap on an iPad)
 const MENU3D = {g:null, el:null};
@@ -6325,7 +6341,7 @@ const SHIP_ROOMS = [
     win:'The roof slid OPEN! Look at all that sky! Either switch works, and every shutter has a wire pointing right INTO it.',
     decree:'BY ROYAL DECREE: wires shall go AROUND the shutters, not INTO them. It is more polite. Signed, the EMPEROR.' },
   { id:34, ship:4, short:'the FUEL VALVES', part:'fuel', name:'The Fuel Valves', box:{x0:55, x1:67, y0:12, y1:20}, flip:true, color:0x6dff5a,
-    check:'seq', give:['dust','repeater'], ban:['rblock','lever','button','plate','torch'], gap:2,
+    check:'seq', give:['dust','repeater'], ban:['rblock','lever','button','plate','torch'],
     want:'the button has to open the valves',
     inputs:[[5,4]], out:[[0,0],[10,0],[5,0]],   // valve 1, valve 2, valve 3: the nearest one has to open LAST
     fixed:[K('button',5,4), K('lamp',0,0), K('lamp',10,0), K('lamp',5,0)],
@@ -6422,7 +6438,11 @@ function advSaveSoon(quiet){
   clearTimeout(advTimer); advQuiet = !!quiet;
   advTimer = setTimeout(() => { advTimer = 0; advSaveNow(advQuiet); }, quiet ? Math.max(0, Math.min(4000, advQuietSince + 20000 - now)) : 500);
 }
-function advSaveNow(quiet){ clearTimeout(advTimer); advTimer = 0; if (!A.on || A.openCine) return; advWrite(advSerialize(), quiet); }   // (nothing to keep while the opening plays)
+function advSaveNow(quiet){ clearTimeout(advTimer); advTimer = 0; if (!A.on || A.openCine) return; advWrite(advKeepBest(advSerialize()), quiet); }
+// rooms done stay done: a save of the game you're playing never has fewer rooms, crystals or Gate Cards than the one it
+// replaces (Tom, 11 Oct: a jump about on the TV's menu lost Max's progress). A new game wipes the save first, so it starts empty.
+function advKeepBest(s){ try { const old = advLoad(); if (!old) return s;
+  ['solved', 'crystals', 'gates', 'bonus'].forEach(k => { if (Array.isArray(old[k]) && Array.isArray(s[k])) s[k] = [...new Set([...s[k], ...old[k]])]; }); } catch (e) {} return s; }   // (nothing to keep while the opening plays)
 
 function roomOf(x, y){ for (const r of ROOMS){ const b = r.box; if (x > b.x0 && x < b.x1 && y > b.y0 && y < b.y1) return r; } return shipRoomAt(x, y); }
 function inHall(x, y){ return A.act !== UNI_ACT && ((x > HALL.x0 && x < HALL.x1 && y > HALL.y0 && y < HALL.y1) || (ROOMS === TEMPLE_ROOMS && inShipCorr(x, y))); }   // the corridor to the Skull's machines counts as the chamber
@@ -8038,7 +8058,7 @@ function plogReport(){
   return {v:1, started:PLOG.started, sessions:PLOG.sessions, now:Date.now(), notes:A.notes ? A.notes.size : 0, disc:A.disc ? [...A.disc] : [], rows};
 }
 const mmss = s => s === null || s === undefined ? '-' : `${Math.floor(s/60)}:${String(s % 60).padStart(2, '0')}`;
-function openPane(head, html){ $('#paneHead').textContent = head; $('#paneBody').innerHTML = html; $('#pane').hidden = false; }
+function openPane(head, html){ $('#paneClose').hidden = false; $('#paneHead').textContent = head; $('#paneBody').innerHTML = html; $('#pane').hidden = false; }
 // password checkpoints: funny, memorable, not guessable. Write it down; type it in on any device to get back to that point.
 const PASSWORDS = [
   // one funny word each (Max, 7, has to write them down); `old` is the long version earlier builds gave out, still accepted
@@ -8259,7 +8279,7 @@ function recapRepFace(r){
 // what's wrong with the build right now, in one short line (or '')
 function recapWrong(r, rt){
   // one of your parts is in the right spot but faces the wrong way (c13, c14: the lighthouse's repeater; 504-506's pistons)
-  { const f = (r.sol || []).find(g => 'dir' in g && g.t !== 'air' && (c => c && !c.locked && c.t === g.t && c.dir !== g.dir)(at(g.x, g.y)));
+  { const f = (r.sol || []).find(g => 'dir' in g && g.t !== 'air' && g.t !== 'repeater' && (c => c && !c.locked && c.t === g.t && c.dir !== g.dir)(at(g.x, g.y)));   // (a repeater is judged by what it does, below: one that works facing another way in YOUR layout is fine)
     if (f) return `The ${recapName(f.t).toLowerCase()} faces the wrong way.`;
     // a torch standing on the floor where the answer's torch hangs on a block's side (c17 clicked the floor twice)
     const t = (r.sol || []).find(g => g.t === 'torch' && 'attach' in g && g.attach >= 0 && (c => c && !c.locked && c.t === 'torch' && c.attach !== g.attach)(at(g.x, g.y)));
@@ -11710,7 +11730,7 @@ function checkSeq(r, rt){
   plogEvent('wrong'); sfx.nope(); sfx.blub();
   if (ts[0] === ts[1] && ts[1] === ts[2]) monkeySay('GLUG! All three opened at ONCE. Fuel everywhere! (Don\'t worry, it\'s very clean fuel.) It has to be 1, THEN 2, THEN 3.', 10000);
   else if (!(ts[0] <= ts[1] && ts[1] <= ts[2])) monkeySay(`Ooh, wrong order: ${rt.seqText}. It has to be 1, then 2, then 3!`, 9000);
-  else monkeySay('Nearly! But some opened at the same moment, or too quick to see. Make each one wait a bit LONGER than the one before.', 9000);
+  else monkeySay('Nearly! But some opened at the same moment. Make each one wait a bit LONGER than the one before.', 9000);
 }
 // the LAUNCH lever: nothing happens until every machine works (and the Skull has all its crystals); then the countdown
 function checkHeart(){
@@ -12447,9 +12467,9 @@ function advHint(){
     // the ladder has two steps (the clue, then the next piece as a ghost; each piece you put in, the next press shows the next one). Pressed
     // again with the same ghost still waiting, it used to say the same thing again (c13, c18: "Hint 3 repeats Hint 2"): now it says that's all
     const gk = L.ghosts.map(g => [g.t, g.x, g.y].join()).join('|');
-    if (missing.length && gk === L.hintGhostKey){ showCard('Hint 2', 'That\'s all the hints!<br>Put the real piece on the ghost.<br>Then press Hint for the next one.<br>' + (A.act === UNI_ACT ? 'Or open the picture book. It shows the whole machine.' : 'Stuck? Tap the goal box. Reset this room.')); return; }
+    if (missing.length && gk === L.hintGhostKey){ showCard('Hint 2', 'That\'s all the hints!<br>The ghost shows ONE way to do it. Put the real piece on it, then press Hint for the next one.<br>Your own way is fine too, if it works!<br>' + (A.act === UNI_ACT ? 'Or open the picture book. It shows the whole machine.' : 'Stuck? Tap the goal box. Reset this room.')); return; }
     L.hintGhostKey = gk;
-    showCard('Hint 2', !missing.length ? 'Everything\'s built! Try flipping the switches.' : showN >= 99 ? 'I\'ve drawn it for you in pale ghost shapes. Put the real thing on EACH ghost shape, then watch what happens!' : showN > 1 ? 'The pale ghost shapes show the next few pieces. Can you work out the rest?' : 'The pale ghost shows ONE piece. Put it where it says PUT IT HERE. Can you work out the rest?');
+    showCard('Hint 2', !missing.length ? 'Everything\'s built! Try flipping the switches.' : showN >= 99 ? 'I\'ve drawn it for you in pale ghost shapes. Put the real thing on EACH ghost shape, then watch what happens!' : showN > 1 ? 'The pale ghost shapes show the next few pieces. Can you work out the rest?' : 'The pale ghost shows ONE piece. Put it where it says PUT IT HERE. Can you work out the rest? (Your own way is fine too, if it works!)');
   }
 }
 /* ---- hints you can find, and that stay put ----
