@@ -550,7 +550,7 @@ body:has(#touchPad:not([hidden])) #itemCard{ bottom:calc(252px + env(safe-area-i
     <div id="topBtns">
       <button class="btn icon" id="btnHint" aria-label="Hint" title="Hint"><svg viewBox="0 0 24 24" fill="#fff"><path d="M12 2a7 7 0 0 0-4 12.7V18h8v-3.3A7 7 0 0 0 12 2z"/><rect x="8" y="19" width="8" height="3"/></svg><span class="lbl">Hint</span></button>
       <button class="btn icon" id="btnAsk" aria-label="What does this do?" title="? tool: tap a part to see what it does"><span style="font-size:26px;font-weight:700;line-height:1">?</span><span class="lbl">What?</span></button>
-      <button class="btn icon" id="btnSnail" aria-label="Slow motion" title="Slow motion: see the power numbers"><svg viewBox="0 0 24 24" fill="#fff"><circle cx="10" cy="12" r="6" fill="none" stroke="#fff" stroke-width="2.5"/><path d="M10 12m-2 0a2 2 0 1 0 4 0" fill="none" stroke="#fff" stroke-width="2"/><path d="M2 19h17c2 0 3-1.5 3-3V9" stroke="#fff" stroke-width="2.5" fill="none"/><path d="M20 9l-1-4M22 9l1-4" stroke="#fff" stroke-width="2"/></svg><span class="lbl">Slow-mo</span></button>
+      <button class="btn icon" id="btnSnail" aria-label="Slow motion" title="Slow-mo: torches, repeaters and clocks go slowly, so you can watch them"><svg viewBox="0 0 24 24" fill="#fff"><circle cx="10" cy="12" r="6" fill="none" stroke="#fff" stroke-width="2.5"/><path d="M10 12m-2 0a2 2 0 1 0 4 0" fill="none" stroke="#fff" stroke-width="2"/><path d="M2 19h17c2 0 3-1.5 3-3V9" stroke="#fff" stroke-width="2.5" fill="none"/><path d="M20 9l-1-4M22 9l1-4" stroke="#fff" stroke-width="2"/></svg><span class="lbl">Slow-mo</span></button>
       <button class="btn icon" id="btnView" aria-label="Switch view" title="Switch view (V)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><span class="lbl">View</span></button>
       <button class="btn icon" id="btnReset" aria-label="Start again" title="Start again"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6"><path d="M4 12a8 8 0 1 0 2.5-5.8"/><path d="M4 3v5h5" /></svg><span class="lbl">Reset</span></button>
       <button class="btn icon" id="btnMenu" aria-label="Menu" title="Menu"><svg viewBox="0 0 24 24" fill="#fff"><rect x="3" y="5" width="18" height="3"/><rect x="3" y="11" width="18" height="3"/><rect x="3" y="17" width="18" height="3"/></svg><span class="lbl">Menu</span></button>
@@ -1864,7 +1864,7 @@ function buildMesh(c, ghost){
     case 'lamp': add(G.cube, c.lit ? M.lampOn : M.lampOff); if (c.lit && !ghost) g.add(glow(M.glowGold, 2.6, .5)); break;
     case 'dust': {
       const mat = dustMats[ghost ? 15 : c.pw];
-      if ((S.slow || S.numbers) && !ghost && (c.pw || dustRanOut(c))) g.add(numSprite(c.pw));   // (a 0 only where the power ran out, beside a dust that still has some: re-run 2's c06 saw "lots of 0 boxes" on a long dead wire)
+      if (S.numbers && !ghost && (c.pw || dustRanOut(c))) g.add(numSprite(c.pw));   // (a 0 only where the power ran out, beside a dust that still has some: re-run 2's c06 saw "lots of 0 boxes" on a long dead wire)
       if (ghost || c.isDot) add(cbox(ghost ? .62 : .46, .02, ghost ? .62 : .46), mat, 0, .012, 0);
       else {
         add(cbox(.3, .02, .3), mat, 0, .012, 0);
@@ -2078,7 +2078,7 @@ let cellGroups = new Array(NX*NY).fill(null), cellKeys = new Array(NX*NY).fill('
 function vkey(c){
   if (UNI_PARTS.has(c.t) || c.tall) return uniKey(c);
   switch (c.t){
-    case 'dust': return 'd'+c.ptsMask+'_'+c.pw+((S.slow || S.numbers)?'x' + (c.pw ? '' : dustRanOut(c) ? 'e' : 'n'):'')+dustPlugs(c).map(p => p ? (p === 2 ? 2 : 1) : 0).join('');
+    case 'dust': return 'd'+c.ptsMask+'_'+c.pw+(S.numbers?'x' + (c.pw ? '' : dustRanOut(c) ? 'e' : 'n'):'')+dustPlugs(c).map(p => p ? (p === 2 ? 2 : 1) : 0).join('');
     case 'lever': return 'l'+c.on+effAttach(c);
     case 'button': return 'b'+(c.timer>0)+effAttach(c);
     case 'lamp': return 'L'+c.lit;
@@ -2462,8 +2462,8 @@ new MutationObserver(() => { const w = $('#why');
 new MutationObserver(() => { if ($('#hud').hidden){ CARDQ.length = 0; $('#why').hidden = true; } }).observe($('#hud'), {attributes:true, attributeFilter:['hidden']});   // back on the menu: no cards left over for the next game
 // while a card is up, a toast sits just above it instead of on top of its words
 function placeToast(){ const t = $('#toast'), w = $('#why'), d = $('#dlg'); if (!t) return; document.body.classList.toggle('cardUp', !w.hidden);
-  const above = [w, d].filter(e => !e.hidden && getComputedStyle(e).display !== 'none'); if ($('#hud').hidden || !above.length){ t.style.bottom = ''; return; } if (!w.hidden) fitCard();
-  t.style.bottom = Math.max(0, innerHeight - Math.min(...above.map(e => e.getBoundingClientRect().top)) + 8) + 'px'; }   // and above the dialogue box
+  const above = [w, d].filter(e => !e.hidden && getComputedStyle(e).display !== 'none'); if ($('#hud').hidden || !above.length){ t.style.bottom = t.style.top = ''; return; } if (!w.hidden) fitCard();
+  t.style.bottom = Math.max(0, innerHeight - Math.min(...above.map(e => e.getBoundingClientRect().top)) + 8) + 'px'; t.style.top = 'auto'; }   // and above the dialogue box (top auto: the CSS's top 44% while somebody talks plus this bottom stretched the toast into a tall empty panel)
 // a card always fits on the screen, between the top bar and the hotbar (never under the hotbar, never off the top), and scrolls inside if it
 // must; its Got it! (or a Gate Card's question and answers) stays in sight at the bottom (sweep 2 B9: at 900x600 the answers sat below the
 // card's edge, where only a mouse wheel could reach them). Too little room under the top bar (a phone held sideways): it may cover the top bar.
@@ -3588,7 +3588,8 @@ $('#celeMenu').addEventListener('click', showMenu);
 $('#celeStay').addEventListener('click', () => { $('#cele').hidden = true; });
 $('#btnView').addEventListener('click', () => { sfx.click(); setView(!viewFP); });
 $('#btnAsk').addEventListener('click', () => toggleAsk());
-$('#btnSnail').addEventListener('click', () => { S.slow = !S.slow; $('#btnSnail').classList.toggle('on', S.slow); sfx.click(); cellKeys.fill('#'); syncVisuals(); });
+$('#btnSnail').addEventListener('click', () => { S.slow = !S.slow; $('#btnSnail').classList.toggle('on', S.slow); sfx.click(); $('#btnSnail .lbl').textContent = S.slow ? 'Slow-mo ON' : 'Slow-mo';
+  showToast(S.slow ? 'Slow-mo is ON. Torches, repeaters and blinking lamps now go slowly, so you can watch them work. Press Slow-mo again to go back to normal.' : 'Slow-mo is OFF. Back to normal speed.'); cellKeys.fill('#'); syncVisuals(); });
 $('#celeBook').addEventListener('click', () => openBook(L.def.id));
 $('#btnMenu').addEventListener('click', showMenu);
 $('#btnHint').addEventListener('click', () => { $('#btnHint').classList.remove('glow');
@@ -11138,7 +11139,6 @@ function enterArea(r, where){
     makeBolts(r);
     if (r.troop){ if (TROOP.room !== r) spawnTroop(r); } else if (TROOP.room) despawnTroop();
     setTimeout(() => plogEvent('enter'), 0);
-    if (S.numbers !== !!r.showPower){ S.numbers = !!r.showPower; cellKeys.fill('#'); syncVisuals(); }
   } else if (where === 'hall'){
     makeBolts(null); if (TROOP.room) despawnTroop();
     num.textContent = 'The Chamber of the Crystal Skull'; nm.textContent = HEART.name;
@@ -11153,6 +11153,7 @@ function enterArea(r, where){
 
     A.rt = {room:null};
   }
+  { const want = !!(r && r.showPower); if (S.numbers !== want){ S.numbers = want; cellKeys.fill('#'); syncVisuals(); } }   // the power numbers: only in the rooms that teach them, and off again when you walk out (Tom's TV: they stayed on in the hall)
   refreshHotbar();
   renderCard();
 }
@@ -18181,7 +18182,7 @@ window.__game.ui = {
   troopTags(){ spotTagsFrame(); return TROOP.labels.map(l => ({text:l.text, at:l.cell, shown:l.shown, side:l.side, rect:l.rect, spot:l.spotRect})); },
   lookAt(x, y, z){ const dx = x - P.x, dz = z - P.z; P.yaw = Math.atan2(-dx, -dz); P.pitch = Math.atan2(y - (P.y + EYE), Math.hypot(dx, dz)); stepFP(0); },
   look(yaw, pitch){ P.yaw = yaw; P.pitch = pitch; stepFP(0); },
-  numbers(){ let zero = 0, more = 0; cellRoot.traverse(o => { if (o.isSprite && o.visible && numMats.includes(o.material)){ if (o.material === numMats[0]) zero++; else more++; } }); return {zero, more, on:!!(S.slow || S.numbers)}; },
+  numbers(){ let zero = 0, more = 0; cellRoot.traverse(o => { if (o.isSprite && o.visible && numMats.includes(o.material)){ if (o.material === numMats[0]) zero++; else more++; } }); return {zero, more, on:!!S.numbers}; },
   youMark(){ const m = A.youMark; if (!m || !m.visible) return null; return {frac:+m.scale.y.toFixed(3), px:Math.round(m.scale.y*window.innerHeight), op:m.material.opacity, up:+(m.position.y - P.y).toFixed(2)}; },   // (sizeAttenuation off: scale.y is about its share of the view's height)
   carts(){ return (S.carts || []).map((k, i) => { const m = (A.cartMeshes || [])[i]; return {room:k.room, x:k.x, y:k.y, v:k.v, at:m ? [m.position.x, m.position.y, m.position.z] : null}; }); },
   crumbs(){ return A.wf ? A.wf.crumbs.map(m => [m.position.x, m.position.y, m.position.z]) : []; }, crumbsSeen(){ return A.wf ? A.wf.crumbs.map(crumbSeen) : []; }, sees(x, y, z, f){ return playerSees(x, y, z, f); }, wf(){ const W = A.wf || {}; return {said:W.said, forced:W.forced, t:W.t, n:(W.crumbs || []).length}; },
