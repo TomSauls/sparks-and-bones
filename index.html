@@ -1610,7 +1610,7 @@ function tex(cv, rep, mip){
 }
 const lam = (cv, extra) => new THREE.MeshLambertMaterial(Object.assign({map:tex(cv, null, true)}, extra||{}));
 const M = {
-  stone: lam(CV.stone), cobble: lam(CV.cobble),
+  stone: lam(CV.stone), stoneOn: lam(CV.stone, {color:0xffb0a0, emissive:0x6a1006}), cobble: lam(CV.cobble),
   banana: new THREE.MeshLambertMaterial({color:0xffd83a, emissive:0x403000}), slime: new THREE.MeshLambertMaterial({color:0x7ccf5a, transparent:true, opacity:.85}),
   mirror: new THREE.MeshPhongMaterial({color:0xdfe6ee, specular:0xffffff, shininess:120, flatShading:true}), smooth: lam(CV.smooth), wood: lam(CV.wood),
   lampOff: lam(CV.lampOff), lampOn: new THREE.MeshBasicMaterial({map:tex(CV.lampOn, null, true)}),
@@ -1755,7 +1755,7 @@ function buildMesh(c, ghost){
   const g = new THREE.Group();
   const add = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x||0, y||0, z||0); g.add(m); return m; };
   if (uniMesh(c, add, g, ghost)) {} else switch (c.t){
-    case 'stone': add(G.cube, M.stone); break;
+    case 'stone': add(G.cube, c.powered && !ghost ? M.stoneOn : M.stone); break;   // full of power: it glows red (Tom, 11 Oct: so you can SEE power go into a block)
     case 'rblock': if (c.sheep) sbMesh(c, g, add); else add(G.cube, M.rblock); break;   // a redstone sheep carries an invisible redstone block about
     case 'steel': case 'rglass': case 'monkeys': case 'beacon': case 'bananabomb': case 'madcow': case 'skunk': case 'groovitron':
     case 'goat': case 'granny': case 'sheepstrike': case 'holybanana': case 'ninjarope': case 'chickencannon': case 'whoopeemine': case 'bouncy': case 'slimefountain': case 'teleporter': case 'rubberball': case 'coffin': sbMesh(c, g, add); break;
@@ -2121,6 +2121,7 @@ function vkey(c){
     case 'lever': return 'l'+c.on+effAttach(c);
     case 'button': return 'b'+(c.timer>0)+effAttach(c);
     case 'lamp': return 'L'+c.lit+(c.look || '');
+    case 'stone': return c.powered ? 'sP' : 'stone';
     case 'torch': return 't'+c.lit+effAttach(c)+(c.burnt > 0 ? 'b' : '');
     case 'repeater': return 'r'+c.dir+c.delay+c.out;
     case 'tnt': return 'x'+(c.fuse > 0 && c.fuse % 4 < 2);
@@ -3195,6 +3196,7 @@ function interact(c){
   if (c.t === 'lever' && coopLock(c)) return true;
   if (c.t === 'lever'){
     c.on = !c.on; sfx.lever(c.on); syncVisuals(); saveBuildSoon();
+    if (coopRoom()) showToast(c.on ? 'Lever ON' : 'Lever OFF');   // co-op rooms: a lever flipped while laying dust beside it is easy to miss
     if (L && L.inputs.includes(c)) L.tested.add(combo().join());
     return true;
   }
@@ -3291,6 +3293,7 @@ function act(cx, cy, mode){
   if (c){
     if (mode === 'use' && isRail(c) && cartPush(c.x, c.y)) return;   // tap a minecart: push it away from you
     if (mode === 'use' && ['lever','button','repeater','plate','note','lectern','idoor'].includes(c.t) && interact(c)){ syncVisuals(); return; }
+    if (mode === 'use' && c.t === 'glass' && c.locked){ const lv = caseLever(c); if (lv && interact(lv)){ syncVisuals(); return; } }   // a test machine's lever, shut in its glass case: tap the glass
     if (mode === 'break' || item === 'pick'){ breakCell(c); return; }
     if (interact(c)) { syncVisuals(); return; }
     if (h.normal && Math.abs(h.normal.y) < 0.5){
@@ -4574,22 +4577,38 @@ const TEMPLE_ROOMS = [
     bonus:{text:'BONUS: make the lamp come on 4 times. Win a Confetti Cannon, like the one at the Monkey Disco!', kind:'pulses', n:4, unit:'times', reward:'confetti', why:'You made the lamp come on 4 times!'},   // toys are won only after he's met them (Tom): the disco's confetti, room 12
     unlock:['stone'], sol:[] },
   // first room that USES the grumpy torch: no wire this time. The lever sits low, so a wire that just walks up to the block runs PAST it (room 4's lesson again)
-  { id:15, ch:2, name:'Into the block', check:'table', inputs:[[2,6]], out:[[8,4]], fn:a=>!a, missInto:[6,4], missLamp:true,
-    fixed:[K('stone',6,4),K('torch',7,4,{attach:3}),K('lamp',8,4),K('lever',2,6)],
+  // The torch and lamp sit in a GLASS case with the stone block as its only way in (Tom, 11 Oct: Max wired the lamp as well as the block, so the
+  // lamp never went off and the right wire looked wrong). Glass takes no power in Java, so "just light the lamp" can't even be tried.
+  { id:15, ch:2, name:'Into the block', check:'table', inputs:[[2,6]], out:[[7,4]], fn:a=>!a, missInto:[5,4],
+    // Barold's TEST MACHINE first (Tom, 11 Oct: Max reached room 16 not knowing what a stone block does): lever, dust INTO a stone block, a lamp
+    // touching the block. Flip it and the block glows red and wakes the lamp. Its own glass case, so it can't be wired into the puzzle.
+    // (against the back wall, so the wall closes the case's far side: few glass blocks, the overhead view's draw-call budget is tight)
+    fixed:[K('stone',5,4),K('torch',6,4,{attach:3}),K('lamp',7,4),K('lever',2,6), K('glass',6,3),K('glass',7,3),K('glass',8,4),K('glass',7,5),K('glass',6,5),
+      K('lever',1,0),K('dust',2,0),K('dust',3,0),K('stone',4,0),K('lamp',5,0), K('glass',0,0),K('glass',6,0),...[1,2,3,4,5].map(x => K('glass',x,1))],
+    caseLine:'That\'s a GLASS case! Power can\'t get through glass. The only way in is the stone block. Point your wire INTO it.',
+    why:[{say:'Look, my TEST MACHINE, in the glass case. Watch! The lever sends power along the dust... and INTO the stone block.', at:[1,0], set:[[1,0,true]]},
+      {say:'See the block glow RED? It\'s FULL of power! And the lamp touching it wakes up. A block full of power powers whatever touches it.', at:[4,0]},
+      {say:'Now the big machine. The grumpy torch is stuck on a stone block too. Fill THAT block with power and the torch goes OFF. Grumpy!', at:[5,4], set:[[1,0,false]]},
+      {say:'The lamp is locked in glass, so you can\'t wire it. Power has to go INTO the stone block. You can flip my test machine too!'}],
     goal:'Make the lever switch the lamp OFF. Lever ON: lamp OFF. Lever OFF: lamp ON.',
-    hello:'Another grumpy torch machine! But nobody built the wire. Hmm...',
-    nudge:'The torch only goes grumpy when its BLOCK gets power. Can you get power INTO the stone block?',
-    hint:'Dust pushes power out of its END, like an arrow. Lay a wire from the lever, and make its END point straight INTO the stone block.',
-    win:'Dust points like an arrow! Power went INTO the block, and the torch got grumpy.',
+    hello:'Another grumpy torch machine! The lamp is locked in a GLASS case, and nobody built the wire. Hmm...',
+    nudge:'The torch only goes grumpy when its BLOCK is full of power. Remember the test machine? A block full of power powers what\'s touching it. Get power INTO the stone block and watch it glow red.',
+    hint:'The lamp is in glass, so no wire can reach it. Dust pushes power out of its END, like an arrow. Lay a wire from the lever, and make its END point straight INTO the stone block. It glows red when it\'s full of power.',
+    win:'Dust points like an arrow! Power went INTO the block, the block glowed red, and the torch got grumpy.',
     mc:'In Minecraft, dust only powers a block it points into. Make your dust line end facing the block.',
-    bonus:{text:'BONUS: do it with only 5 dust. Win the ARROW ACE badge!', kind:'dust', n:5, badge:'ARROW ACE', card:'Your wire took the short way AND pointed straight INTO the block, like an arrow. Barold wants one too. He can\'t have one.'},
-    sol:[D(3,6),D(4,6),D(5,6),D(6,6),D(6,5)] },
+    bonus:{text:'BONUS: do it with only 4 dust. Win the ARROW ACE badge!', kind:'dust', n:4, badge:'ARROW ACE', card:'Your wire took the short way AND pointed straight INTO the block, like an arrow. Barold wants one too. He can\'t have one.'},
+    sol:[D(3,6),D(4,6),D(5,6),D(5,5)] },
   { id:16, ch:2, name:'See-through', give:['stone','glass','dust','torch'], check:'table', inputs:[[2,4]], out:[[7,4]], fn:a=>!a,
     fixed:[K('lever',2,4),K('torch',5,4,{attach:3}),K('lamp',7,4)],
     loose:[D(3,4),K('glass',4,4),D(6,4)],
     goal:'This torch never gets grumpy. Make lever ON turn the lamp OFF. One block here is wrong...',
     hello:'This machine is broken. That block is GLASS. Can power get into glass?',
-    hint:'Power can\'t go into see-through glass, so the torch can\'t feel it. Swap the glass for a stone block.',
+    // a "watch me" first (Tom, 11 Oct): Barold flips the lever so you SEE the glass stay dark, after room 15 showed a stone block glow red
+    why:[{say:'Watch the block the torch is stuck on. I\'ll flip the lever ON...', at:[2,4], set:[[2,4,true]]},
+      {say:'Nothing! In the last room the stone block glowed RED when power went in. This one is GLASS. Power can\'t get into glass, so the torch never feels it.', at:[4,4]},
+      {say:'Fix it! Which block should the torch be stuck on?', at:[5,4], set:[[2,4,false]]}],
+    nudge:'Remember the stone block in the last room? It glowed RED when power went INTO it. Does this block ever glow?',
+    hint:'Power can\'t go into see-through glass, so the torch can\'t feel it. Swap the glass for a stone block, like in the last room. Then watch it glow red.',
     win:'Fixed! Torches only notice SOLID blocks. Glass lets light through, but not power.',
     mc:'Glass doesn\'t carry redstone power in Minecraft, and you can\'t stick a torch on its side. Use solid blocks!',
     bonus:{text:'BONUS: add your Whoopee Cushion so it parps when the lamp is ON. Win the TWO-JOB WIRE badge!', kind:'toyLit', toy:'fart', badge:'TWO-JOB WIRE', why:'Your circuit lit the lamp AND made the Whoopee Cushion parp!', card:'One circuit, two jobs: a lamp AND a parp. Very clever. Very stinky.'},
@@ -4599,7 +4618,7 @@ const TEMPLE_ROOMS = [
     goal:'Make the lamp go OFF when you stand on the plate, and ON when you step off.',
     hello:'Sneaky! A lamp that goes dark when someone steps on the plate...',
     nudge:'The lamp has to do the OPPOSITE of the plate. Which of your parts always does the opposite?',
-    hint:'Plate, then dust into a stone block, a torch on the far side, then dust to the lamp.',
+    hint:'Plate, then dust into a stone block, a torch on the other side of the block, then dust to the lamp.',
     win:'You built a NOT gate! It flips the answer. Computers do that billions of times a second.',
     mc:'Build a NOT gate in Minecraft: dust into a block, a torch on the other side. The torch does the opposite!',
     bonus:{text:'BONUS: make your Confetti Cannon pop when someone stands on the plate. Win your own Disco Ball, like the Monkey Disco\'s!', kind:'toyOnInput', toy:'confetti', reward:'disco', why:'You made the Confetti Cannon pop when someone stood on the plate!'},
@@ -4607,7 +4626,7 @@ const TEMPLE_ROOMS = [
   // CO-OP (OR): Barold stands on his plate to raise the bridge. Then it's HIS turn: he steps OFF and it sinks in front of him.
   // You cope by wiring the far side's lever in too: his plate OR your lever holds the bridge. Solved when he's across. (coop*, below)
   { id:18, ch:2, name:'Quicksand!', ban:['rblock','lever','button','plate','torch','stone','glass','repeater'], want:'Barold\'s plate and the lever have to hold the bridge up', give:['dust'], check:'coop', out:[[4,4]],
-    quick:[[4,1,6,7]], bridge:[[4,4],[5,4],[6,4]],
+    quick:[[4,0,6,9]], bridge:[[4,4],[5,4],[6,4]],   // wall to wall (Tom, 11 Oct: the sand stopped short of the walkway, so you could walk round it)
     fixed:[K('plate',2,2),K('lever',8,6),
       // PLAY first (HANDOFF backlog 1: a "see what each mix does" beat before the first OR): Barold's test machine, two levers and one lamp,
       // in a glass case so it can't be wired to the bridge (in Java, power can't get into glass and a lamp doesn't pass it on)
@@ -4626,12 +4645,13 @@ const TEMPLE_ROOMS = [
   // CO-OP (NOT launch): a hole too wide to jump, a Bounce Pad at the edge and Barold's "safety plate". When he steps OFF it, the
   // pad has to fling you over. Wired straight, the pad goes off too SOON (while he's still on it): you just hop. A grumpy torch does it.
   { id:19, ch:2, name:'Ready, steady, BOING!', ban:['rblock','lever','button','plate'], want:'Barold\'s safety plate has to work the Bounce Pad', give:['dust','stone','torch'], check:'coop', out:[[3,4]],
-    chasm:[[4,1,6,7]], fixed:[K('plate',1,6),K('launcher',3,4)],
+    chasm:[[4,0,6,8]], fixed:[K('plate',1,6),K('launcher',3,4)],   // wall to wall, so there's no walking round it
     coop:{kind:'pad', plate:[1,6], pad:[3,4], land:[8,4], bland:[8,6]}, crystalAt:[8,2],
-    goal:'Barold stands on his safety plate. When he steps OFF it, the Bounce Pad must fling you over the hole!',
+    goal:'Barold stands on his plate. Make the green Bounce Pad turn ON when he steps OFF. Then stand on the pad and wait. 3, 2, 1... WHOOSH!',
     hello:'A HOLE! Much too far to jump. But look, a Bounce Pad! I\'ll stand on my safety plate. When I step OFF... WHOOSH!',
-    nudge:'While Barold is ON his plate, the pad must be OFF. When he steps OFF, the pad must go ON. It\'s the OPPOSITE!',
-    hint:'Wire Barold\'s plate into a stone block. Stick a grumpy torch on the other side of the block, right next to the pad.',
+    // (Tom, 11 Oct: "no idea what to do here". Say WHAT to build, in steps a 7-year-old can follow)
+    nudge:'You need a grumpy torch, like in room 15! Barold ON his plate: torch OFF. Barold steps OFF: torch ON, so the pad goes ON.',
+    hint:'Build it in 3 steps. 1: Lay dust from Barold\'s plate INTO a stone block. 2: Stick a torch on the far side of that block. 3: The torch must touch the Bounce Pad.',
     win:'WHOOSH! Barold stepped OFF and the pad went ON. The grumpy torch flipped it: a NOT gate!',
     mc:'In Minecraft, a torch on a block always does the opposite of the block. Great for traps that go off when you step OFF.',
     bonus:{text:'BONUS: make your Confetti Cannon pop when the Bounce Pad is ON. Win the PARTY LAUNCHER badge!', kind:'toyLit', toy:'confetti', badge:'PARTY LAUNCHER', why:'You made the Confetti Cannon pop when the Bounce Pad went ON: one torch, two things!', card:'BOING and BANG at the same moment. Barold wants to do it again. And again. And AGAIN.'},
@@ -4659,11 +4679,11 @@ const TEMPLE_ROOMS = [
     naive:[...row(1,2,9), ...col(9,2,7), ...row(7,8,2)],
     sol:[...row(1,2,9), D(9,2), K('stone',9,3), K('torch',9,4,{attach:0}), D(9,5), K('stone',9,6), K('torch',8,6,{attach:1}), ...row(7,8,2)] },
   { id:22, type:'SE', ch:3, name:'The slowpoke', give:['repeater'], check:'table', inputs:[[4,1]], out:[[9,1]], fn:a=>a, showPower:true,
-    fixed:[K('lever',4,1),K('lamp',9,1)], walls:[[5,1,2],[5,2,2],[5,3,2],[5,4,2],[5,5,2],[5,6,2]],
+    fixed:[K('lever',4,1),K('lamp',9,1)], walls:[[5,0,2],[5,1,2],[5,2,2],[5,3,2],[5,4,2],[5,5,2],[5,6,2]],   // (the wall reaches the back wall: a fresh 6-dust wire round its top end used to solve it, 11 Oct)
     loose:[...col(4,2,7), D(5,7), D(6,7), ...col(6,6,1), D(7,1), D(8,1)],
     goal:'You\'ve got a Repeater now! The wire is too long. Put a Repeater in it.',
     hello:'A Repeater is two grumpy torches squished into one block. It only sends power where its arrow points!',
-    hint:'Break one dust in the first half of the wire and put a Repeater there. It points the way the power flows.',
+    hint:'Pick up one dust in the first half of the wire. Put a Repeater in its place. It points the way the power flows.',
     win:'Fresh power at 15! And it only goes one way. Clever slowpoke.',
     mc:'Minecraft repeaters boost a signal back to 15. Right-click one to make it slower!',
     unlock:['repeater'], sol:[K('repeater',4,4,{dir:2})] },
@@ -4712,17 +4732,21 @@ const TEMPLE_ROOMS = [
     naive:[K('repeater',5,3,{dir:0,delay:4})],
     sol:[K('repeater',5,3,{dir:0,delay:3}),K('repeater',7,4,{dir:1,delay:2}),K('repeater',8,3,{dir:0,delay:4})] },
   { id:24, type:'SE', ch:3, name:'Fix the power line', give:['dust','stone','torch','repeater','glass'], check:'table', inputs:[[8,5]], out:[[2,1]], fn:a=>a,
-    fixed:[K('lever',8,5),K('lamp',2,1)],
-    loose:[D(7,5),K('glass',6,5),K('torch',5,5,{attach:1}),D(4,5),K('stone',3,5),D(2,4),D(2,3),K('repeater',2,2,{dir:2})],
-    goal:'Fix the power line: lever ON should light the lamp. THREE things are broken.',
-    hello:'The power line to the inner temple is broken! Someone made three mistakes. Can you spot them all?',
-    nudge:'Flip the lever ON and follow the power, one block at a time. Where does it stop?',
-    hint:'Look for: a block power can\'t get into, a missing grumpy torch, and a repeater pointing the wrong way.',
+    // Tom, 11 Oct: Max picked up the glass and ran his own wire straight to the lamp, and it was "super unclear" what to change. Now
+    // everything belongs to the room (it stays put) except the TWO wrong parts, the lamp and the end of the line sit in a low brick
+    // channel so no new wire can reach the lamp, and the words say exactly what to look for.
+    fixed:[K('lever',8,5),K('lamp',2,1),D(7,5),K('torch',5,5,{attach:1}),D(4,5),K('stone',3,5),D(2,4),D(2,3)],
+    walls:[[2,0,1],[1,1,1],[3,1,1],[1,2,1],[1,3,1],[1,4,1],[3,2,1],[3,3,1],[3,4,1],[1,5,1],[2,6,1]],
+    loose:[K('glass',6,5),K('repeater',2,2,{dir:2})],
+    goal:'Lever ON should light the lamp. THREE things on the power line are wrong. Fix them!',
+    hello:'The power line is broken! Three mistakes. The bits that belong to the room stay put. Only the mistakes can be picked up.',
+    nudge:'Flip the lever ON. Follow the power, one block at a time. Remember room 16? Power can\'t get INTO glass.',
+    hint:'1: Pick up the GLASS block. Put a stone block there. 2: The last stone block needs a torch on its side, by the lamp\'s wire. 3: The repeater points the wrong way. Turn it round to point at the lamp.',
     win:'Power\'s flowing! You fixed it like a real engineer.',
     mc:'Fixing broken circuits is a big part of Minecraft redstone. Follow the power, block by block.',
-    sol:[K('stone',6,5),K('torch',5,5,{attach:1}),K('torch',2,5,{attach:1}),K('repeater',2,2,{dir:0})] },
+    sol:[K('stone',6,5),K('torch',2,5,{attach:1}),K('repeater',2,2,{dir:0})] },
   { id:25, requireOff:[2,4], ban:['rblock','lever','button','plate'], want:'the grumpy torch has to raise the bridge', ch:3, name:'Bridge of Doom', type:'WN', check:'lit', out:[[5,3]],
-    quick:[[1,1,9,3]], bridge:[[5,1],[5,2],[5,3]],   // (in from the side, out over the chasm: TOP_PLACE)
+    quick:[[0,1,10,3]], bridge:[[5,1],[5,2],[5,3]],   // (in from the side, out over the chasm: TOP_PLACE). Wall to wall, so there's no walking round it
     fixed:[K('lever',2,4,{on:true}),K('stone',4,4),K('torch',4,5,{attach:0})],
     loose:[D(3,4),D(5,5)],
     goal:'The last bridge before the Crystal Skull Chamber! Make it rise. Look at the machine carefully...',
@@ -4872,7 +4896,7 @@ const FUN_ROOMS = [
       {say:'The torch would switch itself off, then on, then off... Too fast and it BURNS OUT. A slow repeater in the loop keeps it ticking. Your turn!', at:[5,3]}],
     goal:'Make the carousel lights flash ON and OFF all by themselves, forever. No levers! A grumpy torch can switch ITSELF off...',
     hello:'The Carousel! The sea-horses went round and round. Now the lights just sit there. Glowing. Smugly.',
-    hint:'Feed the torch\'s own power back into its block. A repeater pointing INTO the block (with dust behind it) slows the loop down. Tap the repeater to make it slower, or the torch burns out!',
+    hint:'Feed the torch\'s own power back into its block. A repeater pointing INTO the block (with dust leading into the repeater) slows the loop down. Tap the repeater to make it slower, or the torch burns out!',
     win:'A grumpy torch chasing its own tail: that\'s a CLOCK! ON, OFF, ON, OFF. Every computer has a clock ticking billions of times a second.',
     mc:'A Minecraft redstone clock: a torch on a block, its power looping back into the block through a repeater. Set the repeater slow, or the torch burns out!',
     naive:[D(4,6),D(4,5)],
@@ -6065,7 +6089,7 @@ const APE_ROOMS = [
     carts:[[1,2]], launch:[1,1], platform:[5,2], station:[9,2],
     goal:'The cart must STOP at the platform (the middle) for the passengers. Then send it on to the end. Right now it zooms straight past!',
     hello:'Power runs along gold rails, from one to the next: up to 8 of them! So the platform rail gets power too. And nobody can get on.',
-    hint:'Power jumps from gold rail to gold rail, up to 8. A gold rail with NO power is a brake. The platform rail needs no power. Break the gold rails on both sides of it. Put plain rails there instead. Then power it and tap the cart.',
+    hint:'Power jumps from gold rail to gold rail, up to 8. A gold rail with NO power is a brake. The platform rail needs no power. Pick up the gold rails on both sides of it. Put plain rails there instead. Then power it and tap the cart.',
     past:'WHOOSH! Straight past the platform. The power ran along the gold rails into the platform rail. Stop it getting there!',
     stopLine:'It stopped! Passengers on. Now send it on: power the platform rail, then tap the cart.',
     farLine:'That lever is too far away! A lever only powers what it TOUCHES. Put it right next to the platform rail.',   // (c12: "GO on never worked (a lever one block from the track)"; Java: it doesn't)
@@ -6111,7 +6135,7 @@ const APE_ROOMS = [
     loose:[D(2,3),D(2,5)],
     fixed:[K('button',2,4),K('prail',2,2),...[3,4,5,6,7,8,9].map(x => K('rail',x,2)),K('prail',2,6),...[3,4,5,6,7,8,9].map(x => K('rail',x,6))],
     carts:[[2,2],[2,6]], launch:[2,4], order:[[9,2],[9,6]],
-    goal:'Crystal delivery! The RED cart (top) must arrive FIRST, then the BLUE one (bottom). One button sends both. They always arrive together!',
+    goal:'Crystal delivery! The RED cart must arrive FIRST, then the BLUE one. One button sends both. They always arrive together!',
     hello:'Last job! Red crystals first, then blue. The Queen is VERY fussy. One button sends both carts.',
     hint:'Make one cart set off a little LATER. A repeater in a wire makes the power wait a moment. Which cart should wait?',
     tie:'They got there at the SAME time! Red has to be first.',
@@ -6223,26 +6247,29 @@ function cartCheck(r, rt){
   const lv = r.launchAt && at(...r.launchAt), on = !!(lv && (lv.on || lv.timer > 0));   // (a start button: when it pops back up, carts resting away from home go home)
   if (rt.launchOn && !on) rt.returnAt = S.tick + 15;   // a moment after the start switch goes off (any delayed power has gone by then)
   if (on) rt.returnAt = 0;
+  // the start switch goes ON while a cart sits still away from home (room 215's cart rolls off by itself before you've built
+  // anything, since its gold rails are all powered): the diggers bring it home first, so it goes on the FIRST flip, not OFF and ON again
+  if (on && rt.launchOn === false) ks.forEach(k => { if (!k.v && !eq(k, k.home)){ cartHome(k); rt.stopped = rt.loaded = false; rt.saidStuck = rt.saidPast = rt.saidBounce = false; rt.arr = []; sfx.click(); showToast(A.act === FUN_ACT ? 'The crew push the cart back to the start.' : 'The diggers push the cart back to the start.'); } });
   if (rt.returnAt && S.tick >= rt.returnAt){ rt.returnAt = 0; ks.forEach(k => { if (!k.v && !eq(k, k.home)){ cartHome(k); rt.stopped = rt.loaded = false; rt.saidStuck = rt.saidPast = rt.saidBounce = false; sfx.click(); showToast(A.act === FUN_ACT ? 'The crew push the cart back to the start.' : 'The diggers push the cart back to the start.'); } }); }
   rt.launchOn = on;
   const solving = CART_CHECKS.has(r.check);
   if (r.check === 'cartorder' && solving){   // which cart got to its station first (each cart k belongs to station k)
     rt.arr = rt.arr || [];
     ks.forEach((k, i) => { if (!rt.arr[i] && eq(k, r.orderAt[i])) rt.arr[i] = S.tick; if (eq(k, k.home)) rt.arr[i] = 0; });
-    if (rt.arr[0] && rt.arr[1] && ks.every(k => !k.v)){ const d = rt.arr[1] - rt.arr[0]; if (d >= 2){ solveRoom(r); return; } if (!rt.saidOrder){ rt.saidOrder = true; sfx.nope(); monkeySay(d <= -2 ? r.wrongOrder : r.tie, 9000); plogEvent('wrong'); } }
+    if (rt.arr[0] && rt.arr[1] && ks.every(k => !k.v)){ const d = rt.arr[1] - rt.arr[0]; if (d >= 2){ solveRoom(r); return; } if (!rt.saidOrder){ rt.saidOrder = true; sfx.nope(); baroldHelp(d <= -2 ? r.wrongOrder : r.tie, 9000); plogEvent('wrong'); } }
     else rt.saidOrder = false;
     return; }
   if (r.check === 'loadgo' && solving) for (const k of ks){
-    if (eq(k, r.bayAt)){ if (!k.v && k.rest >= 10 && !rt.loaded){ rt.loaded = true; monkeySay(r.loadLine, 9000); } if (k.v && !rt.loaded && k.cells > 3 && !rt.saidBounce){ rt.saidBounce = true; sfx.nope(); monkeySay(r.bounce, 9000); plogEvent('wrong'); } }
+    if (eq(k, r.bayAt)){ if (!k.v && k.rest >= 10 && !rt.loaded){ rt.loaded = true; baroldHelp(r.loadLine, 9000); } if (k.v && !rt.loaded && k.cells > 3 && !rt.saidBounce){ rt.saidBounce = true; sfx.nope(); baroldHelp(r.bounce, 9000); plogEvent('wrong'); } }
     else if (eq(k, k.home) && rt.loaded && k.cells > 3){ solveRoom(r); return; } }
   for (const k of ks){
     if (k.v) continue;
-    if (eq(k, r.pitAt)){ if (k.rest === 3){ sfx.nope(); const p = cartWorld(k); burst(new THREE.Vector3(p.x, p.y + .6, p.z), 0x7ad83a, 30); monkeySay(r.pitLine || 'SPLAT!', 9000); plogEvent('wrong'); if (A.apeBeats && !A.apeBeats.has('radio2')) A.apeDue.push({at:(A.clock || 0) + 2500, fn:() => { if (beat('radio2')) dlgStart([['Radio', '*crackle* Ah. Did I mention...? Minecarts don\'t have brakes. *blub*']]); }}); } if (k.rest >= 15){ cartHome(k); showToast('The diggers fish the cart out of the slime. Yuck.'); } continue; }
+    if (eq(k, r.pitAt)){ if (k.rest === 3){ sfx.nope(); const p = cartWorld(k); burst(new THREE.Vector3(p.x, p.y + .6, p.z), 0x7ad83a, 30); baroldHelp(r.pitLine || 'SPLAT!', 9000); plogEvent('wrong'); if (A.apeBeats && !A.apeBeats.has('radio2')) A.apeDue.push({at:(A.clock || 0) + 2500, fn:() => { if (beat('radio2')) dlgStart([['Radio', '*crackle* Ah. Did I mention...? Minecarts don\'t have brakes. *blub*']]); }}); } if (k.rest >= 15){ cartHome(k); showToast('The diggers fish the cart out of the slime. Yuck.'); } continue; }
     if (eq(k, r.platformAt) && k.rest >= 10 && !rt.stopped){ rt.stopped = true; monkeySay(r.stopLine || 'It stopped!', 9000); }
     if (r.check === 'stopgo' && rt.stopped && eq(k, r.platformAt) && k.rest >= 10) stopgoGo(r, rt, k);
     if (solving && eq(k, r.stationAt) && k.rest >= 3 && r.check !== 'loadgo'){
-      if (r.check === 'ding' && !r.out.every(([x, y]) => outLit(x, y))){ if (!rt.saidEarly){ rt.saidEarly = true; sfx.nope(); monkeySay(r.early || 'The bell isn\'t ringing!', 9000); plogEvent('wrong'); } continue; }
-      if (r.check === 'stopgo' && !rt.stopped){ if (!rt.saidPast){ rt.saidPast = true; sfx.nope(); monkeySay(r.past || 'It went straight past!', 9000); plogEvent('wrong'); } continue; }
+      if (r.check === 'ding' && !r.out.every(([x, y]) => outLit(x, y))){ if (!rt.saidEarly){ rt.saidEarly = true; sfx.nope(); baroldHelp(r.early || 'The bell isn\'t ringing!', 9000); plogEvent('wrong'); } continue; }
+      if (r.check === 'stopgo' && !rt.stopped){ if (!rt.saidPast){ rt.saidPast = true; sfx.nope(); baroldHelp(r.past || 'It went straight past!', 9000); plogEvent('wrong'); } continue; }
       solveRoom(r); return;
     }
     if (k.rest === 5 && !eq(k, k.home) && !eq(k, r.platformAt) && r.stuck && !rt.saidStuck){ rt.saidStuck = true; monkeySay(r.stuck, 9000); }
@@ -6259,7 +6286,7 @@ function stopgoGo(r, rt, k){
   const pc = at(...r.platformAt); if (!pc) return;
   if (pc.lit){ if (k.rest >= 40 && !rt.saidTap){ rt.saidTap = true; monkeySay(r.tapLine || 'Now tap the cart.', 9000); } return; }
   const nw = stopgoLevers(r).far.find(c => c.on && !(rt.farSaid || (rt.farSaid = new Set())).has(c.x + ',' + c.y));
-  if (nw && r.farLine){ rt.farSaid.add(nw.x + ',' + nw.y); sfx.nope(); monkeySay(r.farLine, 9000); plogEvent('wrong'); }
+  if (nw && r.farLine){ rt.farSaid.add(nw.x + ',' + nw.y); sfx.nope(); baroldHelp(r.farLine, 9000); plogEvent('wrong'); }
 }
 // minecart meshes: an iron tub on wheels, a crystal load, eased towards where the cart is each frame
 function makeCart(col, room){
@@ -7763,7 +7790,8 @@ function coopBarold(dt, m, u, r, mx, my){
       if (!coopGo(m, u, mx, my, K.foot, dt)){ C.t = 0; return; }
       coopFace(m, u);
       if (C.t > 1600){
-        if (coopBridgeUp(r)){ set('cross'); monkeySay('Here I come! Teamwork!', 2500); }
+        if (coopBridgeUp(r)){ set('cross'); const lv = (r.fixed || []).find(f => f.t === 'lever' && coopSide(r, f.x, f.y) === 1), on = lv && (at(lv.x, lv.y) || {}).on;
+          monkeySay(on ? 'Your lever is ON, so it holds the bridge up! Here I come! Teamwork!' : 'Here I come! Teamwork!', 3500); }   // (say WHAT held it: Tom, 11 Oct, a lever flipped by a stray click looked like no reason at all)
         else { C.sig = coopSig(r); C.fails = (C.fails || 0) + 1; plogEvent('wrong'); monkeySay(C.fails === 1 ? 'Oh no! The bridge only stays up while I\'m ON the plate!' : 'Still sinking! It needs power when I\'m NOT on my plate.', 6000); set('back'); }
       }
     }
@@ -7783,19 +7811,33 @@ function coopBarold(dt, m, u, r, mx, my){
     if (!(mx === K.plate[0] && my === K.plate[1])) return void set('go');
     coopFace(m, u);
     if (onPad && !C.left){ if (C.sig !== undefined && buildSig(r) !== C.sig) C.left = true; else if ((C.stay = (C.stay || 0) + dt) > 9000) say('hop', 'Hop OFF the Bounce Pad, then back ON. Then I\'ll count again!', 6000); } else C.stay = 0;   // (changed the wiring while standing on the pad? that's a new go)
+    if (!onPad && !padLit && coopTorches(r).some(c => c.attach >= 0 && !c.lit)){ C.idle = (C.idle || 0) + dt; if (C.idle > 5000){ C.idle = -15000; monkeySay('Is your machine ready? Go and stand on the green Bounce Pad! Then I\'ll count 3, 2, 1 and step OFF.', 7000); } } else C.idle = 0;
     if (!onPad || padLit || !C.left){ C.t = 0; return; }
     if (C.t > 700){ monkeySay('Ready? 3... 2... 1... GO!', 2400); set('count'); }
   }
   else if (C.ph === 'count'){ coopFace(m, u); if (C.t > 2300 && !stillTalking(m)){
-    let off = null; for (const [dx, dy] of DIRS){ const x = K.plate[0] + dx, y = K.plate[1] + dy; if (!off && passableCell(x, y) && !at(x, y) && coopSide(r, x, y) === 0) off = [x, y]; }
-    if (!off) for (const [dx, dy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]){ const x = K.plate[0] + dx, y = K.plate[1] + dy; if (!off && passableCell(x, y) && !at(x, y) && coopSide(r, x, y) === 0) off = [x, y]; }
-    C.off = off || entryOf(r); C.padAtOff = padLit; C.grumpy = coopTorches(r).some(c => c.attach >= 0 && !c.lit); set('off'); } }   // (grumpy: a torch went OFF while he stood on the plate)
+    C.off = coopOffSpot(r); C.padAtOff = padLit; C.grumpy = coopTorches(r).some(c => c.attach >= 0 && !c.lit); set('off'); } }   // (grumpy: a torch went OFF while he stood on the plate)
   else if (C.ph === 'off'){
     coopGo(m, u, mx, my, C.off, dt);
+    if (C.t > 2800 && mx === K.plate[0] && my === K.plate[1]){ C.left = false; C.sig = buildSig(r); monkeySay('Oops! I couldn\'t get off my plate. Leave me an empty square next to it, then stand on the pad again.', 9000); return void set('go'); }
     if (C.t > 2800){ C.left = false; C.sig = buildSig(r); plogEvent('wrong');
       monkeySay(padLit ? 'Hmm. The pad was ON the whole time. It should only go ON when I step OFF.' : coopWhyNothing(r, C) || 'Nothing! When I step OFF my plate, the pad has to switch ON.', 9000); set('go'); }
   }
   else if (C.ph === 'flying'){ if (!(mx === C.off[0] && my === C.off[1])) coopGo(m, u, mx, my, C.off, dt); else coopFace(m, u); }
+}
+// room 19: where Barold steps when he gets off his plate: the nearest square he can really walk to on this side (an empty one if
+// there is one, else flat dust), never the pad. Tom: he said "3, 2, 1, GO!" and stayed on his plate
+function coopOffSpot(r){
+  const [qx, qy] = r.coop.plate, [px, py] = r.coop.pad, key = (x, y) => x + ',' + y, seen = new Set([key(qx, qy)]), q = [[qx, qy]];
+  let dust = null;
+  for (let i = 0; i < q.length && i < 400; i++){
+    for (const [dx, dy] of DIRS){ const x = q[i][0] + dx, y = q[i][1] + dy;
+      if (seen.has(key(x, y))) continue; seen.add(key(x, y));
+      if (!passableCell(x, y) || coopSide(r, x, y) !== 0 || (x === px && y === py)) continue;
+      const c = at(x, y); if (!c) return [x, y]; if (!dust && c.t === 'dust') dust = [x, y];
+      q.push([x, y]); }
+  }
+  return dust || entryOf(r);
 }
 // room 19, the pad stayed dark when Barold stepped off: say which part of the NOT gate is wrong, in words a 7-year-old gets
 // (Tom's son: his plate's wire ran into the torch, not the block, and Barold only said "Nothing!")
@@ -7829,7 +7871,7 @@ function coopFrame(dt){
 }
 function coopCardHTML(r, rt){
   const C = rt.coop || {}, done = A.solved.has(r.id), tick = v => v ? '&#10003;' : '&#9675;';
-  const rows = r.coop.kind === 'bridge' ? [[C.youOver || done, 'You get over the sand'], [done, 'Barold gets over too']] : [[C.launched || done, 'BOING! You fly over the hole'], [done && !A.coopPending, 'Then Barold flies over']];
+  const rows = r.coop.kind === 'bridge' ? [[C.youOver || done, 'You get over the sand'], [done, 'Barold gets over too']] : [[C.ph === 'count' || C.ph === 'off' || C.launched || done, 'Stand on the green Bounce Pad'], [C.launched || done, 'BOING! You fly over the hole'], [done && !A.coopPending, 'Then Barold flies over']];
   return `<h3>Teamwork</h3><div class="note">${rows.map(([v, t]) => tick(v) + ' ' + t).join('<br>')}</div>`;
 }
 const starTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 32; const g = c.getContext('2d'); g.fillStyle = '#ffe14a'; g.strokeStyle = '#7a5200'; g.lineWidth = 2; g.beginPath(); for (let i=0;i<10;i++){ const r = i % 2 ? 6 : 14, a = i*Math.PI/5 - Math.PI/2; g.lineTo(16 + Math.cos(a)*r, 16 + Math.sin(a)*r); } g.closePath(); g.fill(); g.stroke(); return new THREE.CanvasTexture(c); })();
@@ -7914,7 +7956,7 @@ function sayOn(m, text, ms){
   if (m === A.monkey){ monkeySay(text, ms); return; }
   if (text && m.userData.kind) sfx.ook(SPECIES[m.userData.kind] && SPECIES[m.userData.kind].size > 1 ? 180 : 460);
   const u = m.userData; if (u.bubble){ m.remove(u.bubble); u.bubble = null; }
-  if (!text) return;
+  if (!text || DLG.on) return;   // (one voice at a time: monkey chatter never talks over the dialogue box)
   const s = m.scale.x || 1, opt = {tail:true, scale:.9, depth:true}, b = textSprite(text, Object.assign({show:1}, opt));
   const h = b.scale.y; b.scale.multiplyScalar(1/s); b.position.y = (1.25*s + h/2 + .1)/s; m.add(b); u.bubble = b;
   clearTimeout(u.timer); typeBubble(b, text, opt, ms || 3500, () => { if (u.bubble === b){ m.remove(b); u.bubble = null; } });
@@ -8101,7 +8143,7 @@ function troopFrame(dt){
       sfx.boing(); if (Math.random() < .4) sayOn(m, bag('launch', ['WHEEEE!', 'SPROING!', 'Not AGAIN!', 'Best day EVER!', 'I can see my house!', 'Banaaaanaaaas!', 'Ook ook OOOOK!', 'Mum, look!']), 1400);
       discover('launch');
       if (rt && !A.solved.has(r.id)){
-        if (handsOn(r)){ rt.handLaunches = (rt.handLaunches || 0) + 1; if (!rt.cheatShown){ rt.cheatShown = true; plogEvent('cheat'); sfx.nope(); monkeySay('Ha! Funny, but YOU\'RE doing the work with that switch. Make the monkeys launch THEMSELVES while you watch.', 10000); } }
+        if (handsOn(r)){ rt.handLaunches = (rt.handLaunches || 0) + 1; if (!rt.cheatShown){ rt.cheatShown = true; plogEvent('cheat'); sfx.nope(); baroldHelp('Ha! Funny, but YOU\'RE doing the work with that switch. Make the monkeys launch THEMSELVES while you watch.', 10000); } }
         else { rt.launches = (rt.launches || 0) + 1; renderCard(); }
       }
       continue;
@@ -11498,11 +11540,11 @@ function dlgStart(lines, done, why){   // (an opening line that waits to be read
   if (DLG.on && (DLG.hello || (DLG.q && DLG.q.hold) || (lines.room && DLG.q && DLG.q.room) || (DLG.why && !(A.rt && A.rt.room === DLG.why)))) dlgCancel();   // a hello (a ride's; Barold's room hello to the next room's), or a demo you walked away from, gives way
   if (DLG.on){ DLG.wait.push([lines, done, why]); return; }   // someone's still talking: this one goes next
   DLG.on = true; DLG.q = lines; DLG.i = 0; DLG.done = done; DLG.hello = 0; DLG.why = why || null; DLG.undo = null; dlgShow(); document.body.classList.add('dlgOn'); }
-function dlgEnd(){ DLG.on = false; DLG.done = null; DLG.hello = 0; DLG.why = DLG.undo = null; $('#dlg').hidden = true; dlgNudge(false); document.body.classList.remove('dlgOn'); }   // close it without running its done step
+function dlgEnd(){ DLG.on = false; DLG.done = null; DLG.hello = 0; DLG.why = DLG.undo = null; $('#dlg').hidden = true; dlgNudge(false); document.body.classList.remove('dlgOn'); bubbleWaitDone(); }   // close it without running its done step
 // stop talking NOW (menu, new act, walked out of a demo): no done step, the demo's levers go back, your view is yours again. all: drop the queue too
 function dlgCancel(all){ const u = DLG.on && DLG.undo; dlgEnd(); u && u(); whyFocus(null); if (all){ DLG.wait = []; A.whyAt = null; } else dlgNext(); }
 function dlgNext(){ const w = !DLG.on && DLG.wait.shift(); if (w) dlgStart(...w); }
-function dlgShow(){ const [who, text, hook] = DLG.q[DLG.i]; if (hook) hook(); DLG.shown = 1; DLG.t = 0; DLG.age = 0; DLG.words = String(text).split(' '); $('#dlgWho').textContent = who; $('#dlgTxt').textContent = DLG.words[0]; $('#dlgMore').hidden = true; dlgNudge(false); $('#dlg').hidden = false; feed('say', who + ': ' + text); beatLine();
+function dlgShow(){ const [who, text, hook] = DLG.q[DLG.i]; if (hook) hook(); DLG.shown = 1; DLG.t = 0; DLG.age = 0; DLG.words = String(text).split(' '); $('#dlgWho').textContent = who; $('#dlgTxt').textContent = DLG.words[0]; $('#dlgMore').hidden = true; dlgNudge(false); bubblesClear(); $('#dlg').hidden = false; feed('say', who + ': ' + text); beatLine();
   if (who === GUIDE && A.monkey) A.monkey.userData.hop = 1; else if (A.captain && /Captain|Parrot/.test(who)) A.captain.userData.hop = 1; else if (A.hosts && A.hosts[who]) A.hosts[who].userData.hop = 1; if (/Parrot/.test(who)) sfx.ook(900); else sfx.click(); }
 // Skip mashing (Tom, 11 Oct: "Max is mashing the skip button on text again, slow him down slightly"): a line can't be moved on until
 // it has been up a moment, a little longer for a longer line (like the crash film's CRASH_MIN). Presses before then do nothing: they
@@ -11627,15 +11669,25 @@ function offLineFrame(dt){
 }
 function bubbleMissCheck(b){ const T = b.userData.type; if (!T || T.missOk || T.logged) return; T.logged = true; BEAT.missed.push({t:Math.round(A.clock || 0), text:T.text, who:T.who || null, flavour:!!(T.flavour || !T.who), superseded:!!T.superseded, seenMs:Math.round(T.seenMs || 0)}); if (BEAT.missed.length > 400) BEAT.missed.shift(); }
 // a bit of chatter that doesn't matter if you miss it (no strip at the bottom for it)
+// Barold's IMPORTANT words about your build (a mistake, what to try): in the box at the bottom, never only a bubble over his head (Tom: bubbles
+// are for chatter).
+function baroldHelp(text, ms){ if (!text || !A.monkey || !A.on){ monkeySay(text, ms); return; } if (dlgSoft()) dlgCancel(); baroldTell([text]); const r = A.rt && A.rt.room; if (r && DLG.on && DLG.q && DLG.q[0] && DLG.q[0][1] === text) DLG.q.help = r.id; }
+function helpStaleFrame(){ if (DLG.on && DLG.q && DLG.q.help && (A.solved.has(DLG.q.help) || !(A.rt && A.rt.room && A.rt.room.id === DLG.q.help))) dlgCancel(); }   // the room is solved, or you walked out: what he said about its build is old news   // (a soft box gives way: what he says about your build NOW wins; a conversation finishes first)
 function flavourSay(text, ms){ monkeySay(text, ms); const M0 = guideNow() === GUIDE ? A.monkey : guideMesh(), b = M0 && M0.userData.bubble, T = b && b.userData.type; if (T) T.flavour = true; }
-function monkeySay(text, ms){
-  if (text) feed('say', text);
+// one voice at a time (Tom: the box at the bottom AND a bubble over Barold was too much at once): while the dialogue box is up, a new
+// bubble waits (the newest one only), and comes up once the box has gone, if it's still fresh (10 s). Any bubble already up goes when the box comes.
+const BUB_WAIT = {q:null};
+function bubblesClear(){ BUBBLES.forEach(b => { const o = b.parent; if (!o) return; o.remove(b); if (o.userData && o.userData.bubble === b) o.userData.bubble = null; }); }
+function bubbleWaitDone(){ setTimeout(() => { const q = BUB_WAIT.q; if (!q || DLG.on || !A.on) return; BUB_WAIT.q = null; if ((A.clock || 0) - q[2] < 10000) monkeySay(q[0], q[1], true); }, 400); }
+function monkeySay(text, ms, again){
+  if (text && !again) feed('say', text);
   const sp = guideNow(), MK0 = sp === GUIDE ? A.monkey : guideMesh();   // (Act 3: the Captain, while Barold is away or outside the ghost train)
   if (!MK0) return;
   if (text){ const ml = $('#mline'); if (ml){ ml.hidden = false; ml.innerHTML = '<b>' + sp + ':</b> '; ml.appendChild(document.createTextNode(text)); } }
   const old = MK0.userData.bubble; if (old) MK0.remove(old);
   if (!text){ MK0.userData.bubble = null; return; }
   if (tut){ MK0.userData.bubble = null; return; }   // the tutorial panel is already saying it
+  if (DLG.on){ MK0.userData.bubble = null; BUB_WAIT.q = [text, ms, A.clock || 0]; return; }   // a conversation is in the box: this waits its turn
   const opt = {tail:true, scale:innerWidth < 600 ? .7 : 1}, b = textSprite(text, Object.assign({show:1}, opt)); b.position.y = 1.55 + b.scale.y/2; MK0.add(b); MK0.userData.bubble = b;
   MK0.userData.hop = 1;
   clearTimeout(MK0.userData.timer);
@@ -11928,7 +11980,7 @@ function hubCard(){
 }
 function hubCardFrame(dt){
   A.hubT = (A.hubT || 0) + dt; if (A.hubT < 300) return; A.hubT = 0;
-  if (A.on){ refreshRoomGoal(); fixTipFrame(300); hintStripTick(); hintNudgeTick(300); }
+  if (A.on){ refreshRoomGoal(); fixTipFrame(300); helpStaleFrame(); hintStripTick(); hintNudgeTick(300); }
   if (A.on && A.rt && !A.rt.room && !A.rt.heart && A.room !== 'hall') hubCard();
 }
 const roomNum = r => r.ship ? `Skull machine ${r.ship} of ${SHIP_ROOMS.length}` : (r.zone === 'fun' || r.zone === 'ghost') ? `Ride ${ROOMS.indexOf(r) + 1} of ${ROOMS.length}` : r.host ? `${r.zone === 'mine' ? 'Mine room' : r.id > 500 ? 'Classroom' : r.id > 400 ? 'Room' : 'Test'} ${ROOMS.indexOf(r) + 1} of ${ROOMS.length}` : `Room ${ROOMS.indexOf(r) + 1} of ${ROOMS.length}`;   // the funfair counts rides 1-20, not 101-120
@@ -12021,7 +12073,7 @@ function runWhy(r){
   const setL = ([x, y, v]) => { const c = at(x, y); if (c && c.t === 'lever' && !!c.on !== !!v) interact(c); };
   const keep = (r.inputs || []).map(([x, y]) => { const c = at(x, y); return [x, y, !!(c && c.on)]; });
   (A.helloSeen = A.helloSeen || new Set()).add(r.id);
-  const lines = [[r.host || 'Captain', r.hello], ...r.why.map(w => [w.who || guideNow(), w.say, () => { (w.set || []).forEach(setL); if (w.fn) w.fn(r); whyFocus(w.at || null); }])];
+  const lines = [[r.host || (A.act === 1 ? GUIDE : 'Captain'), r.hello], ...r.why.map(w => [w.who || guideNow(), w.say, () => { (w.set || []).forEach(setL); if (w.fn) w.fn(r); whyFocus(w.at || null); }])];
   dlgStart(lines, () => {
     (A.whySeen = A.whySeen || new Set()).add(r.id); advSaveSoon();   // seen only once it FINISHES: walk out halfway and it plays again next time
     keep.forEach(setL); whyFocus(null);
@@ -12081,6 +12133,10 @@ function shortcutAt(x, y){
   for (let d=0; d<4; d++){ const b = at(x + DIRS[d][0], y + DIRS[d][1]); if (!b || b.t !== 'stone' || !b.strong) continue; for (let e=0; e<4; e++){ const m = nb(b, e); if (m && !m.locked && (m.t === 'lever' || m.t === 'button') && srcPower(m, opp(e)) > 0 && effAttach(m) === opp(e)) return m; } }
   return null;
 }
+// powered dust whose END points into one of the room's own glass blocks (a case built round a lamp, so the lamp can't be wired straight)
+// a room's lever shut in a glass case (a test machine): the glass beside it flips it, since you can't reach past the glass
+function caseLever(g){ for (let d=0; d<4; d++){ const n = nb(g, d); if (n && n.t === 'lever' && n.locked && [0,1,2,3].every(e => { const m = nb(n, e); return !m || m.locked; })) return n; } return null; }
+function glassCaseHit(r){ for (const f of r.fixed || []){ if (f.t !== 'glass') continue; for (let d=0; d<4; d++){ const n = at(f.x + DIRS[d][0], f.y + DIRS[d][1]); if (n && n.t === 'dust' && n.pw > 0 && n.pts && n.pts[opp(d)]) return true; } } return false; }
 function cheekyLine(r){ if (r.zone === 'sky' && inFP()){ setTimeout(() => { P.vy = 15; P.ground = false; sfx.piston(); sfx.boing(); showToast('BOING! The temple doesn\'t like cheats!'); }, 300); } return r.cheat || bag('cheeky', CHEEKY); }
 const CREDIT = ['Another triumph for ' + GUIDE + '! ...Fine. Mostly you.', 'Did you see that? I basically did that.', 'I\'m putting that in my scrapbook. Under "Things I Did".', 'Nobody tell the other skeletons you helped.', 'That was my idea. I just let you do the... doing.', 'I knew that would work. I was testing YOU.'];
 function pressedAt(x, y){ const c = at(x, y); return !!c && !!(c.on || c.timer > 0); }
@@ -12105,7 +12161,7 @@ function checkAdventure(){
   { const own = ownPowerIn(r); if (own){
     // nothing counts while it's in: no rows, no pulses, no half-done tests
     if (rt.rows) rt.rows = rt.rows.map(() => false); rt.tested = new Set(); rt.obs = {}; rt.bad = {}; rt.pulses = 0; rt.calmSeen = rt.blinkSeen = false; rt.phase = 0; rt.armed = rt.armed2 = false; rt.t0 = undefined; rt.sig = undefined;
-    if (!rt.ownSaid){ rt.ownSaid = true; plogEvent('cheat'); sfx.nope(); monkeySay(ownPowerLine(r, own), 10000); renderCard(); }
+    if (!rt.ownSaid){ rt.ownSaid = true; plogEvent('cheat'); sfx.nope(); baroldHelp(ownPowerLine(r, own), 10000); renderCard(); }
     return; } }
   if (r.cartsAt && r.cartsAt.length) cartCheck(r, rt);   // the Crystal Mine's minecarts (the room may still be a table room: the Signal Box)
   if (CART_CHECKS.has(r.check)) return;
@@ -12113,27 +12169,29 @@ function checkAdventure(){
   if (UNI_CHECKS.has(r.check)){ uniCheck(r, rt); return; }
   if (rt.sigIn === undefined) rt.sigIn = buildSig(r);   // (a room that STARTS with a wire running past, like room 4, waits until you change something)
   const past = STABLE && !rt.pastSaid && ['lit', 'pulse', 'boom', 'coop', 'together'].includes(r.check) && buildSig(r) !== rt.sigIn ? alongsideOut(r) : null;   // (the fireworks too; the disco says it per plate, in its own check)
-  if (past){ rt.pastSaid = true; sfx.nope(); monkeySay(`So close! The wire runs PAST the ${recapOutWord(past.t)}. Power only comes out of the END of a wire, like an arrow. Make the end point straight INTO it.`, 10000); }
+  if (past){ rt.pastSaid = true; sfx.nope(); baroldHelp(`So close! The wire runs PAST the ${recapOutWord(past.t)}. Power only comes out of the END of a wire, like an arrow. Make the end point straight INTO it.`, 10000); }
+  // a wire pointed at a room's glass case (the lamp is behind glass so it can only be lit the room's way): say why nothing happens
+  else if (STABLE && !rt.glassSaid && buildSig(r) !== rt.sigIn && glassCaseHit(r)){ rt.glassSaid = true; sfx.nope(); baroldHelp(r.caseLine || 'That\'s a GLASS case! Power can\'t get through glass. Find the way IN.', 10000); }
   // (else) a wire that ran out of power (rooms 20+ teach "how far" properly, so they don't get this line)
-  else if (STABLE && !rt.farSaid && ['lit', 'pulse', 'boom', 'coop'].includes(r.check) && A.act === 1 && r.id < 20 && !r.out.every(([x, y]) => outLit(x, y)) && ranOutIn(r)){ rt.farSaid = true; sfx.nope(); monkeySay('The power ran OUT! It gets a bit weaker on every dust, and after 15 dust there\'s none left. Find a shorter way!', 10000); }
+  else if (STABLE && !rt.farSaid && ['lit', 'pulse', 'boom', 'coop'].includes(r.check) && A.act === 1 && r.id < 20 && !r.out.every(([x, y]) => outLit(x, y)) && ranOutIn(r)){ rt.farSaid = true; sfx.nope(); baroldHelp('The power ran OUT! It gets a bit weaker on every dust, and after 15 dust there\'s none left. Find a shorter way!', 10000); }
   if (r.check === 'lit'){
     // lit SOME outputs with a lever or red block jammed right next to them: works in real Minecraft, but say why it doesn't count here
     const foreign = n => n && !(r.give || []).includes(n.t) && !r.fixed.some(f => f.x === n.x && f.y === n.y);
-    if (STABLE && r.direct && !rt.shortSaid && r.out.some(([x,y]) => outLit(x,y) && foreign(shortcutAt(x, y)))){ rt.shortSaid = true; sfx.nope(); monkeySay('Ha! That works in real Minecraft too. But this room is about the ' + ((ITEMS.find(i => i.id === (r.give || [])[0]) || {}).name || 'new part') + '. Make THAT do it!', 9000); return; }
-    if (STABLE && !r.direct && !rt.shortSaid && !r.out.every(([x,y]) => outLit(x,y)) && r.out.some(([x,y]) => outLit(x,y) && shortcutAt(x, y))){ rt.shortSaid = true; sfx.nope(); monkeySay(r.shortLine || 'Ha! That works in real Minecraft too. But here, the power has to come the way the goal says. Have another look at the goal!', 9000); }
+    if (STABLE && r.direct && !rt.shortSaid && r.out.some(([x,y]) => outLit(x,y) && foreign(shortcutAt(x, y)))){ rt.shortSaid = true; sfx.nope(); baroldHelp('Ha! That works in real Minecraft too. But this room is about the ' + ((ITEMS.find(i => i.id === (r.give || [])[0]) || {}).name || 'new part') + '. Make THAT do it!', 9000); return; }
+    if (STABLE && !r.direct && !rt.shortSaid && !r.out.every(([x,y]) => outLit(x,y)) && r.out.some(([x,y]) => outLit(x,y) && shortcutAt(x, y))){ rt.shortSaid = true; sfx.nope(); baroldHelp(r.shortLine || 'Ha! That works in real Minecraft too. But here, the power has to come the way the goal says. Have another look at the goal!', 9000); }
     if (STABLE && r.out.every(([x,y]) => outLit(x,y))){
       // power jammed beside an output never solves it; in a "use THIS part" room, nor does any part it didn't give you (the line above already said why)
-      if (r.out.some(([x,y]) => { const n = shortcutAt(x, y); return n && (!r.direct || foreign(n)); })){ if (!rt.cheatShown && !(r.direct && rt.shortSaid)){ rt.cheatShown = true; plogEvent('cheat'); sfx.nope(); monkeySay(cheekyLine(r), 9000); } return; }
+      if (r.out.some(([x,y]) => { const n = shortcutAt(x, y); return n && (!r.direct || foreign(n)); })){ if (!rt.cheatShown && !(r.direct && rt.shortSaid)){ rt.cheatShown = true; plogEvent('cheat'); sfx.nope(); baroldHelp(cheekyLine(r), 9000); } return; }
       // lit, but not by the part this room is about (a plate nobody is standing on can't be what lit them)
-      if (r.need && !usedNeed(r)){ if (!rt.needShown){ rt.needShown = true; plogEvent('cheat'); sfx.nope(); const it = ITEMS.find(i => i.id === r.need); monkeySay(`They're all lit... but nobody's standing on a ${it.name}! This room is about the ${it.name}. Make IT switch them on.`, 9000); } return; }
-      if (r.requireOff){ const lv = at(...r.requireOff); if (lv && lv.on){ if (!rt.cheatShown){ rt.cheatShown = true; plogEvent('cheat'); sfx.nope(); monkeySay('Clever! But you added extra power. The trick here is the grumpy torch. Can you raise the bridge WITHOUT adding power?', 10000); } return; } }
+      if (r.need && !usedNeed(r)){ if (!rt.needShown){ rt.needShown = true; plogEvent('cheat'); sfx.nope(); const it = ITEMS.find(i => i.id === r.need); baroldHelp(`They're all lit... but nobody's standing on a ${it.name}! This room is about the ${it.name}. Make IT switch them on.`, 9000); } return; }
+      if (r.requireOff){ const lv = at(...r.requireOff); if (lv && lv.on){ if (!rt.cheatShown){ rt.cheatShown = true; plogEvent('cheat'); sfx.nope(); baroldHelp('Clever! But you added extra power. The trick here is the grumpy torch. Can you raise the bridge WITHOUT adding power?', 10000); } return; } }
       solveRoom(r);
     }
   } else if (r.check === 'pulse'){
     const lit = outLit(...r.out[0]);
     if (lit && !rt.prevOut){
       if (!r.need || usedNeed(r)){ rt.pulses++; renderCard(); if (rt.pulses >= r.count) solveRoom(r); else monkeySay(`PARP! That's ${rt.pulses}! ` + (r.need === 'lever' ? 'Now flip the lever OFF... then ON again!' : `${r.count - rt.pulses} more to go!`), 6000); }
-      else if (!rt.cheatShown){ rt.cheatShown = true; plogEvent('cheat'); sfx.nope(); const it = ITEMS.find(i => i.id === r.need); monkeySay(`Ha, PARP! Funny, but this room is about the ${it.name}. Make the ${it.name} do it!`, 9000); }
+      else if (!rt.cheatShown){ rt.cheatShown = true; plogEvent('cheat'); sfx.nope(); const it = ITEMS.find(i => i.id === r.need); baroldHelp(`Ha, PARP! Funny, but this room is about the ${it.name}. Make the ${it.name} do it!`, 9000); }
     }
     rt.prevOut = lit;
   } else if (r.check === 'boom'){
@@ -12150,8 +12208,8 @@ function checkAdventure(){
       const b = r.box; let switched = false;
       for (let x=b.x0+1;x<b.x1;x++) for (let y=b.y0+1;y<b.y1;y++){ const c = at(x,y); if (c && ((c.t === 'button' && c.timer > 0) || (c.t === 'lever' && c.on) || (c.t === 'plate' && (c.on || c.timer > 0)))) switched = true; }
       if (all && switched){ troopCheer(); solveRoom(r); fireworkShow(r); }
-      else if (!all){ troopCheer(); if (!rt.cheatShown){ rt.cheatShown = true; plogEvent('cheat'); sfx.nope(); monkeySay('Whoosh... and the others? The troop wants ALL the fireworks at the SAME time!', 9000); } }
-      else if (!rt.needShown){ rt.needShown = true; sfx.nope(); monkeySay('Ooh! But a show needs a button to start it. Make the BUTTON set them all off.', 9000); }
+      else if (!all){ troopCheer(); if (!rt.cheatShown){ rt.cheatShown = true; plogEvent('cheat'); sfx.nope(); baroldHelp('Whoosh... and the others? The troop wants ALL the fireworks at the SAME time!', 9000); } }
+      else if (!rt.needShown){ rt.needShown = true; sfx.nope(); baroldHelp('Ooh! But a show needs a button to start it. Make the BUTTON set them all off.', 9000); }
     }
     rt.prevOut = any;
   } else if (r.check === 'each'){
@@ -12164,10 +12222,10 @@ function checkAdventure(){
     const n = pressed.filter(Boolean).length, lit = outLit(...r.out[0]);
     rt.seen = rt.seen || new Set();
     if (n === 0 && !lit) rt.darkSeen = true;
-    if (n === 0 && lit && !rt.cheatShown){ rt.cheatShown = true; plogEvent('cheat'); sfx.nope(); monkeySay('The disco\'s on with nobody dancing! It should only start when someone steps on a plate.', 9000); }
+    if (n === 0 && lit && !rt.cheatShown){ rt.cheatShown = true; plogEvent('cheat'); sfx.nope(); baroldHelp('The disco\'s on with nobody dancing! It should only start when someone steps on a plate.', 9000); }
     if (n === 1 && !lit){ const k = pressed.indexOf(true); rt.deadSaid = rt.deadSaid || new Set();   // a plate that does nothing: say so, once per plate, and why
       if (!rt.deadSaid.has(k) && playerOnPlate(...r.inputs[k])){ rt.deadSaid.add(k); sfx.nope(); renderCard();
-        monkeySay('Nothing happened! The red dust from this plate doesn\'t reach the disco ball yet. Add more dust until it touches the ball.', 10000); } }
+        baroldHelp('Nothing happened! The red dust from this plate doesn\'t reach the disco ball yet. Add more dust until it touches the ball.', 10000); } }
     if (n === 1 && lit){ const k = pressed.indexOf(true); if (!rt.seen.has(k)){ rt.seen.add(k); sfx.row(); renderCard(); const left = r.inputs.length - rt.seen.size; if (left) monkeySay((DISCO_SAY[k] || 'That plate works!') + ` ${left} to go.`, 5000); } }
     if (rt.seen.size === r.inputs.length && rt.darkSeen){ TROOP.danceUntil = performance.now() + 15000; solveRoom(r); }
   } else if (r.check === 'delay'){
@@ -12178,12 +12236,12 @@ function checkAdventure(){
     if (lit && !rt.prevLit && rt.t0 !== undefined && !rt.fired){ rt.fired = true; const d = S.tick - rt.t0;
       if (!rt.dark0){}   // already lit when you stepped on: nothing to time
       else if (d >= r.minDelay && d <= (r.maxDelay || 30)) solveRoom(r);
-      else if (d < r.minDelay){ plogEvent('wrong'); if (!rt.tooSoon){ rt.tooSoon = true; sfx.nope(); monkeySay(r.soon || 'BOO! ...Too SOON. He jumped out before the cart even got there. Slow the power down a bit.', 8000); } } }
-    if (lit && !rt.prevLit && rt.t0 === undefined && rt.sig0 !== undefined && sig !== rt.sig0 && !rt.lateSaid){ rt.lateSaid = true; plogEvent('cheat'); sfx.nope(); monkeySay('Ha! He jumped out because you changed the wire, not because of the plate. Finish the wire first, THEN step on the plate.', 9000); }
+      else if (d < r.minDelay){ plogEvent('wrong'); if (!rt.tooSoon){ rt.tooSoon = true; sfx.nope(); baroldHelp(r.soon || 'BOO! ...Too SOON. He jumped out before the cart even got there. Slow the power down a bit.', 8000); } } }
+    if (lit && !rt.prevLit && rt.t0 === undefined && rt.sig0 !== undefined && sig !== rt.sig0 && !rt.lateSaid){ rt.lateSaid = true; plogEvent('cheat'); sfx.nope(); baroldHelp('Ha! He jumped out because you changed the wire, not because of the plate. Finish the wire first, THEN step on the plate.', 9000); }
     rt.prevIn = inp; rt.prevLit = lit;
   } else if (r.check === 'clock' || r.check === 'alt'){
     // flashing all by itself: no switches allowed
-    if (switchesIn(r)){ if (!rt.switchSaid){ rt.switchSaid = true; sfx.nope(); monkeySay('No switches! It has to flash ALL BY ITSELF. Take the switch away and try again.', 8000); } rt.ha = []; rt.hb = []; return; }
+    if (switchesIn(r)){ if (!rt.switchSaid){ rt.switchSaid = true; sfx.nope(); baroldHelp('No switches! It has to flash ALL BY ITSELF. Take the switch away and try again.', 8000); } rt.ha = []; rt.hb = []; return; }
     if (burntIn(r.box)){ if (rt.ha && rt.ha.length && !rt.burnSaid && S.burnSaid){ rt.burnSaid = true; plogEvent('wrong'); monkeySay('Burnt out! That loop flips too fast for a torch. Tap the repeater to make it slower, then wait for the torch to cool down.', 9000); } rt.ha = []; rt.hb = []; rt.opp = []; return; }
     const a1 = outLit(...r.out[0]), b1 = r.out[1] ? outLit(...r.out[1]) : !a1; rt.ha = rt.ha || []; rt.hb = rt.hb || []; rt.opp = rt.opp || [];
     if (a1 !== rt.pa){ rt.ha.push(S.tick); rt.pa = a1; } if (b1 !== rt.pb){ rt.hb.push(S.tick); rt.pb = b1; }
@@ -12203,10 +12261,10 @@ function checkAdventure(){
     if (on !== rt.prevIn){ rt.ha = []; rt.calm = 0; rt.prevIn = on; }
     if (!on && rt.calmSeen && rt.ha.length >= 8 && !rt.blinkSeen){ rt.blinkSeen = true; renderCard(); }
     if (on) rt.offT = undefined; else if (rt.offT === undefined) rt.offT = S.tick;
-    if (!on && rt.calmSeen && !rt.blinkSeen && S.tick - rt.offT > 60 && rt.ha.length < 3 && !rt.stuckSaid){ rt.stuckSaid = true; plogEvent('wrong'); sfx.nope(); monkeySay('The lever is OFF, but the ghost is still asleep. Something else is keeping the clock stopped. Only the lever should do that!', 9000); }
+    if (!on && rt.calmSeen && !rt.blinkSeen && S.tick - rt.offT > 60 && rt.ha.length < 3 && !rt.stuckSaid){ rt.stuckSaid = true; plogEvent('wrong'); sfx.nope(); baroldHelp('The lever is OFF, but the ghost is still asleep. Something else is keeping the clock stopped. Only the lever should do that!', 9000); }
     if (on){ rt.calm = !lit && !flip ? (rt.calm || 0) + 1 : 0;
       if (rt.calm >= 30 && !rt.calmSeen){ rt.calmSeen = true; sfx.row(); renderCard(); if (!rt.blinkSeen) monkeySay('Calm! Now flip the lever OFF. Does the ghost come back?', 6000); }
-      if (rt.ha.length >= 8 && !rt.stillSaid){ rt.stillSaid = true; plogEvent('wrong'); sfx.nope(); monkeySay('The lever is ON, but the lamp is still flickering. The lever\'s power isn\'t getting into the clock yet.', 8000); } }
+      if (rt.ha.length >= 8 && !rt.stillSaid){ rt.stillSaid = true; plogEvent('wrong'); sfx.nope(); baroldHelp('The lever is ON, but the lamp is still flickering. The lever\'s power isn\'t getting into the clock yet.', 8000); } }
     if (rt.blinkSeen && rt.calmSeen) solveRoom(r);
   } else if (r.check === 'order'){
     // all dark when the switch goes on, then each output in turn (r.gap ticks apart at least): all from the same build
@@ -12214,13 +12272,13 @@ function checkAdventure(){
     if (inp && !rt.prevIn){ rt.t0 = (rt.plits || []).every(v => !v) ? S.tick : null; rt.ts = r.out.map(() => null); rt.sig0 = sig; }   // (dark on the tick before the press)
     rt.plits = lits;
     if (rt.t0 != null && sig !== rt.sig0){ rt.t0 = null;
-      if (!rt.lateSaid){ rt.lateSaid = true; plogEvent('cheat'); sfx.nope(); monkeySay('Ooh, you changed the wires in the middle! Build it first, THEN press and watch: ' + nm.join(', then ') + '.', 9000); } }
+      if (!rt.lateSaid){ rt.lateSaid = true; plogEvent('cheat'); sfx.nope(); baroldHelp('Ooh, you changed the wires in the middle! Build it first, THEN press and watch: ' + nm.join(', then ') + '.', 9000); } }
     if (rt.t0 != null){
       lits.forEach((v, q) => { if (v && rt.ts[q] == null) rt.ts[q] = S.tick; });
       if (rt.ts.every(t => t != null)){
         const bad = rt.ts.findIndex((t, q) => q && t - rt.ts[q - 1] < gap);
         if (bad < 0) solveRoom(r);
-        else { plogEvent('wrong'); if (!rt.sameSaid){ rt.sameSaid = true; sfx.nope(); const a = nm[bad - 1], b = nm[bad], up = s0 => s0.toUpperCase(); monkeySay(rt.ts[bad] < rt.ts[bad - 1] ? `The ${up(b)} came out before the ${up(a)}! The ${a} should go FIRST, then the ${b}.` : `The ${a} and the ${b} went at the SAME time! Make the ${b} a little LATER.`, 9000); } else rt.sameSaid = false; }
+        else { plogEvent('wrong'); if (!rt.sameSaid){ rt.sameSaid = true; sfx.nope(); const a = nm[bad - 1], b = nm[bad], up = s0 => s0.toUpperCase(); baroldHelp(rt.ts[bad] < rt.ts[bad - 1] ? `The ${up(b)} came out before the ${up(a)}! The ${a} should go FIRST, then the ${b}.` : `The ${a} and the ${b} went at the SAME time! Make the ${b} a little LATER.`, 9000); } else rt.sameSaid = false; }
         rt.t0 = null; }
       else if (S.tick - rt.t0 > 80) rt.t0 = null;
     }
@@ -12236,13 +12294,13 @@ function checkAdventure(){
       if (!setOn && !resetOn) rt.offBefore = !lit;
       if (rt.armed && !setOn){ rt.hold = lit ? rt.hold + 1 : 0;
         if (rt.hold >= 15){ rt.phase = 1; rt.hold = 0; rt.setsOk.add(rt.armedBy); sfx.row(); renderCard(); monkeySay(r.remember || 'It REMEMBERS! It\'s still on after you let go. Now try the reset button.', 7000); }
-        else if (!lit && !rt.forgotSaid){ rt.forgotSaid = true; plogEvent('wrong'); sfx.nope(); monkeySay(r.forgot || 'Ding... and it FORGOT straight away. The two grumpy torches need to hold each other in place.', 8000); rt.armed = false; } }
+        else if (!lit && !rt.forgotSaid){ rt.forgotSaid = true; plogEvent('wrong'); sfx.nope(); baroldHelp(r.forgot || 'Ding... and it FORGOT straight away. The two grumpy torches need to hold each other in place.', 8000); rt.armed = false; } }
     } else {
       if (resetOn) rt.armed2 = true;
       if (rt.armed2 && !resetOn){ rt.hold = !lit ? rt.hold + 1 : 0; if (rt.hold >= 15){ if (rt.setsOk.size >= nSet) solveRoom(r); else { rt.phase = 0; rt.armed = rt.armed2 = false; rt.hold = 0; renderCard(); monkeySay('That one works! Now try the OTHER plate.', 7000); } } }
     }
   } else if (r.check === 'count'){
-    countFrame(r, rt, n => { if (n === r.count) solveRoom(r); else { plogEvent('wrong'); sfx.nope(); monkeySay(n === 1 && r.long ? r.long : n < r.count ? `Only ${n === 1 ? 'ONE ding' : n + ' dings'}. It should ring ${r.count} times from one press.` : `${n} dings! Too many. It should ring exactly ${r.count} times.`, 9000); } });
+    countFrame(r, rt, n => { if (n === r.count) solveRoom(r); else { plogEvent('wrong'); sfx.nope(); baroldHelp(n === 1 && r.long ? r.long : n < r.count ? `Only ${n === 1 ? 'ONE ding' : n + ' dings'}. It should ring ${r.count} times from one press.` : `${n} dings! Too many. It should ring exactly ${r.count} times.`, 9000); } });
   } else if (r.check === 'runclock'){
     // lever ON: the lamp flashes all by itself; lever OFF: it stays dark. Both, with the same build
     const on = pressedAt(...r.inputs[0]), lit = outLit(...r.out[0]), sig = buildSig(r);
@@ -12255,7 +12313,7 @@ function checkAdventure(){
     if (on && rt.ha.length >= 8 && !rt.runSeen){ rt.runSeen = true; sfx.row(); renderCard(); if (!rt.darkSeen) monkeySay('Flashing! Now switch the ride OFF. Do the skeletons go dark?', 6000); }
     if (!on){ rt.calm = !lit && !flip ? (rt.calm || 0) + 1 : 0; if (rt.calm >= 30 && !rt.darkSeen){ rt.darkSeen = true; sfx.row(); renderCard(); if (!rt.runSeen) monkeySay('Dark and still. Now switch the ride ON. Do they flash?', 6000); } }
     if (on && rt.calmOn === undefined) rt.calmOn = 0;
-    if (on){ rt.calmOn = !lit && !flip ? (rt.calmOn || 0) + 1 : 0; if (rt.calmOn >= 40 && !rt.backSaid && rt.ha.length < 2){ rt.backSaid = true; plogEvent('wrong'); sfx.nope(); monkeySay(r.backwards || 'The lever is ON, but nothing flashes.', 9000); } }
+    if (on){ rt.calmOn = !lit && !flip ? (rt.calmOn || 0) + 1 : 0; if (rt.calmOn >= 40 && !rt.backSaid && rt.ha.length < 2){ rt.backSaid = true; plogEvent('wrong'); sfx.nope(); baroldHelp(r.backwards || 'The lever is ON, but nothing flashes.', 9000); } }
     if (rt.runSeen && rt.darkSeen) solveRoom(r);
   } else if (r.check === 'coop'){
     { const C = rt.coop || {}, k = [C.ph, C.youOver, C.launched].join(); if (rt.coopCard !== k){ rt.coopCard = k; renderCard(); } }
@@ -12273,7 +12331,7 @@ function checkAdventure(){
         if (lost && !S.simulating) showToast(sim ? `You changed the wires, so ${lost === 1 ? 'one tick' : lost + ' ticks'} came off. Flip the levers to check again.` : 'You changed the build, so the ticks came off. Try them all again.'); }   // (Tom, 11 Oct: the old words were nonsense; say what to DO)
       if (rt.sig !== undefined && sig !== rt.sig) rt.liveKey = r.inputs.map(([x,y]) => { const c = at(x,y); return !!c && (c.on || c.timer > 0); }).join();
       rt.sig = sig; }
-    if (STABLE && r.out.some(([x,y]) => { const n = outLit(x,y) && shortcutAt(x, y); return n && n.t === 'rblock'; })){ if (!rt.cheatShown){ rt.cheatShown = true; plogEvent('cheat'); sfx.nope(); monkeySay(cheekyLine(r), 9000); } return; }
+    if (STABLE && r.out.some(([x,y]) => { const n = outLit(x,y) && shortcutAt(x, y); return n && n.t === 'rblock'; })){ if (!rt.cheatShown){ rt.cheatShown = true; plogEvent('cheat'); sfx.nope(); baroldHelp(cheekyLine(r), 9000); } return; }
     const ins = r.inputs.map(([x,y]) => { const c = at(x,y); return !!c && (c.on || c.timer > 0); });
     const key = ins.join();
     if (rt.prevKey !== null && key !== rt.prevKey){ rt.tested.add(key); rt.pendingTest = true; }
@@ -12325,7 +12383,6 @@ function countFrame(r, rt, done){
 function roomMiss(r){
   const fed = ([x, y]) => [0, 1, 2, 3].map(d => { const n = at(x + DIRS[d][0], y + DIRS[d][1]); return n && n.t === 'dust' && n.pw > 0 ? !!n.pts[opp(d)] : null; }).filter(v => v !== null);
   if (r.missInto){ const f = fed(r.missInto); if (f.length && !f.some(Boolean)) return 'So close! Your wire runs PAST the stone block. Its END has to point straight INTO the block.'; }
-  if (r.missLamp && fed(r.out[0]).some(Boolean)) return 'Your wire goes into the lamp. But the lamp is ALREADY on! More power can\'t switch it OFF. What makes the TORCH go off?';
   return null;
 }
 // where Max first meets each toy a room bonus gives (Tom: never win a toy he hasn't met). Room 3's MEGA ROBOT came first (Tom's own pick)
@@ -12571,17 +12628,17 @@ function shipSolved(r){
 function checkSeq(r, rt){
   const inp = pressedAt(...r.inputs[0]), lits = r.out.map(([x, y]) => outLit(x, y)), sig = buildSig(r), gap = r.gap || 1;
   const was = rt.prevLits || lits; rt.prevLits = lits;   // (dust is instant: valve 1 can open on the very tick the button goes down, so look at the tick before)
-  if (inp && !rt.prevIn){ rt.t0 = was.some(Boolean) ? null : S.tick; rt.ts = lits.map(() => null); rt.sig0 = sig; if (was.some(Boolean) && !rt.openSaid){ rt.openSaid = true; sfx.nope(); monkeySay('A valve is ALREADY open before you press the button. They should all start closed!', 8000); } }
+  if (inp && !rt.prevIn){ rt.t0 = was.some(Boolean) ? null : S.tick; rt.ts = lits.map(() => null); rt.sig0 = sig; if (was.some(Boolean) && !rt.openSaid){ rt.openSaid = true; sfx.nope(); baroldHelp('A valve is ALREADY open before you press the button. They should all start closed!', 8000); } }
   rt.prevIn = inp;
   if (rt.t0 == null) return;
-  if (sig !== rt.sig0){ rt.t0 = null; if (!rt.lateSaid){ rt.lateSaid = true; sfx.nope(); monkeySay('You changed the wires in the middle! Build it first, THEN press the button and watch.', 8000); } return; }
+  if (sig !== rt.sig0){ rt.t0 = null; if (!rt.lateSaid){ rt.lateSaid = true; sfx.nope(); baroldHelp('You changed the wires in the middle! Build it first, THEN press the button and watch.', 8000); } return; }
   lits.forEach((v, i) => { if (v && rt.ts[i] == null) rt.ts[i] = S.tick; });
   const done = rt.ts.every(t => t != null);
   if (!done && S.tick - rt.t0 <= 60) return;
   const ts = rt.ts; rt.t0 = null;
   const order = ts.map((t, i) => [t, i]).filter(([t]) => t != null).sort((a, b) => a[0] - b[0]);
   rt.seqText = order.map(([, i]) => i + 1).join(', ') + (done ? '' : ' (the rest stayed shut)'); renderCard();
-  if (!done){ plogEvent('wrong'); sfx.nope(); monkeySay(`Valve ${ts.findIndex(t => t == null) + 1} didn't open at all! Follow its wire: does the power get there?`, 8000); return; }
+  if (!done){ plogEvent('wrong'); sfx.nope(); baroldHelp(`Valve ${ts.findIndex(t => t == null) + 1} didn't open at all! Follow its wire: does the power get there?`, 8000); return; }
   if (ts[0] < ts[1] && ts[1] < ts[2] && ts[1] - ts[0] >= gap && ts[2] - ts[1] >= gap){ solveRoom(r); return; }
   plogEvent('wrong'); sfx.nope(); sfx.blub();
   if (ts[0] === ts[1] && ts[1] === ts[2]) monkeySay('GLUG! All three opened at ONCE. Fuel everywhere! (Don\'t worry, it\'s very clean fuel.) It has to be 1, THEN 2, THEN 3.', 10000);
@@ -15942,7 +15999,7 @@ function gymBase(g){
     hint:'Flip each lever with its own grumpy torch. Then join the two torch wires and run them to the lamp.'};
   if (g === 'delay') return {kind:'delay', inputs:[[2, 3]], lamp:[11, 3], fn:a => a, tools:['dust', 'repeater'],
     pre:[GD(3, 3), GD(4, 3), GD(5, 3), GD(6, 3), GD(7, 3), GD(8, 3), GD(9, 3), GD(10, 3)], ghosts:[GR(5, 3, 4), GR(8, 3, 4)],
-    hint:'Break two dust and put Repeaters there, pointing at the lamp. Tap them to make them slower.'};
+    hint:'Pick up two dust. Put Repeaters in their places, pointing at the lamp. Tap them to make them slower.'};
   return null;
 }
 const GYM_KEY = gh => gh.filter(q => q.t !== 'dust').length ? gh.filter(q => q.t !== 'dust') : gh.slice(0, 3);   // the parts taken out for the build (as the Lab shows them)
@@ -16311,7 +16368,7 @@ function mayaCheck(r, rt){
     const d = mayaRead(r); if (d.v !== rt.lastV || d.ok !== rt.lastOk){ rt.lastV = d.v; rt.lastOk = d.ok; renderCard(); }
     if (d.ok && d.v === r.targets[rt.ti]){ rt.ti++; sfx.row(); renderCard();
       if (rt.ti >= r.targets.length) solveRoom(r); else monkeySay(`Yes! That says ${d.v}. Now make ${r.targets[rt.ti]}.`, 5000); }
-    else if (!d.ok && rt.missV !== d.v + d.why){ rt.missV = d.v + d.why; const m = r.miss && r.miss(d.v, d); if (m){ sfx.nope(); monkeySay(m, 8000); } }
+    else if (!d.ok && rt.missV !== d.v + d.why){ rt.missV = d.v + d.why; const m = r.miss && r.miss(d.v, d); if (m){ sfx.nope(); baroldHelp(m, 8000); } }
   } else if (r.check === 'tally'){
     if (rt.tsig !== undefined && sig !== rt.tsig && rt.trow && Object.keys(rt.trow).length){ rt.trow = {}; rt.recount = true; renderCard(); showToast('You changed the board. Count again: it must work for EVERY number.'); }   // (the ticks go, and the card says why: c23 read it as "losing my work")
     if (rt.recount && Object.keys(rt.trow).length && (rt.recountT = (rt.recountT || 0) + 1) > 120){ rt.recount = false; rt.recountT = 0; renderCard(); }   // (the red note stays a couple of seconds after the first new tick)
@@ -16330,7 +16387,7 @@ function mayaCheck(r, rt){
     if (rt.t0 == null) return;
     if (sig !== rt.sig0){ rt.t0 = null; return; }
     if (a1 && rt.ta == null) rt.ta = S.tick; if (b1 && rt.tb == null) rt.tb = S.tick;
-    const nope = k => { plogEvent('wrong'); if (rt.said !== k){ rt.said = k; sfx.nope(); monkeySay(r[k], 8000); } rt.t0 = null; };
+    const nope = k => { plogEvent('wrong'); if (rt.said !== k){ rt.said = k; sfx.nope(); baroldHelp(r[k], 8000); } rt.t0 = null; };
     if (rt.ta != null && rt.tb != null){ if (rt.tb - rt.ta >= 3){ rt.t0 = null; solveRoom(r); } else nope(rt.tb < rt.ta ? 'ballFirst' : 'same'); }
     else if (rt.tb != null && S.tick - rt.tb > 30) nope('ballFirst');
     else if (rt.ta != null && S.tick - rt.ta > 40) nope('noBall');
@@ -16345,7 +16402,7 @@ function mayaCheck(r, rt){
       if (!setOn && !resetOn) rt.offBefore = !lit;
       if (rt.armed && !setOn){ rt.hold = lit ? rt.hold + 1 : 0;
         if (rt.hold >= 15){ rt.phase = 1; rt.hold = 0; sfx.row(); renderCard(); monkeySay('It REMEMBERS! You stepped off and the goal light is still on. Now press RESET.', 7000); }
-        else if (!lit && !rt.forgotSaid){ rt.forgotSaid = true; plogEvent('wrong'); sfx.nope(); monkeySay('GOAL... and it forgot straight away! Two grumpy torches have to hold each other in place.', 8000); rt.armed = false; } }
+        else if (!lit && !rt.forgotSaid){ rt.forgotSaid = true; plogEvent('wrong'); sfx.nope(); baroldHelp('GOAL... and it forgot straight away! Two grumpy torches have to hold each other in place.', 8000); rt.armed = false; } }
     } else {
       if (resetOn) rt.armed2 = true;
       if (rt.armed2 && !resetOn){ rt.hold = !lit ? rt.hold + 1 : 0; if (rt.hold >= 15) solveRoom(r); }
@@ -17320,6 +17377,28 @@ function uniShove(x, y, dx, dy, popping){
 // professor in the University...) says why in short lines, and a glowing square shows where to stand (or which block side to tap).
 // Returns true when it said something. ----
 const FACE_HANG = new Set(['torch', 'lever', 'button']);
+// can you see (and so tap) cell (tx, ty) standing on (sx, sy)? A ray from your eyes to some part of that cell (its middle, or nearer
+// an edge) must reach it before anything else (a block, a wall). Same things a tap hits: pick()
+function seesCell(sx, sy, tx, ty, middle){   // middle: its middle must show
+  const o = cellPos(sx, sy), from = new THREE.Vector3(o.x, o.y + EYE, o.z), t = cellPos(tx, ty), far = ray.far; let seen = false;
+  const offs = middle ? [0] : [0, -.2, .2, -.4, .4];
+  for (const ox of offs) for (const oz of offs){
+    if (seen) break;
+    const to = new THREE.Vector3(t.x + ox, t.y + .05, t.z + oz), dir = to.sub(from).normalize();
+    ray.set(from, dir); ray.far = REACH;
+    const hits = ray.intersectObjects(terrainRoot.visible ? [cellRoot, upRoot, wallRoot, terrainRoot, ground] : [cellRoot, upRoot, wallRoot, ground], true);
+    for (const h of hits){
+      if (h.distance < .7 && h.object !== ground) continue;   // (what you stand on)
+      if (h.object.userData.wall) break;
+      const idx = h.object.userData.idx, c = idx !== undefined ? S.grid[idx] : null;
+      if (h.object === ground || h.object.userData.terrain){ const [x, y] = cellAtWorld(h.point.x, h.point.z); if (h.object === ground && h.point.y < -.01) continue; seen = x === tx && y === ty; break; }
+      if (idx === undefined) continue;
+      if (!c) continue;
+      seen = c.x === tx && c.y === ty; break;
+    }
+  }
+  ray.far = far; return seen;
+}
 function faceSay(c, gh){
   const r = A.rt && A.rt.room; if (!r || !c) return false;
   const want = (gh && gh.t === c.t ? gh : null) || (r.sol || []).find(q => q.x === c.x && q.y === c.y && q.t === c.t);
@@ -17339,7 +17418,8 @@ function faceSay(c, gh){
   // where to stand: behind it (a repeater: you look along it; an observer: where its eyes should look), or on the side it should push to (a piston)
   const d = want.dir || 0, [dx, dy] = DIRS[obs || rep ? opp(d) : d];
   const tries = [[1, 0], [2, 0], [3, 0], [2, 1], [2, -1], [3, 1], [3, -1]];   // straight out first; off to one side only from further away (looking at it from a corner, you can't tell which way it would face)
-  let spot = null; for (const [k, o] of tries){ const x = c.x + dx*k + (dy ? o : 0), y = c.y + dy*k + (dx ? o : 0); if (ok(x, y)){ spot = [x, y]; break; } }
+  // ...and from there you can SEE the spot (room 503's square was behind the block it pushes, 505's behind a wall): its middle if we can, else some of it
+  let spot = null; for (const whole of [true, false]) for (const [k, o] of tries){ const x = c.x + dx*k + (dy ? o : 0), y = c.y + dy*k + (dx ? o : 0); if (!spot && ok(x, y) && seesCell(x, y, c.x, c.y, whole)) spot = [x, y]; }
   // the room's host says it (their lesson), in the box at the bottom (design guide 3), lines of 8 words or fewer
   const go = spot ? 'Pick it up. Stand on the glowing square.' : null;
   const say = rep ? ['Oops! That repeater points the wrong way.', 'It points the way YOU look.', go || 'Pick it up. Stand behind it. Look along the wire.']
@@ -17400,14 +17480,17 @@ function uniStep(cells){
   // pumpkins grow on the patch beside their stalk (every 3 seconds, if the patch is empty)
   for (const c of cells) if (c.t === 'stem' && at(c.x, c.y) === c){ const [dx, dy] = DIRS[c.patch || 0], px = c.x + dx, py = c.y + dy, pk = at(px, py);
     const att = pk && pk.t === 'pumpkin' ? (c.patch || 0) + 1 : 0; if (att !== (c.att || 0)){ c.att = att; S.gridDirty = true; }
-    if (!pk){ c.grow = (c.grow || 0) + 1; if (c.grow >= UNI_GROW && A.on){ c.grow = 0; setCell(px, py, makeCell('pumpkin', px, py, {locked:false})); c.att = (c.patch || 0) + 1; if (!S.simulating) noise(.12, .12, 900, 'bandpass', 0, 1); } } else c.grow = 0; }
+    if (!pk){ c.grow = (c.grow || 0) + 1; if (c.grow >= UNI_GROW && A.on){ c.grow = 0; setCell(px, py, makeCell('pumpkin', px, py, {locked:false})); c.att = (c.patch || 0) + 1; if (!S.simulating) noise(.12, .12, 900, 'bandpass', 0, 1); } } else c.grow = 0;
+    // ...and a pumpkin nobody picks drops off by itself after a while. A child takes far longer than 3 seconds to build, so one has always
+    // grown before their observer goes down, and an observer only sees CHANGES: it would wait for ever, 0 of 3, however right the machine is
+    if (pk && pk.t === 'pumpkin' && !pk.locked && A.on){ c.sit = (c.sit || 0) + 1; if (c.sit >= UNI_DROP){ c.sit = 0; setCell(px, py, null); c.att = 0; S.gridDirty = true; S.events.push(['popoff', pk]); } } else c.sit = 0; }
   // observers: a one-tick pulse out of the back when the block in front of the face changes
   for (const c of cells){ if (c.t !== 'observer' || at(c.x, c.y) !== c) continue; const f = nb(c, opp(c.dir)), k = uniSeeKey(f) + '@' + c.x + ',' + c.y;
     const was = c.out; c.out = c.seen !== undefined && k !== c.seen; c.seen = k; if (c.out !== was) S.gridDirty = true; }
   if (A.uniMob && A.act === UNI_ACT) uniMobStep();
   if (S.gridDirty) syncVisualsSoon();
 }
-const UNI_GROW = 30;
+const UNI_GROW = 30, UNI_DROP = 60;   // ticks: a pumpkin grows in 3 seconds, and drops off by itself after 6
 function uniSeeKey(n){ return n ? n.t + (n.on ? 1 : 0) + (n.lit ? 1 : 0) + (n.out ? 1 : 0) + (n.pw || 0) + '/' + (n.att || 0) + (n.timer > 0 ? 1 : 0) + (n.t === 'phead' ? 'h' : '') : '-'; }
 let uniSyncT = 0;
 function syncVisualsSoon(){ if (S.simulating) return; if (!uniSyncT) uniSyncT = requestAnimationFrame(() => { uniSyncT = 0; syncVisuals(); }); }
@@ -17546,7 +17629,7 @@ const UNI_ROOMS = [
     goal:'One lever: ON pushes the block onto the gold square. OFF pulls it back again.',
     hello:'Hello! I\'m Professor Lemur. I am NOT a monkey. I\'m a LEMUR! We only live on one island: Madagascar.',
     nudge:'Which piston can PULL as well as push?',
-    hint:'A sticky piston right behind the block, its slimy face against it. Then run dust from the lever into the side of the piston.',
+    hint:'A sticky piston touching the block, its slimy face against it. Then run dust from the lever into the side of the piston.',
     plain:'It pushed the block... and LEFT it there! A plain piston can\'t pull. Try the STICKY one.',
     win:'In, and out again! A sticky piston pushes AND pulls. Now you can build things that move.',
     mc:'Real Minecraft: a piston\'s face looks back at YOU when you place it. Stand where you want it to push, then put it down.',
@@ -17740,7 +17823,7 @@ function uniCheck(r, rt){
   const steady = rt.stN >= 3, sig = uniSig(r);
   if (rt.usig !== undefined && sig !== rt.usig){ rt.sides = {}; rt.ph = 0; rt.last = null; rt.inSeen = false; rt.p0 = uniPicksIn(r); rt.m0 = uniMovesIn(r); rt.noisySaid = false; renderCard(); }
   rt.usig = sig;
-  const say = (k, ms) => { if (rt.said === k) return; rt.said = k; sfx.nope(); plogEvent('wrong'); monkeySay(r[k] || k, ms || 9000); };
+  const say = (k, ms) => { if (rt.said === k) return; rt.said = k; sfx.nope(); plogEvent('wrong'); baroldHelp(r[k] || k, ms || 9000); };
   if (r.check === 'autodoor'){
     const door = at(...r.doorAtW); if (!door) return;
     const open = !!door.lit, [px, py] = cellAtWorld(P.x, P.z), v = door.dir % 2 === 1, side = v ? Math.sign(px - door.x) : Math.sign(py - door.y);
@@ -17748,7 +17831,7 @@ function uniCheck(r, rt){
     rt.sides = rt.sides || {};
     if (open && mine && side && !rt.sides[side]){ rt.sides[side] = true; sfx.row(); renderCard(); if (!(rt.sides[-side])) monkeySay('It opens by itself! Now try it from the OTHER side.', 6000); }
     rt.openT = open && !held ? (rt.openT || 0) + 1 : 0;
-    if (rt.openT > 25 && !rt.stuckSaid){ rt.stuckSaid = true; sfx.nope(); monkeySay('The door is stuck OPEN! An automatic door shuts by itself when nobody is there.', 8000); }
+    if (rt.openT > 25 && !rt.stuckSaid){ rt.stuckSaid = true; sfx.nope(); baroldHelp('The door is stuck OPEN! An automatic door shuts by itself when nobody is there.', 8000); }
     if (rt.sides[1] && rt.sides[-1] && !open && steady) solveRoom(r);
   } else if (r.check === 'dingdong'){
     const bell = at(...r.bellAtW), down = !!bell && bell.timer > 0;
@@ -17792,7 +17875,7 @@ function uniCheck(r, rt){
     const picked = uniPicksIn(r) - rt.p0, moves = uniMovesIn(r) - rt.m0;
     if (picked !== rt.lastPicked){ rt.lastPicked = picked; renderCard(); if (picked > 0 && picked < 3 && moves <= picked*2 + 2) monkeySay(`Pumpkin ${picked}! ${3 - picked} more.`, 3500); }
     if (picked >= 3 && moves <= picked*2 + 2){ solveRoom(r); return; }
-    if (moves > picked*2 + 8 && !rt.noisySaid){ rt.noisySaid = true; sfx.nope(); plogEvent('wrong'); monkeySay(r.noisy, 10000); renderCard(); }
+    if (moves > picked*2 + 8 && !rt.noisySaid){ rt.noisySaid = true; sfx.nope(); plogEvent('wrong'); baroldHelp(r.noisy, 10000); renderCard(); }
   } else if (r.check === 'lift'){
     const [px, py] = cellAtWorld(P.x, P.z); if (A.uniRodeUp && r.balconyW.has(px + ',' + py) && P.y >= floorAt(px, py) - .2) solveRoom(r);
   } else if (r.check === 'fly'){
@@ -19057,7 +19140,7 @@ window.__game = {
     sink(){ return P.sink || 0; }, dead(){ return !!S.dead; },
     lever(x, y, on){ const c = at(x, y); if (c && c.on !== !!on) interact(c); },
     door(id){ const r = ROOMS.find(q => q.id === id); const d = r.exit && at(...r.exit); return d ? !!(d.latched || d.lit) : !wallAt(...r.toilet); },
-    cell(x, y){ const c = at(x, y); return c ? {t:c.t, lit:c.lit, on:c.on, pw:c.pw, attach:c.attach, dir:c.dir, open:c.open} : null; },
+    cell(x, y){ const c = at(x, y); return c ? {t:c.t, lit:c.lit, powered:c.powered, on:c.on, pw:c.pw, attach:c.attach, dir:c.dir, open:c.open, delay:c.delay} : null; },
     wall(x, y){ return wallAt(x, y); }, elevAt(x, y){ return floorAt(x, y); }, slideAt(x, y){ const v = S.slide[y*NX + x]; return S.ladder[y*NX + x] ? 'L' : v >= 0 ? 'v<>^'[[3,1,0,2].indexOf(v)] || v : ' '; },
     troop(){ return {n:TROOP.list.length, shown:TROOP.list.filter(m => m.parent).length, parked:Object.fromEntries(Object.entries(TROOP.parked).map(([k, pk]) => [k, pk.list.filter(m => m.parent).length])), ids:TROOP.list.map(m => m.id), tags:TROOP.labels.map(l => l.text), room:TROOP.room && TROOP.room.id, inPen:A.rt && A.rt.inPen, launches:A.rt && A.rt.launches, hand:A.rt && A.rt.handLaunches, danceUntil:TROOP.danceUntil || 0, kinds:TROOP.list.map(m => m.userData.kind)}; },
     get rooms(){ return ROOMS.map(r => ({mirror:!!r.mirror, launchAt:r.launchAt, platformAt:r.platformAt, journey:r.journey || JOURNEY[r.id], id:r.id, name:r.name, check:r.check, count:r.count, inputs:r.inputs || [], out:r.out || [], exit:r.exit, toilet:r.toilet, entry:r.entry, box:r.box, org:r.org || [r.box.x0 + 1, r.box.y0 + 1], sol:r.sol, naive:r.naive, after:r.after, tntAt:r.tntAt, quick:r.quick, fixed:r.fixed, loose:r.loose, gate:r.gate, play:!!r.play, why:r.why || null, playBeat:r.playBeat || null})); },
