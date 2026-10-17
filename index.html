@@ -3230,7 +3230,7 @@ function pokeMonkey(cx, cy){
       else {
         const rr = A.rt && A.rt.room;
         if (rr && !A.solved.has(rr.id)) monkeySay('Psst! ' + rr.hint, 9000);
-        else if (A.room === 'hall' && !A.launched){ const miss = ROOMS.filter(q => !A.crystals.has(q.id)).map(q => q.id); monkeySay(miss.length ? 'The Skull wants every crystal. Missing: room' + (miss.length > 1 ? 's ' : ' ') + miss.join(', ') + '.' : 'Fix the Skull\'s four machines! Through the door on the right. I\'ll... supervise.', 7000); }
+        else if (A.room === 'hall' && !A.launched){ const miss = ROOMS.filter(q => !A.crystals.has(q.id)).map(q => q.id); monkeySay(miss.length ? 'The Skull wants every crystal. Missing: room' + (miss.length > 1 ? 's ' : ' ') + miss.join(', ') + '.' : 'Fix the Skull\'s four machines! Through the door marked THE SKULL\'S MACHINES. I\'ll... supervise.', 7000); }
         else monkeySay(bag('poke', ['Oi! That\'s my funny bone!', 'Mum wanted Barry. Dad wanted Harold. So... Barold!', 'Careful! Something rattled. Probably my keys. I don\'t have any keys.', 'Fifteen rooms and I\'m LEVEL 2. No pressure. (Lots of pressure.)', 'Stop it, that tickles! Why is it so draughty today?', 'Ha! A poke! That\'s going in my Guide Report.']), 3500);
       }
     }
@@ -6782,9 +6782,9 @@ const HEART = {
   sockets:[[20,8],[24,8],[22,6],[22,10]],   // the four pedestals round the Skull (machine 1, 2, 3, 4)
   fixed:[K('lever',22,12)],                 // the LAUNCH lever
   loose:[], sol:[],
-  hello:'This is the CRYSTAL SKULL! See the four dark pedestals round it? Each one needs a machine fixing. The Emperor broke ALL FOUR. They\'re through the door on the right!',
-  get hint(){ const left = SHIP_ROOMS.filter(r => !A.solved.has(r.id)); return left.length ? `Each pedestal is fed by a machine. The machines are through the door on the right-hand wall. Still broken: ${left.map(r => r.short).join(', ')}.` : 'All four machines work! Pull the big LAUNCH lever next to the Skull. (And the Skull wants every crystal.)'; },
-  get goal(){ const n = SHIP_ROOMS.filter(r => A.solved.has(r.id)).length; return n < SHIP_ROOMS.length ? `Fix the Skull's four machines, through the door on the right. Fixed so far: ${n} of ${SHIP_ROOMS.length}.` : 'All four machines work! Pull the LAUNCH lever next to the Skull.'; },
+  hello:'This is the CRYSTAL SKULL! See the four dark pedestals round it? Each one needs a machine fixing. The Emperor broke ALL FOUR. They\'re through the door marked THE SKULL\'S MACHINES!',
+  get hint(){ const left = SHIP_ROOMS.filter(r => !A.solved.has(r.id)); return left.length ? `Each pedestal is fed by a machine. The machines are through the door marked THE SKULL\'S MACHINES. Still broken: ${left.map(r => r.short).join(', ')}.` : 'All four machines work! Pull the big LAUNCH lever next to the Skull. (And the Skull wants every crystal.)'; },
+  get goal(){ const n = SHIP_ROOMS.filter(r => A.solved.has(r.id)).length; return n < SHIP_ROOMS.length ? `Fix the Skull's four machines, through the door marked THE SKULL'S MACHINES. Fixed so far: ${n} of ${SHIP_ROOMS.length}.` : 'All four machines work! Pull the LAUNCH lever next to the Skull.'; },
   levers:[[22,12]]
 };
 // the chamber was drawn with its entrance on the east; the snake now arrives on the west, so mirror it
@@ -10182,7 +10182,7 @@ const ROOM_DECOR = {
     props:[['curtains'], ['bunting'], ['poster', 'SHOW TONIGHT! Bring your own banana.'], ['spots']]},
   12:{who:'giant', use:'the giants\' ballroom', ceil:7, sign:'Wire ALL FOUR plates to the disco ball!',
     props:[['speakers'], ['record'], ['bunting'], ['speakers'], ['poster', 'DANCE FLOOR. No sitting down.']]},
-  13:{who:'work', use:'the torch store', sign:'Start the fountain AND the cushion with ONE torch!',
+  13:{who:'work', use:'the torch store', sign:'ONE torch: start the fountain AND the cushion!',
     props:[['torchrack'], ['shelf', 'crates'], ['poster', 'SPARE TORCHES. Do not lick.'], ['torchrack']]},
   14:{who:'small', use:'the little ones\' bedroom', sign:'Flip the lever. Watch the torch... and the lamp!',
     props:[['bunks'], ['tinydoor'], ['poster', 'SHHH! Torches sleeping.'], ['bunks']]},
@@ -10662,7 +10662,7 @@ function actMapCard(){
   const sec = actSecrets(), found = sec.filter(q => q.found).length, done = ROOMS.filter(r => A.solved.has(r.id)).length;
   const go = sec.filter(q => !q.found && actReached().some(r => r.id === q.near)).map(q => `<button class="btn" style="font-size:15px;padding:4px 10px;min-height:44px" data-mapgo="${q.near}">Look near room ${roomNum(ROOMS.find(r => r.id === q.near)).replace(/^\D*/, '').split(' ')[0]}</button>`);
   const back = actReached().filter(r => r !== (A.rt && A.rt.room)).slice(-6).map(r => `<button class="btn" style="font-size:15px;padding:4px 10px;min-height:44px" data-mapgo="${r.id}">${r.name}</button>`);
-  showCard('Map of ' + (ACT_NAMES[A.act] || 'here'), `<canvas id="amCv" width="360" height="230" style="display:block;margin:0 auto;max-width:100%;image-rendering:pixelated" aria-label="Map"></canvas>
+  showCard('Map of ' + (ACT_NAMES[A.act] || 'here'), `<canvas id="amCv" width="360" height="230" style="display:block;margin:0 auto;max-width:100%;max-height:min(230px, 32vh);width:auto;height:auto;image-rendering:pixelated" aria-label="Map"></canvas>
     <p style="margin:6px 0 2px">Rooms fixed: <b>${done} of ${ROOMS.length}</b>${sec.length ? ` · Secret rooms found: <b>${found} of ${sec.length}</b>` : ''}</p>
     ${sec.length && found < sec.length ? '<p style="margin:2px 0;font-size:15px">Secret rooms hide behind cracked walls that twinkle. Give one some power!</p>' : ''}
     ${go.length ? '<div class="row" style="flex-wrap:wrap;gap:6px">' + go.join('') + '</div>' : ''}
@@ -11827,7 +11827,7 @@ function advFrame(dt, now){
       const rr = A.rt && A.rt.room;
       if (rr && !A.solved.has(rr.id)) monkeySay('Psst! ' + rr.hint, 9000);
       else if (rr) monkeySay('You already solved this one! The next room is through the door.', 5000);
-      else if (A.room === 'hall'){ const miss = ROOMS.filter(q => !A.crystals.has(q.id)).map(q => q.id); monkeySay(miss.length ? 'Missing crystals in room' + (miss.length > 1 ? 's ' : ' ') + miss.join(', ') + '.' : (A.launched ? 'We\'re flying! Sir Reginald says the steering wheel is "somewhere".' : 'Fix the Skull\'s four machines! Through the door on the right. I\'ll... supervise.'), 7000); }
+      else if (A.room === 'hall'){ const miss = ROOMS.filter(q => !A.crystals.has(q.id)).map(q => q.id); monkeySay(miss.length ? 'Missing crystals in room' + (miss.length > 1 ? 's ' : ' ') + miss.join(', ') + '.' : (A.launched ? 'We\'re flying! Sir Reginald says the steering wheel is "somewhere".' : 'Fix the Skull\'s four machines! Through the door marked THE SKULL\'S MACHINES. I\'ll... supervise.'), 7000); }
       else monkeySay(A.solved.size >= ROOMS.length ? 'Go and build something silly! Or visit the Crystal Skull.' : 'The temple door is between the golden pillars. Go on!', 6000);
     }
   }
@@ -12421,7 +12421,10 @@ function shipDecor(){
     box(.9, .55, .9, M.gold, 0, .27, 0, pg); box(.66, .3, .66, M.brick, 0, .7, 0, pg);
     const mat = new THREE.MeshLambertMaterial({color:0x444455, emissive:0x000000}), cr = new THREE.Mesh(new THREE.OctahedronGeometry(.32), mat); cr.position.y = 1.25; cr.raycast = () => {}; pg.add(cr);
     const gl = glow(new THREE.SpriteMaterial({map:M.glowGold.map, color:r.color, blending:THREE.AdditiveBlending, depthWrite:false, transparent:true}), 1.8, 1.25); gl.visible = false; pg.add(gl);
-    const lab = textSprite(r.short.replace('the ', ''), {w:200, fs:24, bg:'#efe2b8', ink:'#3b2200', scale:.55, depth:true}); lab.position.y = 2.1; pg.add(lab); lab.userData.near = 9; A.nearLabels.push(lab);
+    // its name on a plaque ON the pedestal, on the side away from the Skull (Tom: labels go on a block, never floating)
+    { const c = drawBubble(document.createElement('canvas'), r.short.replace('the ', ''), {w:200, fs:24, bg:'#efe2b8', ink:'#3b2200'}), t = new THREE.CanvasTexture(c); t.minFilter = THREE.LinearFilter;
+      const w = .84, h = Math.min(.5, w*c.height/c.width), pl = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({map:t, transparent:true})), dx = Math.sign(r.ped[0] - HEART.x), dz = Math.sign(r.ped[1] - HEART.y);
+      pl.position.set(dx*.456, .28, dz*.456); pl.rotation.y = Math.atan2(dx, dz); pl.raycast = () => {}; pg.add(pl); }
     // a beam from the pedestal into the Skull, for the launch
     const sk = cellPos(HEART.x, HEART.y), from = new THREE.Vector3(p.x, p.y + 1.25, p.z), to = new THREE.Vector3(sk.x, sk.y + 3.1, sk.z), len = from.distanceTo(to);
     const bm = new THREE.Mesh(cbox(.16, .16, len), new THREE.MeshBasicMaterial({color:r.color, transparent:true, opacity:.85, blending:THREE.AdditiveBlending, depthWrite:false}));
