@@ -2139,15 +2139,31 @@ function vkey(c){
   }
   return c.t;
 }
+// FIXED parts wear a thin gold edge, so you can see what you can't move (Tom, 11 Oct: "Maybe redstone that is fixed in a room has a
+// gold border or something"). Wires, torches and repeaters get it on the floor round their square; blocks get it round their top.
+// Beside another fixed part of the same kind the edge between them is left out, so a fixed wire reads as one gold-edged strip and a
+// gap you must fill has no gold. Levers, buttons, plates, lamps, doors, TNT and the like are the room's own ends (you use them, or
+// they're what the room is about): not marked, to keep it tidy. Hidden blocks stay secret. One shared material and cbox() boxes:
+// the drawing batches them all into one InstancedMesh (see BATCH), so it's one draw call however many there are (web and TV).
+const LOCK_FLOOR = new Set(['dust', 'torch', 'repeater']), LOCK_BLOCK = new Set(['stone', 'rblock', 'glass', 'observer', 'piston', 'spiston', 'slime', 'soulsand', 'magma']);
+const LOCK_GOLD = new THREE.MeshLambertMaterial({color:0xdcae2c, emissive:0x4a3000});
+let LOCK_OFF = false;   // (test-marks.js: the drawing cost with and without the gold edges)
+const lockKind = c => LOCK_OFF || !c || !c.locked || c.hidden || c.sheep || c.tall ? 0 : LOCK_FLOOR.has(c.t) ? 1 : LOCK_BLOCK.has(c.t) ? 2 : 0;
+// which of its four sides get gold (bits 0-3, N E S W) and its kind (bits 4-5); 0: not marked
+function lockEdges(c){ const k = lockKind(c); if (!k) return 0; let m = 0; DIRS.forEach(([dx, dy], d) => { if (lockKind(at(c.x + dx, c.y + dy)) !== k) m |= 1 << d; }); return m | k << 4; }
+function lockFrame(g, e){
+  if (!e) return; const top = e >> 4 === 2, y = top ? 1 : .02, h = top ? .06 : .035, w = top ? .05 : .055, o = top ? .485 : .465;
+  DIRS.forEach(([dx, dz], d) => { if (!(e & 1 << d)) return; const m = new THREE.Mesh(dx ? cbox(w, h, 1) : cbox(1, h, w), LOCK_GOLD); m.position.set(dx*o, y, dz*o); m.raycast = () => {}; m.userData.lockEdge = true; g.add(m); });
+}
 function syncVisuals(){
   if (S.gridDirty) layout();
   for (let i=0;i<NX*NY;i++){
-    const c = S.grid[i];
-    const k = c ? vkey(c) : '';
+    const c = S.grid[i], le = c ? lockEdges(c) : 0;
+    const k = c ? vkey(c) + (le ? '#' + le : '') : '';
     if (k === cellKeys[i]) continue;
     if (cellGroups[i]){ cellRoot.remove(cellGroups[i]); cellGroups[i] = null; }
     if (c && c.look === 'fountain' && c.lit && cellKeys[i] === 'L' + false + 'fountain' && S.mode === 'adventure') sfx.splash();   // a fountain springs up
-    if (c){ const g = buildMesh(c, false); g.position.copy(cellPos(c.x, c.y)); g.userData.idx = i; g.traverse(o => o.userData.idx = i); cellRoot.add(g); cellGroups[i] = g;
+    if (c){ const g = buildMesh(c, false); lockFrame(g, le); g.position.copy(cellPos(c.x, c.y)); g.userData.idx = i; g.traverse(o => o.userData.idx = i); cellRoot.add(g); cellGroups[i] = g;
       if (c.justPlaced && !reduceMotion){ c.justPlaced = false; g.scale.setScalar(.4); fx.push({g, t:0, kind:'pop'}); } }
     cellKeys[i] = k;
   }
@@ -3170,7 +3186,7 @@ function blocksWay(x, y){
   return !ROOMS.some(r => x > r.box.x0 && x < r.box.x1 && y > r.box.y0 && y < r.box.y1);
 }
 function breakCell(c){
-  if (c.locked){ sfx.nope(); if (performance.now() - (A.lockedSaidAt || 0) > 4000){ A.lockedSaidAt = performance.now(); showToast('That piece belongs to the room. It stays put!'); } return; }   // (with the sound off, the nope needs words)
+  if (c.locked){ sfx.nope(); if (performance.now() - (A.lockedSaidAt || 0) > 4000){ A.lockedSaidAt = performance.now(); showToast(lockKind(c) ? 'That piece has a gold edge: it belongs to the room. It stays put!' : 'That piece belongs to the room. It stays put!'); } return; }   // (with the sound off, the nope needs words)
   if (coopLock(c)) return;
   setCell(c.x, c.y, null); sfx.brk(c.t); syncVisuals(); updatePreview(); saveBuildSoon(); plogEvent('break');
 }
@@ -3335,7 +3351,7 @@ const WHY = {
 function explain(c){
   if (!c){ showCard('Grass', 'Just grass. Build something on it!'); return; }
   sfx.click();
-  showCard('What is this?', (WHY[c.t] || (() => ''))(c));
+  showCard('What is this?', (WHY[c.t] || (() => ''))(c) + (!c.locked ? '' : lockKind(c) ? '<br><b>Gold edge: it is fixed.</b> The room put it here. You can\'t move it.' : /^(lever|button|plate)$/.test(c.t) ? '<br><b>It is fixed.</b> Use it, but you can\'t move it.' : '<br><b>It is fixed.</b> The room put it here. You can\'t move it.'));
 }
 
 /* hover preview (mouse only) */
@@ -6824,10 +6840,10 @@ const SHIP_ROOMS = [
   { id:32, ship:2, short:'the LANDING LEGS', part:'legs', name:'The Landing Legs', box:{x0:43, x1:55, y0:12, y1:20}, flip:true, color:0x4fa3ff,
     check:'table', give:['dust','stone','torch'],
     want:'the clamps have to fold the legs',
-    inputs:[[1,1],[9,1]], out:[[5,0]], fn:(a, b) => !(a || b), outHead:'<th>legs up</th>',
+    inputs:[[9,1],[1,1]], out:[[5,0]], fn:(a, b) => !(a || b), outHead:'<th>legs up</th>',   // clamp A, clamp B: A on the left as you walk in (drawn upside down: x = 9 is on your left), carved in the wall behind each
     fixed:[K('lever',1,1,{on:true}), K('lever',9,1,{on:true}), K('lamp',5,0)],
     sol:[K('stone',5,2), K('torch',5,1,{attach:2}), D(4,2),D(6,2), D(1,2),D(2,2),D(3,2), D(7,2),D(8,2),D(9,2)],   // (the hint shows ONE piece at a time, in this order: the shared block first)
-    naive:[[D(1,2),D(2,2),D(3,2),D(4,2), K('stone',5,2), K('torch',5,1,{attach:2})],   // only clamp A wired
+    naive:[[D(1,2),D(2,2),D(3,2),D(4,2), K('stone',5,2), K('torch',5,1,{attach:2})],   // only one clamp wired
       [D(2,1),D(3,1), K('stone',4,1), K('torch',4,0,{attach:2}), D(8,1),D(7,1), K('stone',6,1), K('torch',6,0,{attach:2})]],   // a grumpy torch EACH: either clamp off lifts the legs
     goal:'The legs may only fold up when BOTH clamps are OFF. If either clamp is ON, the legs must stay down. Try every mix of clamps!',
     hello:'Two clamps hold these giant legs to the floor. LANDING legs? Temples don\'t land. Do they?',
@@ -6849,9 +6865,11 @@ const SHIP_ROOMS = [
   { id:34, ship:4, short:'the FUEL VALVES', part:'fuel', name:'The Fuel Valves', box:{x0:55, x1:67, y0:12, y1:20}, flip:true, color:0x6dff5a,
     check:'seq', give:['dust','repeater'], ban:['rblock','lever','button','plate','torch'],
     want:'the button has to open the valves',
-    inputs:[[5,4]], out:[[0,0],[10,0],[5,0]],   // valve 1, valve 2, valve 3: the nearest one has to open LAST
+    // valve 1, valve 2, valve 3: 1, 2, 3 from the LEFT as you walk in (Tom, 11 Oct: "why arent they just 1,2,3 left to right"). The room
+    // is drawn upside down (flip), so the plan's x = 10 is on your left; the numbers are carved in the wall above each one (shipDecor).
+    inputs:[[5,4]], out:[[10,0],[5,0],[0,0]],
     fixed:[K('button',5,4), K('lamp',0,0), K('lamp',10,0), K('lamp',5,0)],
-    sol:[K('repeater',5,3,{dir:0, delay:4}), K('repeater',7,4,{dir:1, delay:2}), D(5,2), D(5,1), ...row(4,4,0), ...col(0,3,1), D(6,4), ...row(4,8,10), ...col(10,3,1)],
+    sol:[K('repeater',5,3,{dir:0, delay:2}), K('repeater',4,4,{dir:3, delay:4}), D(5,2), D(5,1), ...row(4,3,0), ...col(0,3,1), D(6,4), ...row(4,7,10), ...col(10,3,1)],
     naive:[[...row(4,4,0), ...col(0,3,1), ...row(4,6,10), ...col(10,3,1), ...col(5,3,1)]],   // dust is instant: all three at once
     goal:'One press of the button must open the valves in order: 1, then 2, then 3. Not all at once!',
     hello:'Green crystal fuel! Three valves, numbered 1, 2, 3. Fuel? For a TEMPLE?',
@@ -12432,6 +12450,25 @@ function shipObjective(){
   return ROOMS.every(q => A.crystals.has(q.id)) ? HEART.levers[0] : null;
 }
 const shipBack = (r, x, h, out) => { const c = cellPos(r.X(x), r.Y(0)); return new THREE.Vector3(c.x, c.y + h, c.z + r.back*(.5 - (out || 0))); };   // a spot on a room's back wall
+// numbers and letters carved INTO a wall block, not floating labels (Tom, 11 Oct: "numbers should be in blocks on the wall next to where
+// possible, IN the block not a separate label, or on the floor next to plates etc when wall isnt possible"). Each is a block face in the
+// wall's own texture with the mark cut into it, laid flush on the wall; a room's marks share one texture and one mesh (one draw call).
+// spots: [{text, at (the middle of the block face), dir (+1/-1: which way along z the face looks)}]
+function carvedMarks(parent, bg, ink, spots){
+  const S0 = 128, cv = document.createElement('canvas'); cv.width = S0*spots.length; cv.height = S0; const x = cv.getContext('2d');
+  x.imageSmoothingEnabled = false; x.font = '900 96px "Atkinson Hyperlegible", Arial, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  spots.forEach((s, i) => { const ox = i*S0 + S0/2; x.drawImage(bg, i*S0, 0, S0, S0);
+    x.fillStyle = 'rgba(255,248,210,.85)'; x.fillText(s.text, ox + 5, S0/2 + 11);   // the lit lower lip of the cut
+    x.fillStyle = 'rgba(40,24,0,.55)'; x.fillText(s.text, ox - 2, S0/2 + 4);         // its shadowed upper edge
+    x.fillStyle = ink; x.fillText(s.text, ox + 1, S0/2 + 7); });
+  const tex = new THREE.CanvasTexture(cv); tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false;
+  const mat = new THREE.MeshLambertMaterial({map:tex}), grp = new THREE.Group(); parent.add(grp);
+  spots.forEach((s, i) => { const geo = new THREE.PlaneGeometry(1, 1), uv = geo.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setX(k, (i + uv.getX(k))/spots.length);
+    const m = new THREE.Mesh(geo, mat); m.position.copy(s.at); if (s.dir < 0) m.rotation.y = Math.PI; m.userData.carved = s.text; grp.add(m); });
+  grp.userData.carved = spots.map(s => ({text:s.text, x:s.at.x, y:s.at.y, z:s.at.z, dir:s.dir}));
+  mergeStatic(grp); return grp; }
+// a mark carved in the back wall above (and behind) world column x of a machine room, in the block j up from the floor
+const shipCarveSpot = (r, x, text, j) => { const c = cellPos(x, r.Y(0)); return {text, at:new THREE.Vector3(c.x, c.y + j + .5, c.z + r.back*.494), dir:-r.back}; };
 function shipDecor(){
   const S2 = A.ship = {peds:[], parts:{}, beams:[], fire:[]}, g = new THREE.Group(); decorRoot.add(g); S2.root = g;
   const box = (w, h, d, m, x, y, z, parent) => { const q = new THREE.Mesh(cbox(w, h, d), m); q.position.set(x, y, z); q.raycast = () => {}; (parent || g).add(q); return q; };
@@ -12482,9 +12519,12 @@ function shipDecor(){
       box(w, .35, d, M.stone, s*w/2, .17, 0, pv); box(.2, .4, d, M.gold, s*(w - .1), .2, 0, pv);
       halves.push({pv, s}); });
     S2.parts.window = {halves, k:0}; }
-  { const r = R('legs'); r.inputs.forEach(([x, y], i) => { const c = cellPos(x, y), t = textSprite('CLAMP ' + 'AB'[i], {w:150, fs:28, bg:'#efe2b8', ink:'#1a3a6a', scale:.6, depth:true}); t.position.set(c.x, c.y + 1.5, c.z); g.add(t); }); }
-  // FUEL: the numbers on the valves, and an empty pipe along the floor all the way to the Skull
-  { const r = R('fuel'); r.out.forEach(([x, y], i) => { const c = cellPos(x, y), t = textSprite(String(i + 1), {w:70, fs:48, bg:'#efe2b8', ink:'#1a5a10', scale:.7, depth:true}); t.position.set(c.x, c.y + 1.9, c.z); g.add(t); });
+  // the clamps' letters, A and B, carved in the back wall behind each clamp lever (A is the one on the left as you walk in)
+  { const r = R('legs'); S2.parts.clampMarks = carvedMarks(g, CV.gold, '#1a3a6a', r.inputs.map(([x], i) => shipCarveSpot(r, x, 'AB'[i], 1))); }
+  // FUEL: the valves' numbers carved in the wall above each valve (1, 2, 3 from the left as you walk in: see the room's out), two
+  // blocks up, so the valve's lightning bolt (it floats just over the valve) never covers its number; and an empty pipe along the
+  // floor all the way to the Skull
+  { const r = R('fuel'); S2.parts.fuelMarks = carvedMarks(g, CV.gold, '#1f5a12', r.out.map(([x], i) => shipCarveSpot(r, x, String(i + 1), 2)));
     const path = [], push = (x, y) => path.push([x, y]), [dx, dy] = r.entry;
     for (let y = dy; y >= SHIP_DOOR[1]; y--) push(dx, y);
     for (let x = dx - 1; x >= SHIP_DOOR[0]; x--) push(x, SHIP_DOOR[1]);
@@ -19114,6 +19154,16 @@ window.__game = {
   clearProgress(){ progress = {done:{}}; saveProgress(); refreshHotbar(); }
 };
 window.__game.whyMissing = () => { const out = new Set(); ROOMS.forEach(r => { const b = r.box; for (let x = b.x0; x <= b.x1; x++) for (let y = b.y0; y <= b.y1; y++){ const c = at(x, y); if (c && !WHY[c.t]) out.add(c.t); } }); return [...out]; };   // (test-recover.js: no empty What? cards)
+// test-marks.js: the gold edges on fixed parts, the What? card, and the numbers carved in the machine rooms' walls
+window.__game.marks = {
+  edges(x, y){ const g = inb(x, y) && cellGroups[y*NX + x]; if (!g) return null; let n = 0; g.traverse(o => { if (o.userData.lockEdge) n++; }); return n; },
+  off(v){ LOCK_OFF = !!v; cellKeys.fill('#'); syncVisuals(); }, locked(x, y){ const c = at(x, y); return !!(c && c.locked); },
+  explain(x, y){ explain(at(x, y)); return $('#whyHead').textContent + ': ' + $('#whyText').innerHTML; },
+  carved(part){ const m = A.ship && A.ship.parts[part === 'legs' ? 'clampMarks' : 'fuelMarks']; return m ? {list:m.userData.carved, meshes:m.children.length, inShip:!!m.parent && m.parent === A.ship.root} : null; },
+  sprites(){ const out = []; if (A.ship) A.ship.root.traverse(o => { if (o.isSprite) out.push([o.position.x, o.position.y, o.position.z]); }); return out; },
+  screenX(x, y, z){ camera.updateMatrixWorld(); const v = new THREE.Vector3(x, y, z).project(camera); return {x:v.x, y:v.y, z:v.z}; },
+  worldXZ(cx, cy){ const c = cellPos(cx, cy); return [c.x, c.y, c.z]; }
+};
 window.__game.aimPoint = () => aimPoint().map(Math.round);   // (test-recover.js: the aiming square follows an unlocked mouse)
 window.__game.ladderTops = () => ladderTops().map(({r, side, out}) => ({id:r.id, entry:r.entry, out, side:side.map(([x, y]) => S.walls[y*NX + x]), vines:[-1, 0, 1].map(o => { const [ex, ey] = r.entry, x = ex + out[0] + (out[0] ? 0 : o), y = ey + out[1] + (out[1] ? 0 : o); return S.ladder[y*NX + x]; }), sign:decorRoot.children.some(o => o.userData.ladderTop === r.id)}));   // (test-recover.js: rooms 9 and 21's drop)
 window.__game.lookOf = (x, y) => { const c = at(x, y); if (!c) return null; const m = buildMesh(c); let wisp = false, charred = false; m.traverse(o => { if (o.userData.burntWisp) wisp = true; if (o.material === M.charred) charred = true; }); return {t:c.t, burnt:c.burnt || 0, wisp, charred, smokeGreen:M.glowSmoke.map === M.glowGreen.map}; };   // (test-recover.js: a burnt-out torch looks burnt out)
