@@ -524,6 +524,15 @@ body.dlgOn #hud > #toast{bottom:auto;top:44%;}   /* a toast never lands on top o
 #crystals{ color:var(--sb-ink); }
 /* buttons in the HUD: wood (top row), grass green (a card's Got it!) */
 #topBtns .btn{ --btn:#8a5a2b; --btn-hi:#c58b4a; --btn-lo:#4a2a10; } #topBtns .btn:hover{ background:#9c6a36; }
+/* screen clutter (Tom, 11 Oct): the folded goal is ONE line: the title, then (in a room) the start of the goal beside it, then "more" (tap for
+   all of it). The "ROOM 10 OF 28" line over the title is hidden by script while it's folded (an inline style, so the Apple TV hides it too) */
+#goalBox.brief:not(.open) .txt{display:flex;align-items:baseline;gap:8px;}
+body.dlgOn #hintStrip, #hud:has(#why:not([hidden])) #hintStrip{display:none;}   /* (a hint shows in one place: the script also hides it inline, for the Apple TV) */
+@media (min-width:900px){ #goalBox.brief.inRoom:not(.open){max-width:600px;} }   /* (on a wide screen the one line can say a bit more) */
+#goalBox.brief:not(.open) #lessonName{flex:0 0 auto;white-space:nowrap;}
+body:not(.dlgOn) #goalBox.brief.inRoom:not(.open) #goalText{display:block;flex:1 1 auto;min-width:0;margin-top:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px;line-height:1.3;}
+body:not(.dlgOn) #goalBox.brief.inRoom:not(.open) #goalText.more::after, body:not(.dlgOn) #goalBox.brief.inRoom:not(.open) #lessonTitle::after{content:none;}
+body:not(.dlgOn) #goalBox.brief.inRoom:not(.open) .txt::after{content:'more \25BE';flex:0 0 auto;align-self:center;padding:0 6px;font-size:13px;font-weight:700;color:#fff;background:#7a4a20;box-shadow:0 0 0 2px #2b1a0c;white-space:nowrap;}
 #why .btn, #mapCard .btn, #itemCard .btn{ --btn:#4f8a2a; --btn-hi:#8cc455; --btn-lo:#2c5212; } #why .btn:hover, #mapCard .btn:hover{ background:#5c9a32; }
 #why, #mapCard{ box-sizing:border-box; }   /* (its width is the whole box: a phone-wide card used to poke past both edges) */
 /* the dialogue box's "next": a little pixel arrow that bounces (it was a red ▶ tap) */
@@ -560,6 +569,7 @@ body:has(#touchPad:not([hidden])) #itemCard{ bottom:calc(252px + env(safe-area-i
       </div>
     </div>
     <div id="topBtns">
+      <button class="btn icon" id="btnMore" aria-label="Show the buttons" aria-expanded="false" title="Show the buttons (Esc)"><svg viewBox="0 0 24 24" fill="#fff"><rect x="3" y="10" width="4" height="4"/><rect x="10" y="10" width="4" height="4"/><rect x="17" y="10" width="4" height="4"/></svg><span class="lbl">More</span></button>
       <button class="btn icon" id="btnHint" aria-label="Hint" title="Hint"><svg viewBox="0 0 24 24" fill="#fff"><path d="M12 2a7 7 0 0 0-4 12.7V18h8v-3.3A7 7 0 0 0 12 2z"/><rect x="8" y="19" width="8" height="3"/></svg><span class="lbl">Hint</span></button>
       <button class="btn icon" id="btnAsk" aria-label="What does this do?" title="? tool: tap a part to see what it does"><span style="font-size:26px;font-weight:700;line-height:1">?</span><span class="lbl">What?</span></button>
       <button class="btn icon" id="btnSnail" aria-label="Slow motion" title="Slow-mo: torches, repeaters and clocks go slowly, so you can watch them"><svg viewBox="0 0 24 24" fill="#fff"><circle cx="10" cy="12" r="6" fill="none" stroke="#fff" stroke-width="2.5"/><path d="M10 12m-2 0a2 2 0 1 0 4 0" fill="none" stroke="#fff" stroke-width="2"/><path d="M2 19h17c2 0 3-1.5 3-3V9" stroke="#fff" stroke-width="2.5" fill="none"/><path d="M20 9l-1-4M22 9l1-4" stroke="#fff" stroke-width="2"/></svg><span class="lbl">Slow-mo</span></button>
@@ -767,7 +777,7 @@ const LESSONS = [
    pre:(()=>{const p=[];for(let x=2;x<=13;x++)p.push(D(x,3));p.push(D(13,4));for(let x=13;x>=8;x--)p.push(D(x,5));return p;})(),
    ghosts:[{t:'repeater',x:8,y:3,dir:1,delay:1}],
    stuck:'The signal ran out! Dust starts at 15 power and loses 1 every block, so this wire is too long. See how the dust gets darker? A <b>Repeater</b> (item 8) gives the signal a fresh 15. Break one dust in the first half of the wire and put a Repeater there. It points the way you are looking, so look along the wire toward the lamp.', goal:'The wire is built. Flip the lever. Why won\'t the lamp light?', tools:['dust'],
-   intro:'This lamp is really far away. Flip the lever. Does it light up?', hint:'Tap the dust with the ? button. Watch the power number as the wire goes on.',
+   intro:'This lamp is really far away. Flip the lever. Does it light up?', hint:'Press More, then the ? button. Now tap the dust. Watch the power number as the wire goes on.',
    incomplete:'Too weak! Put a Repeater where the pale ghost shape is.',
    guess:[true], why:'Dust loses 1 power every block. The repeater fills it back up to 15!',
    fn:a=>a},
@@ -818,7 +828,7 @@ const LESSONS = [
      D(13,12),D(12,12),{t:'stone',x:11,y:12},{t:'torch',x:11,y:11,attach:2},D(10,11),D(9,11),D(8,11),
      {t:'stone',x:7,y:11},{t:'torch',x:7,y:10,attach:2},D(7,9),D(7,8),
      {t:'stone',x:7,y:7},{t:'torch',x:8,y:7,attach:3},D(9,7),D(10,7)],
-   stuck:'Hard one! The top part should be ON if A or B is on. The bottom part should be ON only if both are on. Then use a torch so the light is ON when the top is on but the bottom is off. Try the hint button.', goal:'Either switch flips the light.', tools:['dust','stone','torch','repeater'],
+   stuck:'Hard one! The top part should be ON if A or B is on. The bottom part should be ON only if both are on. Then use a torch so the light is ON when the top is on but the bottom is off. Try a hint: press More, then the lightbulb.', goal:'Either switch flips the light.', tools:['dust','stone','torch','repeater'],
    intro:'Stair lights! One switch at the bottom, one at the top. Either switch should flip the light.', hint:'Light ON when exactly ONE switch is ON. Try: (A OR B) but NOT (A AND B).',
    guess:[true,true], why:'The top part says "at least one is ON". The bottom part says "both are ON". The last torch turns OFF when both are on, so the light goes out.',
    fn:(a,b)=>a!==b},
@@ -2339,7 +2349,7 @@ function checkLesson(){
   } else if (!L.bad.has(r)){
     L.rows[r] = false; L.bad.add(r); sfx.nope(); renderCard();
     if (def.stuck && !L.stuckShown){ L.stuckShown = true; showCard('Not yet!', def.stuck); }
-    else showToast('Not yet! Press the lightbulb for help.');
+    else { topBtnsShow(); showToast('Not yet! Press the lightbulb for help.'); }   // (the top buttons come out, so the lightbulb is there to press)
   }
 }
 $('#whyOk').addEventListener('click', () => { closeCard(); });
@@ -2372,7 +2382,7 @@ function showCard(head, html){
   if (quiz && locked) try { document.exitPointerLock(); } catch (_) {}   // let the mouse reach the answers
   w.classList.toggle('gshow', html.includes('class="gs"')); if (html.includes('class="gs"')) gsRun();   // the Gate Show plays its rows before Got it! appears
 }
-function closeCard(){ if (!cardArmed() || $('#why').hidden || (GS.playing && $('#why .gs'))) return false; const head = $('#whyHead').textContent, wasShow = !!$('#why .gs'); $('#why').hidden = true; sfx.click(); tapQuiet();   // (a Gate Show still playing holds only its own card)
+function closeCard(){ if (!cardArmed() || $('#why').hidden || (GS.playing && $('#why .gs'))) return false; const head = $('#whyHead').textContent, wasShow = !!$('#why .gs'); $('#why').hidden = true; sfx.click(); tapQuiet(); if (/^Hint/.test(head)) topBtnsShow();   /* (a hint card closed: the lightbulb comes back out for a moment, for "press the lightbulb again") */   // (a Gate Show still playing holds only its own card)
   if (wasShow && GS.then){ const fn = GS.then; GS.then = null; setTimeout(fn, 300); }   // the Gate Show's room says hello once it's been watched
   if (asking && (head === 'What is this?' || head === 'Grass')) toggleAsk(false);   // the What? tool goes off once its card is read (re-run 2's c12: "? What?" stayed lit after Got it!)
   return true; }
@@ -2700,7 +2710,7 @@ function renderCard(){
   card.innerHTML = h + '</table>';
 }
 let toastT = 0;
-function showToast(msg, warn){ feed('toast', msg); const t = $('#toast'); t.textContent = msg; t.classList.toggle('warn', !!warn); t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(hideToast, Math.max(3200, 1400 + String(msg).length*75)); }
+function showToast(msg, warn){ feed('toast', msg); itemCardHide(); const t = $('#toast');   /* (one message at a time: a new toast puts the item card away; a novice's long Redstone Dust card hid "The lamp is ON!") */ t.textContent = msg; t.classList.toggle('warn', !!warn); t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(hideToast, Math.max(3200, 1400 + String(msg).length*75)); }
 function hideToast(){ $('#toast').classList.remove('show'); }
 
 let sel = 1;
@@ -3461,7 +3471,7 @@ window.addEventListener('keydown', e => {
   if (k >= '0' && k <= '9' && hud){ const v = pageSlots(); const n = k === '0' ? 9 : +k - 1; if (v[n] !== undefined) select(v[n]); }
   else if ((k === 'v' || k === 'f5') && hud){ e.preventDefault(); setView(!viewFP); }
   else if (k === '/' || k === '?'){ if (hud) toggleAsk(); }
-  else if (k === 'escape'){ if (!$('#move').hidden) $('#move').hidden = true; else if (!$('#book').hidden) closeBook(); else if (!$('#cele').hidden) showMenu(); }
+  else if (k === 'escape'){ if (!$('#move').hidden) $('#move').hidden = true; else if (!$('#book').hidden) closeBook(); else if (!$('#cele').hidden) showMenu(); else if (hud && $('#pane').hidden && $('#saves').hidden) topBtnsToggle(); }   // Esc while playing: show / hide the top buttons
 });
 window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
@@ -3499,7 +3509,7 @@ function padIdent(gp){
 }
 function padPrompts(){
   document.body.classList.toggle('pad', padMode);
-  const b = {btnHint:PB.hint, btnAsk:PB.right, btnSnail:PB.down, btnView:PB.up, btnReset:PB.left, btnMenu:PB.start};
+  const b = {btnMore:PB.sel, btnHint:PB.hint, btnAsk:PB.right, btnSnail:PB.down, btnView:PB.up, btnReset:PB.left, btnMenu:PB.start};
   for (const k in b){ const el = $('#' + k); if (el) el.dataset.pad = PN(b[k]); }
   const m = $('#dlgMore'); if (m){ m.innerHTML = (padMode ? '<span>' + PN(padOK()) + '</span>' : '') + dlgArrow(); m.setAttribute('aria-label', 'next'); }
   const cs = $('#cineSkip'); if (cs) cs.innerHTML = 'Skip &#9654;&#9654;' + (padMode ? ' (' + PN(PB.start) + ')' : '');
@@ -3548,10 +3558,12 @@ function padRun(dt, now, press, lx, ly, rx, ry){
     else if (now[PB.brk] && (padBrkT += dt) >= 250){ padBrkT = 0; act(cx, cy, 'break'); }   // hold to keep breaking, like Minecraft
     if (press(PB.prev)) cycle(-1);
     if (press(PB.next)) cycle(1);
+    if (press(PB.hint) || press(PB.right) || press(PB.down) || press(PB.up) || press(PB.left)) topBtnsShow(2500);   // (the row shows for a moment: the badges say which button was which)
     if (press(PB.hint)) $('#btnHint').click();
     if (press(PB.right)) toggleAsk();
     if (press(PB.down)) $('#btnSnail').click();
-    if (press(PB.up) || press(PB.sel)){ sfx.click(); setView(!viewFP); }
+    if (press(PB.up)){ sfx.click(); setView(!viewFP); }
+    if (press(PB.sel)) topBtnsToggle();   // View / Share / Create / -: show the top buttons (the d-pad's up switches the view)
     if (press(PB.left)) $('#btnReset').click();
     if (press(PB.start)){ showMenu(); return; }
   }
@@ -3618,7 +3630,7 @@ function padHelp(){
   const F = ['nintendo', 'xbox', 'ps'], k = i => F.map(f => `<td><b>${PADN[f][i]}</b></td>`).join(''), all = t => `<td colspan="3">${t}</td>`;
   const rows = [['Walk', all('left stick')], ['Look', all('right stick')], ['Jump', k(PB.jump)], ['Sneak (hold)', k(PB.sneak)],
     ['Break (hold to keep going)', k(PB.brk)], ['Place / use', k(PB.use)], ['Change item', F.map(f => `<td><b>${PADN[f][4]} / ${PADN[f][5]}</b></td>`).join('')],
-    ['Hint', k(PB.hint)], ['? tool', all('d-pad <b>→</b>')], ['Slow-mo', all('d-pad <b>↓</b>')],
+    ['Show the buttons (More)', k(PB.sel)], ['Hint', k(PB.hint)], ['? tool', all('d-pad <b>→</b>')], ['Slow-mo', all('d-pad <b>↓</b>')],
     ['Look from above', all('d-pad <b>↑</b> (like F5)')], ['Start the room again', all('d-pad <b>←</b> twice')], ['Menu', k(PB.start)],
     ['Menus: choose / back', F.map(f => `<td><b>${PADN[f][f === 'nintendo' ? 1 : 0]} / ${PADN[f][f === 'nintendo' ? 0 : 1]}</b></td>`).join('')]];
   return `<h3>Playing with a controller</h3><p>The buttons are the same as Minecraft on a games console.</p>
@@ -3747,7 +3759,7 @@ $('#celeStay').addEventListener('click', () => { $('#cele').hidden = true; });
 $('#btnView').addEventListener('click', () => { sfx.click(); setView(!viewFP); });
 $('#btnAsk').addEventListener('click', () => toggleAsk());
 $('#btnSnail').addEventListener('click', () => { S.slow = !S.slow; $('#btnSnail').classList.toggle('on', S.slow); sfx.click(); $('#btnSnail .lbl').textContent = S.slow ? 'Slow-mo ON' : 'Slow-mo';
-  showToast(S.slow ? 'Slow-mo is ON. Torches, repeaters and blinking lamps now go slowly, so you can watch them work. Press Slow-mo again to go back to normal.' : 'Slow-mo is OFF. Back to normal speed.'); cellKeys.fill('#'); syncVisuals(); });
+  showToast(S.slow ? 'Slow-mo is ON. Torches, repeaters and blinking lamps now go slowly, so you can watch them work. ' + (padMode ? 'Press ' + PN(PB.down) + ' again' : 'Press More, then Slow-mo again,') + ' to go back to normal.' : 'Slow-mo is OFF. Back to normal speed.'); cellKeys.fill('#'); syncVisuals(); });
 $('#celeBook').addEventListener('click', () => openBook(L.def.id));
 $('#btnMenu').addEventListener('click', showMenu);
 $('#btnHint').addEventListener('click', () => { $('#btnHint').classList.remove('glow');
@@ -3755,8 +3767,8 @@ $('#btnHint').addEventListener('click', () => { $('#btnHint').classList.remove('
   if (!L || !L.def.hint) return;
   L.hintLevel = Math.min(L.ghosts.length ? 3 : 1, L.hintLevel + 1);
   sfx.click(); syncGhosts(); saveBuildSoon();
-  if (L.hintLevel === 1) showCard('Hint', L.def.hint + (L.ghosts.length ? '<br><small>Press again to see where the key parts go.</small>' : ''));
-  else if (L.hintLevel === 2) showCard('Hint 2', 'The pale ghost shapes show the key parts. Press again for the whole plan.');
+  if (L.hintLevel === 1) showCard('Hint', L.def.hint + (L.ghosts.length ? '<br><small>' + hintAgainWords() + ' to see where the key parts go.</small>' : ''));
+  else if (L.hintLevel === 2) showCard('Hint 2', 'The pale ghost shapes show the key parts. ' + hintAgainWords() + ' for the whole plan.');
   else showCard('Hint 3', 'Here is the whole plan. Can you see why it works?');
 });
 $('#btnReset').addEventListener('click', () => {
@@ -4123,6 +4135,49 @@ function goalBriefFrame(dt){
     const a = document.createElement('span'), b = document.createElement('span'); a.textContent = head; b.className = 'gRest'; b.textContent = rest;
     gt.textContent = ''; gt.append(a, b); gt.classList.add('more'); };
   new MutationObserver(fold).observe(gt, {childList:true, characterData:true, subtree:true}); fold(); }
+/* screen clutter (Tom, 11 Oct: "The top left box, and the different menu buttons, still block WAY too much of the screen. Maybe the menu buttons
+   disappear until summoned?" and "Look how messy and overwhelming this is"). Three things:
+   1. The top buttons hide until called up: one small "More" button shows them (or Esc, or the controller's View / Share / Create / - button).
+      They tuck away again after one is used, or after a few seconds. A controller button for one of them (the hint's, the ? tool's...) shows
+      the row for a moment too, so its badge is seen. A glowing button (the tutorial pointing at Hint, the "want a clue?" offer) keeps the row out.
+   2. The folded goal is one line: no "ROOM 10 OF 28" line over the title (it comes back when the goal is opened or changes).
+   3. A hint shows in one place at a time: the small hint strip steps aside while a card or the talk box is up.
+   All three are an inline display:none, which the Apple TV overlay's snapshot leaves out too (Runtime/dom-shim.js), so the TV matches. */
+const TOPB = {open:false, timer:0, mouse:false, glow:false};
+const topBtnsRow = () => [...$('#topBtns').children].filter(b => b.classList.contains('btn') && b.id !== 'btnMore');
+function topBtnsApply(){
+  const open = TOPB.open && !$('#hud').hidden, more = $('#btnMore');
+  topBtnsRow().forEach(b => { const v = open ? '' : 'none'; if (b.style.display !== v) b.style.display = v; });
+  if (!more) return;
+  if (more.classList.contains('on') !== open) more.classList.toggle('on', open); more.setAttribute('aria-expanded', open ? 'true' : 'false');
+  more.setAttribute('aria-label', open ? 'Hide the buttons' : 'Show the buttons'); more.title = (open ? 'Hide the buttons' : 'Show the buttons') + ' (Esc)';
+  const l = more.querySelector('.lbl'); if (l && l.textContent !== (open ? 'Hide' : 'More')) l.textContent = open ? 'Hide' : 'More';
+  const svg = more.querySelector('svg'); if (svg && svg.dataset.open !== String(open)) svg.dataset.open = String(open), svg.innerHTML = open ? '<path d="M5 5l14 14M19 5L5 19" stroke="#fff" stroke-width="3.2"/>' : '<rect x="3" y="10" width="4" height="4"/><rect x="10" y="10" width="4" height="4"/><rect x="17" y="10" width="4" height="4"/>';
+}
+// still wanted? (a glowing button, the mouse over the row, the keyboard on one of them, Start again waiting for its second press)
+function topBtnsBusy(){ const tb = $('#topBtns'), f = document.activeElement, r = $('#btnReset');
+  return TOPB.glow || (TOPB.mouse && tb.matches(':hover')) || !!(f && f !== $('#btnMore') && tb.contains(f) && f.matches(':focus-visible')) || !!(r && r.dataset.armed); }
+function topBtnsLater(ms){ clearTimeout(TOPB.timer); TOPB.timer = setTimeout(function tuck(){ if (!TOPB.open) return; if (topBtnsBusy()){ TOPB.timer = setTimeout(tuck, 1500); return; } TOPB.open = false; topBtnsApply(); }, ms); }
+function topBtnsShow(ms){ TOPB.open = true; topBtnsApply(); topBtnsLater(ms || 6000); }
+function topBtnsHide(){ clearTimeout(TOPB.timer); TOPB.open = false; topBtnsApply(); }
+// what a hint card says to get the next hint (the lightbulb is tucked away behind More, but it comes back out when a hint card closes)
+function hintAgainWords(){ return padMode ? 'Press ' + PN(PB.hint) + ' again' : 'Press the lightbulb again'; }
+function topBtnsToggle(){ sfx.click(); if (TOPB.open) topBtnsHide(); else topBtnsShow(); }
+$('#btnMore').addEventListener('click', () => topBtnsToggle());
+// one of them used: the row tucks away a moment later (Hint's card, the view switching... are then the thing to look at)
+$('#topBtns').addEventListener('click', e => { const b = e.target.closest('.btn'); if (b && b.id !== 'btnMore' && TOPB.open) topBtnsLater(1400); });
+$('#topBtns').addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') TOPB.mouse = true; });
+$('#topBtns').addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') TOPB.mouse = false; });   // (the timer then tucks them at its next look)
+$('#topBtns').addEventListener('focusin', () => { if (!TOPB.open && document.activeElement !== $('#btnMore') && document.activeElement.matches(':focus-visible')) topBtnsShow(); });
+new MutationObserver(() => { const g = !!$('#topBtns .btn.glow');
+  if (g !== TOPB.glow){ TOPB.glow = g; if (g) topBtnsShow(); else if (TOPB.open) topBtnsLater(2500); }
+  topBtnsApply(); }).observe($('#topBtns'), {childList:true, subtree:true, attributes:true, attributeFilter:['class']});   // (a button added later, like the gym's Back, tucks away too)
+new MutationObserver(() => { if ($('#hud').hidden) topBtnsHide(); else topBtnsApply(); }).observe($('#hud'), {attributes:true, attributeFilter:['hidden']});   // back from the menu: tucked
+topBtnsApply();
+{ const gb = $('#goalBox'), num = $('#lessonNum'), fit = () => { const v = gb.classList.contains('brief') && !gb.classList.contains('open') ? 'none' : ''; if (num.style.display !== v) num.style.display = v; };
+  new MutationObserver(fit).observe(gb, {attributes:true, attributeFilter:['class']}); fit(); }
+{ const hs = $('#hintStrip'), fit = () => { const v = !$('#why').hidden || !$('#dlg').hidden ? 'none' : ''; if (hs.style.display !== v) hs.style.display = v; };
+  ['#why', '#dlg'].forEach(q => new MutationObserver(fit).observe($(q), {attributes:true, attributeFilter:['hidden']})); fit(); }
 // on narrow portrait screens the crystal counter shares the button row
 { const fit = () => { const cr = $('#crystals'), tb = $('#topBtns'), home = $('#hud'); if (!cr || !tb) return; const narrow = innerWidth <= 600 && innerHeight > innerWidth; if (narrow && cr.parentNode !== tb) tb.insertBefore(cr, tb.firstChild); else if (!narrow && cr.parentNode === tb) home.appendChild(cr); }; fit(); addEventListener('resize', fit); }
 { // hold for 2 seconds: a gentle gate so it's a grown-up thing, not a kid thing
@@ -5442,6 +5497,23 @@ function makePirate(captain, k){
 }
 // a wall sign as a world box for the screen labels to keep off (wallSignRects): its centre, which way it faces, its size
 const signBox = (pos, rot, w, h) => ({x:pos.x, y:pos.y, z:pos.z, nx:Math.sin(rot), nz:Math.cos(rot), w, h});
+// a board on a wall faces open floor: three cells in front you can see across and stand back in, never a pillar or a wall a step or
+// two away (Tom, 11 Oct: "this one is facing a wall with only one square between. Need to check that across the game"). If its spot
+// doesn't, it moves to the nearest one that does: out onto the face of a wall that stands further in, or along the wall (pos changes
+// in place; w: how wide the board is, in cells). test-signs-facing.js checks every sign in every act.
+function signSlide(pos, rot, w){
+  const nx = Math.round(Math.sin(rot)), nz = Math.round(Math.cos(rot)), tx = nz, tz = -nx, low = pos.y - .4, half = Math.max(0, Math.round(((w || 2.4) - 1)/2));
+  const top = (x, y) => inb(x, y) ? floorAt(x, y) + (S.walls[y*NX + x] || 0) : 99;
+  const ok = (px, pz) => { const [fx, fy] = cellAtWorld(px + nx*.6, pz + nz*.6), bx = fx - nx, by = fy - nz;
+    for (let k = 0; k < 3; k++) if (top(fx + nx*k, fy + nz*k) > low) return false;
+    for (let o = -half; o <= half; o++) if (top(bx + tx*o, by + tz*o) <= low) return false;   // (on wall all the way across: not hanging over a doorway)
+    return true; };
+  if (ok(pos.x, pos.z)) return pos;
+  const tries = []; for (let a = -7; a <= 7; a++) for (let k = -1; k <= 3; k++) tries.push([a, k, Math.abs(a) + Math.abs(k)*1.5]);   // (nearest first; k: out from the wall, or back onto it)
+  tries.sort((p, q) => p[2] - q[2]);
+  for (const [a, k] of tries){ const px = pos.x + tx*a + nx*k, pz = pos.z + tz*a + nz*k; if (ok(px, pz)){ pos.x = px; pos.z = pz; return pos; } }
+  return pos;
+}
 // ---- flat boards drawn on one canvas, merged: the room goal signs (on the wall you face as you walk in) and the pier's own boards ----
 function funSigns(g){
   const CW = 256, CH = 200, cv = document.createElement('canvas'); cv.width = 1024; cv.height = 1024; const x2 = cv.getContext('2d'), tex = new THREE.CanvasTexture(cv);
@@ -5466,6 +5538,7 @@ function funSigns(g){
     m.position.set(c.x + fr, floorAt(...r.entry) + 2.5, c.z + fz);
     if (face === 'N'){ m.position.z += .53; m.rotation.y = 0; } else if (face === 'S'){ m.position.z -= .53; m.rotation.y = Math.PI; } else if (face === 'W'){ m.position.x += .53; m.rotation.y = Math.PI/2; } else { m.position.x -= .53; m.rotation.y = -Math.PI/2; }
     m.rotation.z = (whash(r.id, 2, 3) - .5)*.12;   // pinned up a bit wonky
+    signSlide(m.position, m.rotation.y, SW);   // (never facing a pillar or a wall a step away)
     r.signBoxes = [signBox(m.position, m.rotation.y, SW + .1, SH + .1)];   // (labels keep off it: wallSignRects)
     g.add(m); });
 }
@@ -6805,6 +6878,7 @@ function apeSigns(g){
     const m = new THREE.Mesh(geo, mat), fr = wx % 1, fz = wy % 1; m.raycast = () => {};
     m.position.set(c.x + fr, floorAt(...r.entry) + 2.5, c.z + fz);
     if (face === 'N'){ m.position.z += .53; m.rotation.y = 0; } else if (face === 'S'){ m.position.z -= .53; m.rotation.y = Math.PI; } else if (face === 'W'){ m.position.x += .53; m.rotation.y = Math.PI/2; } else { m.position.x -= .53; m.rotation.y = -Math.PI/2; }
+    signSlide(m.position, m.rotation.y, SW);   // (never facing a pillar or a wall a step away)
     r.signBoxes = [signBox(m.position, m.rotation.y, SW, SH)];   // (labels keep off it: wallSignRects)
     g.add(m); });
 }
@@ -9534,7 +9608,7 @@ body.bigText #hintStrip{font-size:17px !important} body.bigText #tut .tTxt{font-
 body.bigText #paneBody{font-size:19px} body.bigText #subtitle{font-size:26px !important}
 @media (max-width:600px){ #topBtns .btn.icon{min-width:44px !important; min-height:44px !important;} }
 @media (max-width:600px) and (orientation:portrait){ #topBtns{gap:4px !important;} #topBtns #crystals{padding:2px 3px !important; font-size:13px !important; min-width:0 !important; gap:2px;} #topBtns #crystals svg{width:16px; height:16px;} }
-@media (max-width:384px) and (orientation:portrait){ #topBtns{flex-wrap:wrap; row-gap:4px;} }
+@media (max-width:600px) and (orientation:portrait){ #topBtns{flex-wrap:wrap; row-gap:4px;} }   /* (a phone held upright: with More, all of them out may need two rows) */
 body.calm *, body.calm *::before, body.calm *::after{animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; scroll-behavior:auto !important}`;
   document.body.appendChild(st); a11yApply(); }
 function a11yHTML(){ const b = (id, on, t) => `<button class="btn${on ? ' red' : ''}" id="${id}" aria-pressed="${on}">${t}: ${on ? 'ON' : 'OFF'}</button>`;
@@ -10133,6 +10207,8 @@ function tbox(w, h, d){ const k = w+'_'+h+'_'+d; if (tboxCache[k]) return tboxCa
   for (let i=0;i<uv.count;i++){ const [su, sv] = f[(i/4)|0]; uv.setXY(i, uv.getX(i)*su, uv.getY(i)*sv); }
   return tboxCache[k] = g; }
 // fold every static mesh under a group into one mesh per material. Anything marked userData.live (it moves or blinks) is left alone.
+// a flat picture with words or a drawing on it (a board, a stele, a blackboard): a plane with its own big (not tiled) canvas picture
+const flatPic = o => o.isMesh && o.geometry && o.geometry.type === 'PlaneGeometry' && o.material && !Array.isArray(o.material) && o.material.map && o.material.map.image && o.material.map.image.getContext && o.material.map.image.width >= 100 && o.material.map.wrapS !== THREE.RepeatWrapping ? 'pic@' + o.material.map.image.width + 'x' + o.material.map.image.height : '';
 function mergeStatic(root){
   if (!root) return;
   root.updateMatrixWorld(true);
@@ -10144,6 +10220,7 @@ function mergeStatic(root){
       if (map && (map.repeat.x !== 1 || map.repeat.y !== 1) && mat.isMeshLambertMaterial && !mat.transparent && map.image){ su = map.repeat.x; sv = map.repeat.y; mat = repMat(map.image); }   // tiled boxes: bake the tiling into the UVs
       let b = buckets.get(mat); if (!b) buckets.set(mat, b = {list:[], nv:0, ni:0});
       b.list.push({g:gm, m:new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld), su, sv}); b.nv += gm.attributes.position.count; b.ni += gm.index ? gm.index.count : gm.attributes.position.count; gone.push(o);
+      if (o.userData.art || flatPic(o)) (root.userData.arts || (root.userData.arts = [])).push({k:o.userData.art || flatPic(o), m:new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld)});   // (where each sign and poster was: __game.ui.worldSigns)
     }
     o.children.forEach(walk); };
   walk(root);
@@ -10302,7 +10379,7 @@ function buildTempleArt(){
     B(.46, .46, .06, wm(0x9a5a22), x + .1, y + .62, z + .78); B(.36, .34, .07, wm(0xe8c070), x + .1, y + .62, z + .79); B(.04, .5, .04, M.lip, x + .1, y + .2, z + .74); }
   // ---- signs (they only appear up close, so they never clutter the view)
   const sign = (text, x, y, z) => { const k = Object.keys(WALL_TEXTS).find(q => WALL_TEXTS[q] === text), b = boardSign('wall:' + k, 1.5, .94, .7); b.position.set(x, y + .1, z + .08); g.add(b); };   // a board nailed to a post (it used to float)
-  { const c = cellPos(2, PLAZA.y0 + 5); B(.12, 1.2, .12, M.wood, c.x, 1.6, c.z); sign('SORRY ABOUT THE LAVA. - The Management', c.x, 2.4, c.z); }
+  { const c = cellPos(4, PLAZA.y0 + 5); B(.12, 1.2, .12, M.wood, c.x, 1.6, c.z); sign('SORRY ABOUT THE LAVA. - The Management', c.x, 2.4, c.z); }   // (x 4, not 2: a jungle tree stood a step in front of it)
   { const c = cellPos(24, PLAZA.y0 + 5); B(.12, 1.2, .12, M.wood, c.x, 1.6, c.z); sign('TOP OF THE TEMPLE: something VERY big. No peeking! - The Management', c.x, 2.4, c.z); }   // the reward at the top, mentioned before it arrives
   { const c = cellPos(16, PLAZA.y0 + 3), arm = new THREE.Group(); B(.7, .26, .7, RCo, c.x, 1.13, c.z); arm.position.set(c.x, 1.26, c.z); arm.rotation.z = 2.1; g.add(arm); B(.15, 1.1, .15, M.wood, 0, .55, 0, arm); B(.3, .3, .3, M.hotOn, 0, 1.15, 0, arm);   // the lever is DOWN
     sign('DO NOT PULL. (Oh. Somebody did.)', c.x, 2.2, c.z); }
@@ -10715,6 +10792,7 @@ function decorRoom(r, d, lo, hi){
   const puz = puzzleCells(r), sides = {};
   roomSides(r).forEach(s => { s.free = s.cells.map(([x, y]) => S.walls[ix(x, y)] > 0 && !door.has(ix(x, y)) && !S.walls[ix(x + s.dir[0], y + s.dir[1])]);   // (not where the room's shape put stone in front of the wall)
     s.inward = s.cells.map(([x, y]) => [x + s.dir[0], y + s.dir[1]]);
+    s.view = s.cells.map(([x, y]) => [1, 2, 3].every(k => { const qx = x + s.dir[0]*k, qy = y + s.dir[1]*k; return inb(qx, qy) && S.elev[ix(qx, qy)] + S.walls[ix(qx, qy)] <= e + 1; }));   // room to stand back and read: three cells clear in front (no pillar or wall a step or two away: Tom, 11 Oct)
     s.lowOk = s.cells.map((c, i) => s.free[i] && [-1, 0, 1].every(o => { const q = s.inward[i + o]; return !q || (!puz.has(ix(q[0], q[1])) && !door.has(ix(q[0], q[1]))); }));
     s.usedLo = s.cells.map(() => false); s.usedHi = s.cells.map(() => false); sides[s.k] = s; });
   const inSide = sideOf(r, r.entry), far = OPP[inSide], order = [LEFT[inSide], OPP[LEFT[inSide]], far, inSide];
@@ -10735,8 +10813,9 @@ function decorRoom(r, d, lo, hi){
     const F = (x, y, z, s) => { const m = new THREE.Object3D(); m.position.set(x, y, z); m.scale.setScalar(s); m.userData.flame = true; g.add(m); flames.push(m); };
     fn(B, A, F); return {lowDepth:+lowD.toFixed(3), depth:+maxD.toFixed(3), y0:+y0.toFixed(2), y1:+y1.toFixed(2)}; };
   // find a run of n cells on a side that a band may use (nearest the middle of the wall)
-  const findRun = (s, n, band) => { const ok = i => s.free[i] && (band === 'full' ? s.lowOk[i] && !s.usedLo[i] && !s.usedHi[i] : band === 'low' ? s.lowOk[i] && !s.usedLo[i] : band === 'sign' ? !s.usedLo[i] : !s.usedHi[i]); let best = null;
-    for (let i = 0; i + n <= s.cells.length; i++){ let good = true; for (let k = i; k < i + n; k++) if (!ok(k)) { good = false; break; } if (!good) continue; const dm = Math.abs(i + n/2 - s.cells.length/2); if (!best || dm < best.dm) best = {i, j:i + n - 1, dm}; }
+  const findRun = (s, n, band, see) => { const ok = i => s.free[i] && (band === 'full' ? s.lowOk[i] && !s.usedLo[i] && !s.usedHi[i] : band === 'low' ? s.lowOk[i] && !s.usedLo[i] : band === 'sign' ? !s.usedLo[i] : !s.usedHi[i]); let best = null;
+    for (let i = 0; i + n <= s.cells.length; i++){ let good = true; for (let k = i; k < i + n; k++) if (!ok(k)) { good = false; break; } if (!good) continue;
+      if (see && !(s.view[(2*i + n - 1) >> 1] && s.view[(2*i + n) >> 1])) continue;   /* (something to read: clear in front of its middle) */ const dm = Math.abs(i + n/2 - s.cells.length/2); if (!best || dm < best.dm) best = {i, j:i + n - 1, dm}; }
     return best; };
   const longest = (s, band, from) => { let best = null, run = 0; for (let i = 0; i <= s.cells.length; i++){ const ok = i < s.cells.length && s.free[i] && (band === 'low' ? s.lowOk[i] && !s.usedLo[i] : band === 'top' ? !s.usedHi[i] : !s.usedHi[i]);
     if (ok) run++; else { if (run >= (from || 1) && (!best || run > best.j - best.i + 1)) best = {i:i - run, j:i - 1}; run = 0; } } return best; };
@@ -10746,14 +10825,14 @@ function decorRoom(r, d, lo, hi){
     if (cand.length >= 2){ const i = Math.min(...cand), j = Math.max(...cand), g = frame(s, i, j, 'outer'), w = Math.min(2.4, j - i + .7), h = w/1.6;
       const info = build(g, (B, A) => { B(w + .16, h + .16, .05, DARK, 0, 2.1 - h/2 - .08, 0); A('sign' + r.id, w, h, 0, 2.1 - h/2, .06); });
       lo.add(g); RD.signs.push({room:r.id, key:'sign' + r.id, side:inSide, outer:true, cells:s.cells.slice(i, j + 1), w, h, cy:e + 2.1, x:g.position.x, z:g.position.z, dir:[-s.dir[0], -s.dir[1]]}); rec('sign', s, i, j, 'low', info); } }
-  else for (const sk of signSides(r, sides, [far, LEFT[inSide], OPP[LEFT[inSide]]])){ const s = sides[sk], sq = signSquare(r.id); let run = sq ? findRun(s, 2, 'sign') : findRun(s, 4, 'sign') || findRun(s, 3, 'sign') || findRun(s, 2, 'sign'); if (!run) continue;
+  else for (const see of [true, false]) if (!RD.signs.some(q => q.room === r.id)) for (const sk of signSides(r, sides, [far, LEFT[inSide], OPP[LEFT[inSide]]])){ const s = sides[sk], sq = signSquare(r.id); let run = sq ? findRun(s, 2, 'sign', see) : findRun(s, 4, 'sign', see) || findRun(s, 3, 'sign', see) || findRun(s, 2, 'sign', see); if (!run) continue;   // (a wall with room to stand back and read it first)
     const g = frame(s, run.i, run.j), w = sq ? 1.85 : Math.min(3, run.j - run.i + .9), h = sq ? 1.85 : w/1.6, cy = sq ? 1.9 : 2.05;
     const info = build(g, (B, A) => { B(w + .16, h + .16, .05, DARK, 0, cy - h/2 - .08, 0); A('sign' + r.id, w, h, 0, cy - h/2, .06); });
     lo.add(g); use(s, run.i, run.j, true, false); rec('sign', s, run.i, run.j, 'low', info);
     RD.signs.push({room:r.id, key:'sign' + r.id, side:sk, cells:s.cells.slice(run.i, run.j + 1), w, h, cy:e + cy, x:g.position.x, z:g.position.z, dir:s.dir}); break; }
   if (ship) return;
   // 2. the Emperor's decree, pinned to the wall right by the way in
-  if (DECREES[r.id]){ const s = sides[inSide], dc = r.entry, run = [...s.cells.keys()].filter(i => s.free[i] && !s.usedLo[i]).sort((a, c) => Math.abs(s.cells[a][0] - dc[0]) + Math.abs(s.cells[a][1] - dc[1]) - Math.abs(s.cells[c][0] - dc[0]) - Math.abs(s.cells[c][1] - dc[1]))[0];
+  if (DECREES[r.id]){ const s = sides[inSide], dc = r.entry, run = [...s.cells.keys()].filter(i => s.free[i] && !s.usedLo[i] && s.view[i]).sort((a, c) => Math.abs(s.cells[a][0] - dc[0]) + Math.abs(s.cells[a][1] - dc[1]) - Math.abs(s.cells[c][0] - dc[0]) - Math.abs(s.cells[c][1] - dc[1]))[0];
     if (run !== undefined){ const g = frame(s, run, run), info = build(g, (B, A) => { A('decree' + r.id, .95, .74, 0, 1.45, .01); B(.08, .08, .04, RED, 0, 2.12, .01); }); lo.add(g); use(s, run, run, true, false); rec('decree', s, run, run, 'low', info); } }
   // 3. the props: what this room was for
   (d.props || []).forEach(([kind, arg], n) => { const P = DECOR_PROPS[kind]; if (!P) return;
@@ -10761,7 +10840,7 @@ function decorRoom(r, d, lo, hi){
     if (P.band === 'top' && ceil) return;
     const sk = [...order.slice(n % 4), ...order.slice(0, n % 4)];
     for (const k of sk){ const s = sides[k], band = P.full ? 'full' : P.band === 'top' ? 'top' : P.band;   // (full: from the floor to the top of the wall, like the tree roots)
-      const run = P.w === 'flex' ? longest(s, band, P.min) : findRun(s, P.w, band); if (!run) continue;
+      const run = P.w === 'flex' ? longest(s, band, P.min) : findRun(s, P.w, band, kind === 'poster' || kind === 'picture'); if (!run) continue;   // (words and pictures: only where you can stand back and look)
       const j = P.w === 'flex' ? Math.min(run.j, run.i + 8) : run.j, g = frame(s, run.i, j, P.band === 'top' ? 'top' : 'inner');
       const info = build(g, (B, A, F) => P.build(B, A, F, {arg, top:Math.min(top, 7), len:j - run.i + 1, i:n, wallTop:top, sky:!ceil, room:r.id}));   // (in the giants' tall rooms, things still hang where you can see them)
       (P.band === 'low' ? lo : hi).add(g); use(s, run.i, j, P.band === 'low', P.band !== 'low' || P.full); rec(kind, s, run.i, j, P.band, info); return; }
@@ -12742,7 +12821,7 @@ function shipDecor(){
   // the LAUNCH lever, on a little post by the Skull
   { const [lx, ly] = HEART.levers[0], c = cellPos(lx, ly); box(.12, 1.7, .12, M.wood, c.x + .6, c.y + .85, c.z + .45); sign('LAUNCH', c.x + .6, c.y + 2, c.z + .45, {w:150, bg:'#c0281a', ink:'#fff3c0'}); }
   // the Emperor's decree in each machine room, by the door
-  SHIP_ROOMS.forEach(r => { const c = cellPos(r.X(1), r.Y(5)), post = box(.1, 1.9, .1, M.wood, c.x - .3, c.y + .95, c.z); const t = boardSign('decree' + r.id, 1.1, .86); t.position.set(c.x - .3, c.y + 2.3, c.z + .08*r.back*-1); t.rotation.y = r.back < 0 ? 0 : Math.PI; g.add(t); });   // nailed to the post
+  SHIP_ROOMS.forEach(r => { const c = cellPos(r.X(1), r.Y(5)), post = box(.1, 1.9, .1, M.wood, c.x - .3, c.y + .95, c.z); const t = boardSign('decree' + r.id, 1.1, .86); t.position.set(c.x - .3, c.y + 2.3, c.z + .08*r.back); t.rotation.y = r.back < 0 ? Math.PI : 0; g.add(t); });   // nailed to the post, facing into the room (it faced the wall two steps away: Tom, 11 Oct)
   const R = part => SHIP_ROOMS.find(r => r.part === part);
   // ENGINES: two great bells on the back wall, dark until they roar
   { const r = R('engines'), bells = []; [4, 6].forEach(x => {
@@ -13217,7 +13296,7 @@ const TUT_B = [
   // the red power block, one idea at a time, before the side door uses one (design guide 1): see it, then use it with help
   {id:'block', say:() => 'Barold put down a RED BLOCK. It\'s a POWER BLOCK. It is ALWAYS ON. It never switches off.'},
   {id:'power', say:() => (padMode ? 'Point at the glowing square and press ' + PN(PB.use) : lastTouch ? 'TAP the glowing square' : 'CLICK the glowing square') + ' to put dust between the red block and the lamp.'},
-  {id:'buttons', say:() => 'Stuck? The lightbulb gives a hint. The ? tells you what anything does.'},
+  {id:'buttons', say:() => 'Stuck? The lightbulb gives a hint. The ? tells you what anything does. ' + (padMode ? 'They hide away. Press ' + PN(PB.sel) + ' to see them.' : 'They hide away. Press More (the three dots) to see them.')},
   {id:'follow', say:() => 'Follow Barold to the SIDE DOOR. Look for the tall beam of light!'}
 ];
 let tut = null;
@@ -13245,6 +13324,7 @@ function ghostBobFrame(now){ if (!L || !L.ghosts || reduceMotion) return; for (c
 function tutSpotFollow(){ const sp = tut.spot; if (!sp || at(...sp)) return; const [px, py] = cellAtWorld(P.x, P.z); if (Math.hypot(sp[0] - px, sp[1] - py) <= 8) return;
   tut.spot = null; const n = tutSpot(); if (tut.marker){ tut.marker.position.copy(cellPos(...n)); tut.marker.position.y += .03; } }
 function showTutStep(){
+  itemCardHide();   // (a new step: an item card from the last one goes, one message at a time)
   const L2 = tutList(), st = L2[tut.i]; $('#tutStep').textContent = `Step ${tut.i + 1} of ${L2.length}`; $('#tutTxt').textContent = st.say();
   monkeySay(st.say(), 60000);
   if (st.id === 'walk' && !tut.flag){ tut.flag = makeWaymarker(); tut.flag.position.copy(cellPos(...TUT_WALK)); decorRoot.add(tut.flag); }
@@ -13543,8 +13623,8 @@ function advHint(){
   if (!r && A.trapMet && !A.doorTrapOff && !A.solved.size){
     const both = gearOn() && trapOn(); A.trapHint = (A.trapHint || 0) + 1;
     const glowAt = ([wx, wy]) => { while (ghostRoot.children.length) ghostRoot.remove(ghostRoot.children[0]); const m = new THREE.Mesh(cbox(1.05, .5, 1.05), new THREE.MeshBasicMaterial({color:0xffe14a, transparent:true, opacity:.45})); m.position.copy(cellPos(wx, wy)); m.position.y += .25; ghostRoot.add(m); };
-    if ((!both && !gearOn()) || !trapGapMended()){ if (!A.gapHint){ A.gapHint = true; showCard('Hint', 'Power comes from the RED BLOCK on the steps. Follow the red wire. Where is it broken?<br><small>Press again and I\'ll show you.</small>'); } else { glowAt(TRAP.gap); showCard('Hint 2', 'Put dust on the glowing square to mend the wire.'); } return; }
-    if (!A.splitHint){ A.splitHint = true; showCard('Hint', 'The wire splits in two. One branch goes to the door\'s GEAR. The other goes to the BOXING GLOVE. Power goes down BOTH. Can you cut just ONE branch?<br><small>Press again and I\'ll show you where.</small>'); return; }
+    if ((!both && !gearOn()) || !trapGapMended()){ if (!A.gapHint){ A.gapHint = true; showCard('Hint', 'Power comes from the RED BLOCK on the steps. Follow the red wire. Where is it broken?<br><small>' + hintAgainWords() + ' and I\'ll show you.</small>'); } else { glowAt(TRAP.gap); showCard('Hint 2', 'Put dust on the glowing square to mend the wire.'); } return; }
+    if (!A.splitHint){ A.splitHint = true; showCard('Hint', 'The wire splits in two. One branch goes to the door\'s GEAR. The other goes to the BOXING GLOVE. Power goes down BOTH. Can you cut just ONE branch?<br><small>' + hintAgainWords() + ' and I\'ll show you where.</small>'); return; }
     glowAt(TRAP.trapWire[1]); showCard('Hint 2', (padMode ? 'Point at it and press ' + PN(PB.brk) + ' on' : lastTouch ? 'HOLD your finger on' : 'Point at it and HOLD the click on') + ' the glowing piece to break it. That\'s the glove\'s branch. Leave the door\'s branch alone!'); return;
   }
   if (!r && A.act === 1 && A.room !== 'hall' && !A.solved.size){
@@ -13552,13 +13632,13 @@ function advHint(){
   if (!r && A.room !== 'hall' && A.solved.size && A.act === 1){ const c = objectiveCell(); if (c){ forceTrail(c); const vines = S.ladder[c[1]*NX + c[0]]; showCard('Hint', vines ? 'Climb the LADDER! Walk right into it and keep going.' : 'Follow the glowing trail to the next room. It ends at the tall beam of light.'); return; } }
   if (!r){ showCard('Hint', A.room === 'hall' ? HEART.hint : 'The temple is north. Walk in through the golden pillars.'); return; }
   if (r !== HEART && A.solved.has(r.id)) return hintDone(r);
-  if (r.nudge && A.rt && !A.rt.nudged){ A.rt.nudged = true; showCard('Hint', r.nudge + '<br><small>Still stuck? Press again for a bigger clue.</small>'); return; }   // the first press is a nudge, not the answer
+  if (r.nudge && A.rt && !A.rt.nudged){ A.rt.nudged = true; showCard('Hint', r.nudge + '<br><small>Still stuck? ' + hintAgainWords() + ' for a bigger clue.</small>'); return; }   // the first press is a nudge, not the answer
   L.hintLevel = Math.min(r.sol.length ? 2 : 1, (L.hintLevel || 0) + 1);
   const onlyCuts = r.sol.length && r.sol.every(g => g.t === 'air');
   if (onlyCuts) return hintCut(r);
   // scaffolding that fades: early rooms show the whole path (you still place every piece), later rooms show less
   const showN = r === HEART ? 1 : r.id <= 4 ? 99 : r.id <= 8 ? 3 : 1;
-  if (L.hintLevel === 1) showCard('Hint', r.hint + (r.sol.length ? `<br><small>Still stuck? Press again and I'll ${showN >= 99 ? 'draw the whole thing for you in pale ghost shapes' : showN > 1 ? 'show you the next few pieces' : 'show you ONE piece'}.</small>` : ''));
+  if (L.hintLevel === 1) showCard('Hint', r.hint + (r.sol.length ? `<br><small>Still stuck? ${hintAgainWords()} and I'll ${showN >= 99 ? 'draw the whole thing for you in pale ghost shapes' : showN > 1 ? 'show you the next few pieces' : 'show you ONE piece'}.</small>` : ''));
   else {
     // one piece at a time: the next part of the answer that isn't built yet. A clue, not the whole answer.
     while (ghostRoot.children.length) ghostRoot.remove(ghostRoot.children[0]);
@@ -13572,7 +13652,7 @@ function advHint(){
     // the ladder has two steps (the clue, then the next piece as a ghost; each piece you put in, the next press shows the next one). Pressed
     // again with the same ghost still waiting, it used to say the same thing again (c13, c18: "Hint 3 repeats Hint 2"): now it says that's all
     const gk = L.ghosts.map(g => [g.t, g.x, g.y].join()).join('|');
-    if (missing.length && gk === L.hintGhostKey){ showCard('Hint 2', 'That\'s every hint I have. I\'m staying right here with you.<br>The ghost shows ONE way to do it. Put the real piece on it, then press Hint for the next one.<br>Your own way is fine too, if it works!<br>' + (A.act === UNI_ACT ? 'Or open the picture book. It shows the whole machine.' : 'Stuck? Tap the goal box. Reset this room.')); return; }
+    if (missing.length && gk === L.hintGhostKey){ showCard('Hint 2', 'That\'s every hint I have. I\'m staying right here with you.<br>The ghost shows ONE way to do it. Put the real piece on it, then ' + (padMode ? 'press ' + PN(PB.hint) : 'press the lightbulb') + ' for the next one.<br>Your own way is fine too, if it works!<br>' + (A.act === UNI_ACT ? 'Or open the picture book. It shows the whole machine.' : 'Stuck? Tap the goal box. Reset this room.')); return; }
     L.hintGhostKey = gk;
     showCard('Hint 2', !missing.length ? 'Everything\'s built! Try flipping the switches.' : showN >= 99 ? 'I\'ve drawn it for you in pale ghost shapes. Put the real thing on EACH ghost shape, then watch what happens!' : showN > 1 ? 'The pale ghost shapes show the next few pieces. Can you work out the rest?' : 'The pale ghost shows ONE piece. Put it where it says PUT IT HERE. Can you work out the rest? (Your own way is fine too, if it works!)');
   }
@@ -13590,7 +13670,7 @@ function hintCtx(){
   return 'hub' + (A.metBarold ? 1 : (A.thief && A.thief.phase !== 'end' ? 'T' : heardBarold() ? 'V' : 0)) + (A.gotKit ? 1 : 0) + (tut ? tut.list + tut.i : '-') + trap + (A.doorTrapOff ? 1 : 0) + ':' + A.solved.size + (A.room || '');
 }
 // the map-thief chase: first press says to look for the beam; the next press lights a glowing trail to the monkey (playtest sweep: kids lost it in the bushes)
-function chaseHint(){ A.chaseHints = (A.chaseHints || 0) + 1; if (A.chaseHints < 2) return 'Something has your map! Look for the tall beam of light: it\'s there. Follow the dirt trail.<br><small>Press again and I\'ll show you the way.</small>'; A.chaseTrail = true; return 'Follow the glowing dots! They show you the way.'; }
+function chaseHint(){ A.chaseHints = (A.chaseHints || 0) + 1; if (A.chaseHints < 2) return 'Something has your map! Look for the tall beam of light: it\'s there. Follow the dirt trail.<br><small>' + hintAgainWords() + ' and I\'ll show you the way.</small>'; A.chaseTrail = true; return 'Follow the glowing dots! They show you the way.'; }
 function setHintStrip(head, html){
   const el = $('#hintStrip'); if (!el) return;
   const tmp = document.createElement('div'); tmp.innerHTML = String(html || '').replace(/<small>[\s\S]*?<\/small>/gi, '').replace(/<br\s*\/?>/gi, ' ');
@@ -13611,7 +13691,8 @@ function advHintKept(){
   if (got) setHintStrip(got[0], got[1]);
 }
 function showHintPoint(){
-  const el = $('#hintPoint'), b = $('#btnHint'); if (!el || !b || b.offsetParent === null) return;
+  const el = $('#hintPoint'), b = $('#btnHint'); if (b && $('#hud') && !$('#hud').hidden) topBtnsShow();   // (the top buttons tuck away: bring them out so the pointer has a button to point at)
+  if (!el || !b || b.offsetParent === null) return;
   el.querySelector('span').textContent = padMode ? `Press ${PN(PB.hint)} for a hint!` : lastTouch ? 'Stuck? Tap here for a hint!' : 'Stuck? Click here for a hint!';
   el.hidden = false; const rc = b.getBoundingClientRect(), w = el.offsetWidth;
   el.style.left = Math.max(8, Math.min(innerWidth - w - 8, rc.left + rc.width/2 - w/2)) + 'px'; el.style.top = (rc.bottom + 4) + 'px';
@@ -13624,7 +13705,7 @@ function hintNudgeTick(dt){
   const uses = hintUses(); if (uses >= 3) return;   // found it a few times: no more pointing
   if (rt.stuckT < (!uses && !A.hintPointed ? 15000 : 60000) || DLG.on) return;   // (and he waits for the box to finish before he says it)
   rt.nudged = true; A.hintPointed = true; showHintPoint();
-  monkeySay(padMode ? `Stuck? Press ${PN(PB.hint)} for a hint! I'm VERY good at hints.` : `Stuck? ${lastTouch ? 'Tap' : 'Click'} the lightbulb at the top for a hint! I'm VERY good at hints.`, 8000);
+  monkeySay(padMode ? `Stuck? Press ${PN(PB.hint)} for a hint! I'm VERY good at hints.` : `Stuck? ${lastTouch ? 'Tap' : 'Click'} the glowing lightbulb for a hint! I'm VERY good at hints.`, 8000);
 }
 // a room that's done: no hint ladder, just the way on
 function hintDone(r){
@@ -13637,7 +13718,7 @@ function hintDone(r){
 }
 // a hint that says "take THIS away": the piece to pick up glows red
 function hintCut(r){
-  if (L.hintLevel === 1){ showCard('Hint', r.hint + '<br><small>Still stuck? Press again and I\'ll show you which piece.</small>'); return; }
+  if (L.hintLevel === 1){ showCard('Hint', r.hint + '<br><small>Still stuck? ' + hintAgainWords() + ' and I\'ll show you which piece.</small>'); return; }
   while (ghostRoot.children.length) ghostRoot.remove(ghostRoot.children[0]);
   const cuts = r.sol.filter(g => g.t === 'air' && at(g.x, g.y) && !at(g.x, g.y).locked);
   if (!cuts.length){ showCard('Hint 2', 'That piece is gone! Now watch what happens.'); return; }
@@ -15923,13 +16004,27 @@ function achShowNext(){
 // It is placed again every frame while it shows (achFollow): the table card can grow, the goal panel open or the hint strip appear in
 // the 4 seconds it's up (wip/ui-polish noted they could overlap for that moment).
 function achPlace(el){
-  if (el._top0 == null){ el.style.top = ''; el._top0 = parseFloat(getComputedStyle(el).top) || 70; }   // (its own place, from the style sheet: once per pop-up)
-  const R = el.getBoundingClientRect(), w = R.width, h = R.height, x1 = window.innerWidth - 16, x0 = x1 - w, top0 = el._top0;   // (not R.top: it slides in from 12 px up)
-  let top = top0; const bars = ['#card', '#goalBox', '#hintStrip', '#topBtns', '#crystals'].map(q => $(q)).filter(e => e && !e.hidden && e.offsetParent !== null).map(e => e.getBoundingClientRect()).filter(b => b.width > 2 && b.height > 2 && b.right > x0 && b.left < x1);
-  for (let k = 0; k < 6; k++){ const hit = bars.find(b => b.top < top + h && b.bottom > top); if (!hit) break; top = hit.bottom + 8; }
+  if (el._top0 == null){ el.style.top = el.style.right = ''; el.classList.remove('tight'); el._top0 = parseFloat(getComputedStyle(el).top) || 70; }   // (its own place, from the style sheet: once per pop-up)
+  const R = el.getBoundingClientRect(), w = R.width, h = R.height, top0 = el._top0;   // (not R.top: it slides in from 12 px up)
+  const boxes = ['#card', '#goalBox', '#hintStrip', '#topBtns', '#crystals'].map(q => $(q)).filter(e => e && !e.hidden && e.offsetParent !== null).map(e => [e.id, e.getBoundingClientRect()]).filter(([, b]) => b.width > 2 && b.height > 2);
+  let all = boxes.map(([, b]) => b);
   const hb = $('#hotbarWrap'), floor = hb && hb.offsetParent !== null ? hb.getBoundingClientRect().top - 8 : window.innerHeight - 8;
-  if (top + h > floor) top = Math.max(8, floor - h);
+  const place = x1 => { const x0 = x1 - w, bars = all.filter(b => b.right > x0 && b.left < x1); let top = top0, hit = null;
+    for (let k = 0; k < 6; k++){ hit = bars.find(b => b.top < top + h && b.bottom > top); if (!hit) break; top = hit.bottom + 8; }
+    return {top, fits:top + h <= floor, x1}; };
+  // on the right; if there's no room down that side above the hotbar (a short screen, a tall table card there: the top buttons tuck away,
+  // so the card sits up on the right now), just to the left of whatever is in the way, if that fits
+  const tryAlt = () => { const x0 = window.innerWidth - 16 - w, block = all.filter(b => b.right > x0).sort((a, b) => a.left - b.left)[0];
+    const alt = block && block.left - 8 - w >= 8 ? place(block.left - 8) : null; if (alt && alt.fits) at = alt; };
+  let at = place(window.innerWidth - 16);
+  if (!at.fits) tryAlt();
+  // still no room (a phone on its side with the goal panel open, the hint strip and a tall table card): it may cover the hint strip, the
+  // least needed (its hint is a tap on the lightbulb away), rather than the table or the goal
+  if (!at.fits && boxes.some(([id]) => id === 'hintStrip')){ all = boxes.filter(([id]) => id !== 'hintStrip').map(([, b]) => b); const r = place(window.innerWidth - 16); if (r.fits) at = r; else tryAlt(); }
+  if (!at.fits && !el.classList.contains('tight')){ el.classList.add('tight'); return achPlace(el); }   // (still no room: the small pop-up, without its last line, and look again)
+  let top = at.top; if (top + h > floor) top = Math.max(8, floor - h);
   const want = Math.abs(top - top0) > .5 ? Math.round(top) + 'px' : ''; if (el.style.top !== want) el.style.top = want;
+  const right = at.x1 < window.innerWidth - 16.5 ? Math.round(window.innerWidth - at.x1) + 'px' : ''; if (el.style.right !== right) el.style.right = right;
 }
 function achFollow(el){ if (!el.classList.contains('show') || !el.isConnected) return; achPlace(el); requestAnimationFrame(() => achFollow(el)); }
 /* ---- the page (menu, the inventory pane, or L in the game) ---- */
@@ -16142,6 +16237,7 @@ document.addEventListener('click', e => {
 { const st = document.createElement('style'); st.textContent = `
 #achToast{position:fixed;top:calc(70px + env(safe-area-inset-top,0px));right:16px;z-index:80;display:flex;gap:10px;align-items:center;box-sizing:border-box;width:max-content;max-width:min(380px,calc(100vw - 32px));background:#212121;color:#fff;border:3px solid #6a6a6a;box-shadow:0 0 0 2px #000,0 6px 0 2px rgba(0,0,0,.3);padding:8px 12px;pointer-events:none;transform:translateY(-12px);opacity:0;visibility:hidden;transition:transform .3s ease,opacity .3s ease,visibility 0s .3s;}
 #achToast.show{transform:none;opacity:1;visibility:visible;transition:transform .3s ease,opacity .3s ease;}
+#achToast.tight{padding:3px 10px;} #achToast.tight .achL{display:none;} #achToast.tight .achI, #achToast.tight .achI img, #achToast.tight .achI svg.px{width:30px;height:30px;}   /* no room on a short screen: the small pop-up (achPlace) */
 #achToast .achI,.achRow .achI{flex:none;width:40px;height:40px;display:flex;align-items:center;justify-content:center;}
 #achToast .achI img,#achToast .achI svg.px,.achRow .achI img,.achRow .achI svg.px{width:40px;height:40px;image-rendering:pixelated;}
 #achToast .achW,.achRow .achW{min-width:0;flex:1;}
@@ -16898,6 +16994,7 @@ function mayaSigns(g){
   const mat = new THREE.MeshBasicMaterial({map:tex}), SW = 2.4, SH = SW*CH/CW;
   ROOMS.forEach((r, i) => { const s = mayaWallSpot(r, 0), geo = new THREE.PlaneGeometry(SW, SH), uv = geo.attributes.uv, u0 = (i % 4)*CW/1024, v1 = 1 - Math.floor(i / 4)*CH/1024, u1 = u0 + CW/1024, v0 = v1 - CH/1024;
     for (let k = 0; k < uv.count; k++) uv.setXY(k, uv.getX(k) ? u1 : u0, uv.getY(k) ? v1 : v0);
+    signSlide(s.pos, s.rot, SW);   // (never facing a pillar or a wall a step away)
     const m = new THREE.Mesh(geo, mat); m.raycast = () => {}; m.position.copy(s.pos); m.rotation.y = s.rot; r.signBoxes = [signBox(s.pos, s.rot, SW, SH)]; g.add(m); if (s.low) mayaBoard(g, s, SW, SH); });
 }
 // the stela: a carved stone on the wall that shows the room's number BIG (Maya dots and bars, or lamp code). Redrawn when it changes.
@@ -16917,6 +17014,7 @@ function mayaDrawStone(cv, r, title){
 function mayaStelae(){
   A.stelae = [];
   ROOMS.forEach(r => { if (!r.dispAt) return; const s = mayaWallSpot(r, 1), cv = document.createElement('canvas'); cv.width = 128; cv.height = 192; const tex = new THREE.CanvasTexture(cv);
+    signSlide(s.pos, s.rot, 1.6);   // (never facing a pillar or a wall a step away)
     if (s.low){ s.pos.y += .26; mayaBoard(A.mayaDecor || decorRoot, s, 1.6, 2.4); }
     const m = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 2.4), new THREE.MeshBasicMaterial({map:tex})); m.position.copy(s.pos); if (!s.low) m.position.y += .2; m.rotation.y = s.rot; m.raycast = () => {}; decorRoot.add(m);
     A.stelae.push({r, cv, tex, m, key:''}); });
@@ -16974,7 +17072,7 @@ const MAYA_PW = [{act:MAYA_ACT, after:404, words:'SHELL'}, {act:MAYA_ACT, after:
 PASSWORDS.push(...MAYA_PW);
 // Barold's stories in the Maya act (between rooms, in calm moments). Undead jokes are fine now (he found out on the Ape Planet).
 LORE[MAYA_ACT] = [
-  {id:'red', when:() => A.mayaMet && loreMaya() >= 1, say:['In my day this temple was sandy gold. And mossy. And full of monkeys.', 'Nobody told me it was RED. I\'d have worn a nicer sash.']},
+  {id:'red', when:() => A.mayaMet && loreMaya() >= 1, say:['In my day this temple was gold. Sandy gold. Mostly sandy. And mossy. And full of monkeys.', 'Nobody told me it was RED. I\'d have worn a nicer sash.']},
   {id:'twenty', when:() => A.mayaMet && loreMaya() >= 3, say:['Twenty fingers and toes. That\'s why they count in twenties!', 'I\'ve got twenty too. They just... come off sometimes.']},
   {id:'zero', when:() => A.mayaMet && loreMaya() >= 5, say:['A shell for nothing. I\'ve got a shell for nothing too.', 'It\'s my head. Ha! ...Skeleton joke. I\'m allowed now.']},
   {id:'friends', when:() => A.mayaMet && loreMaya() >= 7, say:['Best friends again. You and me. Even in the past.', 'Especially in the past. The past is VERY good for friends.']},
@@ -18730,18 +18828,21 @@ function uniSigns(g){
   const mat = new THREE.MeshBasicMaterial({map:tex}), SW = 2.4, SH = SW*CH/CW;
   ROOMS.forEach((r, i) => { const s = uniWallSpot(r, 0), geo = new THREE.PlaneGeometry(SW, SH), uv = geo.attributes.uv, u0 = (i % 4)*CW/1024, v1 = 1 - Math.floor(i / 4)*CH/1024, u1 = u0 + CW/1024, v0 = v1 - CH/1024;
     for (let k = 0; k < uv.count; k++) uv.setXY(k, uv.getX(k) ? u1 : u0, uv.getY(k) ? v1 : v0);
+    signSlide(s.pos, s.rot, SW);   // (never facing a pillar or a wall a step away)
     const m = new THREE.Mesh(geo, mat); m.raycast = () => {}; m.position.copy(s.pos); m.rotation.y = s.rot; r.signBoxes = [signBox(s.pos, s.rot, SW, SH)]; g.add(m); });
 }
 // a blackboard in each classroom (the machine's name and the professor), on the same wall as the sign, the other end
 // (a shaped classroom's wall can stand further in than its box: the sign and the board move in onto it)
-function uniWallSpot(r, k){ const s = mayaWallSpot(r, k); if (!r.shapeInfo) return s; const [ix, iy] = SIDE_IN[OPP[sideOf(r, r.entry)]]; let [x, y] = cellAtWorld(s.pos.x, s.pos.z);
-  for (let n = 0; n < 6 && inb(x, y) && S.walls[y*NX + x]; n++){ x += ix; y += iy; s.pos.x += ix; s.pos.z += iy; } return s; }
+function uniWallSpot(r, k){ const s = mayaWallSpot(r, k); if (!r.shapeInfo) return s; const [ix, iy] = SIDE_IN[OPP[sideOf(r, r.entry)]]; let [x, y] = cellAtWorld(s.pos.x, s.pos.z); const x0 = s.pos.x, z0 = s.pos.z;
+  for (let n = 0; n < 6 && inb(x, y) && S.walls[y*NX + x]; n++){ x += ix; y += iy; s.pos.x += ix; s.pos.z += iy; }
+  if (inb(x, y) && S.walls[y*NX + x]){ s.pos.x = x0; s.pos.z = z0; }   // (it walked along a low wall, not onto a real one: back where it was; signSlide finds it a spot)
+  return s; }
 function uniBlackboards(g){
   ROOMS.forEach(r => { const s = uniWallSpot(r, 1), cv = document.createElement('canvas'); cv.width = 256; cv.height = 160; const x = cv.getContext('2d');
     x.fillStyle = '#6a4424'; x.fillRect(0, 0, 256, 160); x.fillStyle = '#23402e'; x.fillRect(8, 8, 240, 144); x.fillStyle = '#f2f2e8'; x.textAlign = 'center'; x.textBaseline = 'middle';
     fitFont(x, r.name.toUpperCase(), 228, 26); x.fillText(r.name.toUpperCase(), 128, 52); fitFont(x, r.host, 228, 18, 400); x.fillText(r.host, 128, 92);
     x.font = '400 14px "Atkinson Hyperlegible", sans-serif'; x.fillText('Build it here. Then build it at HOME.', 128, 126);
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.4), new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(cv)})); m.position.copy(s.pos); m.position.y += .1; m.rotation.y = s.rot; m.raycast = () => {}; g.add(m);
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.4), new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(cv)})); m.position.copy(s.pos); m.position.y += .1; m.rotation.y = s.rot; m.raycast = () => {}; signSlide(m.position, s.rot, 2.2); g.add(m);   // (never facing a pillar or a wall a step away)
     (r.signBoxes = r.signBoxes || []).push(signBox(m.position, s.rot, 2.2, 1.4)); });
 }
 // Gloop: a friendly green slime cube (eyes and a smile), hopping its route in room 505
@@ -19509,9 +19610,23 @@ window.__game.ladderTops = () => ladderTops().map(({r, side, out}) => ({id:r.id,
 window.__game.lookOf = (x, y) => { const c = at(x, y); if (!c) return null; const m = buildMesh(c); let wisp = false, charred = false; m.traverse(o => { if (o.userData.burntWisp) wisp = true; if (o.material === M.charred) charred = true; }); return {t:c.t, burnt:c.burnt || 0, wisp, charred, smokeGreen:M.glowSmoke.map === M.glowGreen.map}; };   // (test-recover.js: a burnt-out torch looks burnt out)
 // (test-ui-polish.js: the UI polish batch's hooks)
 window.__game.ui = {
+  topBtns(open){ if (open === true) topBtnsShow(); else if (open === false) topBtnsHide(); return {open:TOPB.open, shown:topBtnsRow().filter(b => b.style.display !== 'none' && !b.hidden).map(b => b.id)}; },   // (the top buttons tuck away: a test that clicks one for real calls topBtns(true) first)
   view(){ return {yaw:P.yaw, pitch:P.pitch, theta:cam.theta, phi:cam.phi, r:cam.r, fp:inFP(), fit:VIEWZ.base, zoom:VIEWZ.k}; },
   spotTags(){ spotTagsFrame(); return SPOTTAG.list.map(t => ({kind:t.kind, text:t.text, shown:t.shown, side:t.side, rect:t.rect, spot:t.spotRect, clean:t.clean, onSign:t.onSign, cell:t.cell || null, gh:t.gh ? {t:t.gh.t, x:t.gh.x, y:t.gh.y} : null})); },
   signRects(){ camera.updateMatrixWorld(); return wallSignRects(canvas.getBoundingClientRect()); }, signsHere(){ return wallSignsHere(); },
+  // every flat sign, notice, poster and picture in this act's world (and each room's goal board), with the cell in front of it and which way
+  // it faces (test-signs-facing.js: a sign must face open floor, never a wall a step or two away). Sprites turn to face you: not listed.
+  worldSigns(){ const out = [], v = new THREE.Vector3(), q = new THREE.Quaternion(), n = new THREE.Vector3();
+    const add = (k, x, y, z, nx, nz, ny) => { const ax = Math.abs(nx) > .38 ? Math.sign(nx) : 0, az = Math.abs(nz) > .38 ? Math.sign(nz) : 0; const cell = cellAtWorld(x + nx*.6, z + nz*.6); out.push({k, x, y, z, nx, nz, ny:ny || 0, cell, dir:[ax, az], floor:floorAt(cell[0], cell[1])}); };
+    const SIGNY = /^(sign|decree|wall:|poster:|pic:|pic@)/, mw = new THREE.Matrix4(), sc = new THREE.Vector3(), put = (k, m) => { m.decompose(v, q, sc); n.set(0, 0, 1).applyQuaternion(q); add(String(k), v.x, v.y, v.z, n.x, n.z, n.y); };
+    scene.updateMatrixWorld(true);
+    const walk = o => { if (o === roomDecorRoot ? S.mode !== 'adventure' || ROOMS !== TEMPLE_ROOMS : !o.visible) return;   // (hidden; or the temple's decor, left over in another act)
+      if (o.isMesh && (o.userData.art || flatPic(o)) && SIGNY.test(String(o.userData.art || flatPic(o)))) put(o.userData.art || flatPic(o), o.matrixWorld);
+      (o.userData.arts || []).forEach(s => { if (SIGNY.test(String(s.k))) put(s.k, mw.multiplyMatrices(o.matrixWorld, s.m)); }); o.children.forEach(walk); };
+    walk(scene);   // (merged into one mesh: mergeStatic kept where each was)
+    if (ROOMS !== TEMPLE_ROOMS) ROOMS.forEach(r => (r.signBoxes || []).forEach((s, i) => add('board' + r.id + (i ? '.' + i : ''), s.x, s.y, s.z, s.nx, s.nz)));
+    return out; },
+  topAt(x, y){ return inb(x, y) ? floorAt(x, y) + (S.walls[y*NX + x] || 0) : -99; }, walkAt(x, y){ return passableCell(x, y); },   // (how high the floor or wall is at a cell; off the map: open sea or sky)
   // a made-up sign facing you that covers screen rect q, as far away as cell [x, y] (null: take them all down)
   addSign(q, cell){ if (!q){ SIGN_TEST.length = 0; return 0; } camera.updateMatrixWorld(); const cr = canvas.getBoundingClientRect(), p = cellPos(...cell), z = new THREE.Vector3(p.x, p.y + .5, p.z).project(camera).z;
     const w3 = (sx, sy) => new THREE.Vector3((sx - cr.left)/cr.width*2 - 1, 1 - (sy - cr.top)/cr.height*2, z).unproject(camera), a = w3(q.l, q.t), b = w3(q.r, q.t), c = w3(q.l, q.b), m = w3((q.l + q.r)/2, (q.t + q.b)/2);
