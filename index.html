@@ -1437,8 +1437,8 @@ CV.repTop = cv16(g => {
 });
 CV.tntSide = cv16(g => { speckle(g, ['#c9281c','#b52016','#d8352a']); g.fillStyle='#e9e9e9'; g.fillRect(0,5,16,6); g.fillStyle='#222'; [[2,6,3,1],[3,7,1,3],[6,6,1,4],[9,6,1,4],[7,7,1,1],[8,8,1,1],[11,6,3,1],[12,7,1,3]].forEach(r=>g.fillRect(...r)); g.fillStyle='#7a120a'; g.fillRect(0,4,16,1); g.fillRect(0,11,16,1); });
 CV.tntTop = cv16(g => { speckle(g, ['#c9281c','#b52016','#d8352a']); g.fillStyle='#e9e9e9'; g.fillRect(5,5,6,6); g.fillStyle='#333'; g.fillRect(7,7,2,2); });
-CV.brick = cv16(g => { speckle(g, ['#7d7d72','#86867a','#73736a','#8c8c80']); g.fillStyle = '#4e4e46'; [0,4,8,12].forEach(y => g.fillRect(0, y+3, 16, 1)); [0,8].forEach(y => { g.fillRect(4, y, 1, 4); g.fillRect(12, y+4, 1, 4); }); [0,8].forEach(y => { g.fillRect(8, y+4, 1, 4); }); });
-CV.mossy = cv16(g => { g.drawImage(CV.brick, 0, 0); const mp = ['#4f7f2a','#5f9435','#3f6a22']; for (let i=0;i<42;i++){ g.fillStyle = mp[(R()*3)|0]; const x = (R()*16)|0, y = (R()*16)|0; g.fillRect(x, y, 1 + ((R()*2)|0), 1); } });
+CV.gbrick = cv16(g => { speckle(g, ['#7d7d72','#86867a','#73736a','#8c8c80']); g.fillStyle = '#4e4e46'; [0,4,8,12].forEach(y => g.fillRect(0, y+3, 16, 1)); [0,8].forEach(y => { g.fillRect(4, y, 1, 4); g.fillRect(12, y+4, 1, 4); }); [0,8].forEach(y => { g.fillRect(8, y+4, 1, 4); }); });
+CV.gmossy = cv16(g => { g.drawImage(CV.gbrick, 0, 0); const mp = ['#4f7f2a','#5f9435','#3f6a22']; for (let i=0;i<42;i++){ g.fillStyle = mp[(R()*3)|0]; const x = (R()*16)|0, y = (R()*16)|0; g.fillRect(x, y, 1 + ((R()*2)|0), 1); } });
 CV.gold = cv16(g => { speckle(g, ['#f5cf47','#f0c43a','#fbd95a','#eab832','#f7d350']); g.fillStyle = '#fff1a8'; g.fillRect(2,2,5,1); g.fillRect(2,2,1,4); g.fillStyle = '#9c6b12'; g.fillRect(0,15,16,1); g.fillRect(15,0,1,16); g.fillStyle = '#fbe08a'; g.fillRect(0,0,16,1); g.fillRect(0,0,1,16); });
 CV.leaves = cv16(g => { speckle(g, ['#2f6b1e','#3d8226','#285c19','#4a952e','#1f4d14']); g.fillStyle = '#16380e'; for (let i=0;i<14;i++) g.fillRect((R()*16)|0, (R()*16)|0, 1, 1); });
 CV.log = cv16(g => { speckle(g, ['#5b4126','#664a2c','#4f381f']); g.fillStyle = '#3e2b16'; for (let x=1;x<16;x+=3) g.fillRect(x, 0, 1, 16); });
@@ -1633,26 +1633,69 @@ const M = {
 M.tntWhite = new THREE.MeshBasicMaterial();   // the white flash of a burning fuse
 M.cushion = lam(CV.cushion, {emissive:0x30081a}); M.cushionDark = lam(CV.cushionDark, {emissive:0x220412});   // a touch of glow: bright toy pink even in the dark jungle
 M.cushionTop = [M.cushion, M.cushion, lam(CV.cushionPrint, {emissive:0x0c0206}), M.cushion, M.cushion, M.cushion];   // the fart logo on top
-CV.cracked = cv16(g => { g.drawImage(CV.brick, 0, 0); g.fillStyle = '#3a3a34'; [[3,1],[4,2],[4,3],[5,4],[6,5],[6,6],[7,7],[9,8],[10,9],[10,10],[11,11],[12,13],[2,9],[3,10],[3,11]].forEach(([x,y]) => g.fillRect(x, y, 1, 1)); });
-CV.glyph = cv16(g => { speckle(g, ['#8e8a7c','#97937f','#86826f']); g.fillStyle = '#5a564a'; g.fillRect(1,1,14,1); g.fillRect(1,14,14,1); g.fillRect(1,1,1,14); g.fillRect(14,1,1,14);
+CV.gcracked = cv16(g => { g.drawImage(CV.gbrick, 0, 0); g.fillStyle = '#3a3a34'; [[3,1],[4,2],[4,3],[5,4],[6,5],[6,6],[7,7],[9,8],[10,9],[10,10],[11,11],[12,13],[2,9],[3,10],[3,11]].forEach(([x,y]) => g.fillRect(x, y, 1, 1)); });
+CV.gglyph = cv16(g => { speckle(g, ['#8e8a7c','#97937f','#86826f']); g.fillStyle = '#5a564a'; g.fillRect(1,1,14,1); g.fillRect(1,14,14,1); g.fillRect(1,1,1,14); g.fillRect(14,1,1,14);
   g.fillRect(4,4,3,3); g.fillRect(9,4,3,3); g.fillRect(5,9,6,1); g.fillRect(4,10,1,2); g.fillRect(11,10,1,2); g.fillRect(7,7,2,1); g.fillStyle = '#b8a35a'; g.fillRect(5,5,1,1); g.fillRect(10,5,1,1); });
 const glyphCV = (eyes, mouth, extra) => cv16(g => { speckle(g, ['#8e8a7c','#97937f','#86826f']); g.fillStyle = '#5a564a'; g.fillRect(1,1,14,1); g.fillRect(1,14,14,1); g.fillRect(1,1,1,14); g.fillRect(14,1,1,14); eyes(g); mouth(g); if (extra) extra(g); });
-CV.glyphs = [
-  CV.glyph,
+CV.gglyphs = [
+  CV.gglyph,
   glyphCV(g => { g.fillRect(4,4,3,2); g.fillRect(9,4,3,2); g.fillStyle = '#b8a35a'; g.fillRect(5,4,1,1); g.fillRect(10,4,1,1); g.fillStyle = '#5a564a'; }, g => { g.fillRect(4,9,8,3); g.fillStyle = '#d8d0b8'; [5,7,9].forEach(x => g.fillRect(x,9,1,1)); }),                       // shouting face
   glyphCV(g => { g.fillRect(4,5,3,1); g.fillRect(9,5,3,1); g.fillRect(4,4,1,1); g.fillRect(11,4,1,1); }, g => { g.fillRect(5,10,6,1); g.fillRect(4,9,1,1); g.fillRect(11,9,1,1); }),                                                        // smug
   glyphCV(g => { g.fillRect(3,4,4,4); g.fillRect(9,4,4,4); g.fillStyle = '#c84a2a'; g.fillRect(4,5,2,2); g.fillRect(10,5,2,2); g.fillStyle = '#5a564a'; }, g => { g.fillRect(6,10,4,3); }, g => { g.fillRect(7,8,2,1); }),                // skull
   glyphCV(g => { g.fillRect(4,5,2,2); g.fillRect(10,5,2,2); }, g => { g.fillRect(4,10,8,1); [4,6,8,10].forEach(x => g.fillRect(x,11,1,1)); }, g => { g.fillRect(3,2,2,2); g.fillRect(11,2,2,2); }),                                     // jaguar
   glyphCV(g => { g.fillRect(4,4,2,3); g.fillRect(10,4,2,3); }, g => { g.fillRect(6,9,4,4); g.fillStyle = '#7a3a2a'; g.fillRect(7,10,2,2); g.fillStyle = '#5a564a'; }, g => { g.fillRect(2,6,1,4); g.fillRect(13,6,1,4); })             // surprised monkey
 ];
-CV.frieze = cv16(g => { g.fillStyle = '#c8602c'; g.fillRect(0,0,16,16); g.fillStyle = '#1f8f86'; for (let x=0;x<16;x+=8){ g.fillRect(x,8,4,4); g.fillRect(x+2,6,4,2); g.fillRect(x+4,4,4,2); } g.fillStyle = '#f2e4c4'; g.fillRect(0,1,16,1); g.fillRect(0,14,16,1); g.fillStyle = '#2a1a10'; g.fillRect(0,0,16,1); g.fillRect(0,15,16,1); g.fillStyle = '#b82a1c'; for (let x=1;x<16;x+=4) g.fillRect(x,12,2,1); });
+// ---- the temple's stone (Tom, 17 Oct: "golden sandstone, WITH tree roots": Angkor Wat, Ta Prohm). Warm golden-ochre blocks in three
+// tones, greying where the weather and the moss have got at them; the carved faces are reliefs cut into the stone; the painted band
+// is a carved one now (the Maya city is the painted one). The grey stone above stays for the other acts. These draw with their own
+// random numbers (SR), so every other texture keeps exactly the speckles it had.
+const SR = rng(17), srgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+function sspeck(g, pal, x0, y0, w, h){ x0 = x0 || 0; y0 = y0 || 0; w = w || 16; h = h || 16; for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++){ g.fillStyle = pal[(SR()*pal.length)|0]; g.fillRect(x & 15, y & 15, 1, 1); } }
+// big ashlar blocks, two courses to a block: each stone its own tone, a sunlit top edge, dark joints, a few weathered pits
+const ashlar = (tones, joint, lit, pit, extra) => cv16(g => {
+  [[0, [0, 10]], [8, [5, 13]]].forEach(([y0, xs]) => {
+    xs.forEach((x0, i) => { const x1 = i + 1 < xs.length ? xs[i + 1] : xs[0] + 16, pal = tones[(SR()*tones.length)|0];
+      sspeck(g, pal, x0 + 1, y0, x1 - x0 - 1, 7); g.fillStyle = lit; for (let x = x0 + 1; x < x1; x++) g.fillRect(x & 15, y0, 1, 1);
+      g.fillStyle = joint; g.fillRect(x0 & 15, y0, 1, 8); });
+    g.fillStyle = joint; g.fillRect(0, y0 + 7, 16, 1); });
+  g.fillStyle = pit; for (let k = 0; k < 7; k++) g.fillRect((SR()*16)|0, (SR()*16)|0, 1, 1);
+  if (extra) extra(g); });
+// a clump of moss (wraps round the edges, so it tiles)
+const mossBlob = (g, cx, cy, r, pal) => { for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) if (dx*dx + dy*dy <= r*r + SR()*2.2 - 1){ g.fillStyle = pal[(SR()*pal.length)|0]; g.fillRect((cx + dx) & 15, (cy + dy) & 15, 1, 1); } };
+const MOSS = ['#5e8f2c', '#6ea436', '#4d7a24', '#82b545', '#3f6a1e'];
+CV.brick = ashlar([['#cfab6e', '#d5b175', '#c8a467'], ['#c39b5e', '#c9a163', '#bc9558'], ['#d9bb81', '#dec287', '#d3b47a']], '#8d6c40', '#e6cd98', '#a8834d');      // golden
+CV.brick2 = ashlar([['#bdab8e', '#c3b194', '#b5a488'], ['#c6a87a', '#ccae80', '#bea274'], ['#b0a088', '#b6a68e', '#a99a82']], '#7c6c50', '#d6c6a2', '#8d7e62',  // weathered grey-gold, rain-streaked
+  g => { g.fillStyle = '#8f816a'; for (let k = 0; k < 3; k++){ const x = (SR()*16)|0, y = SR() < .5 ? 0 : 8, n = 3 + ((SR()*5)|0); g.fillRect(x, y + 1, 1, n); } });
+CV.mossy = cv16(g => { g.drawImage(CV.brick2, 0, 0); for (let k = 0; k < 4; k++) mossBlob(g, (SR()*16)|0, k < 2 ? (SR()*4)|0 : (SR()*16)|0, 1.4 + SR()*1.6, MOSS); g.fillStyle = MOSS[1]; for (let k = 0; k < 8; k++) g.fillRect((SR()*16)|0, (SR()*16)|0, 1, 1); });   // greener, in clumps (it grows from the top down)
+CV.cracked = cv16(g => { g.drawImage(CV.brick, 0, 0); const crack = [[3,1],[4,2],[4,3],[5,4],[6,5],[6,6],[7,7],[9,8],[10,9],[10,10],[11,11],[12,13],[2,9],[3,10],[3,11]], k = new Set(crack.map(([x, y]) => x + ',' + y));
+  g.fillStyle = '#ecd39e'; crack.forEach(([x, y]) => { if (!k.has((x + 1) + ',' + y)) g.fillRect(x + 1, y, 1, 1); }); g.fillStyle = '#5e4424'; crack.forEach(([x, y]) => g.fillRect(x, y, 1, 1)); });
+// carved faces: the grey glyphs recut in sandstone. The carving is in shadow; the lower lip of every cut catches the sun (a relief).
+const stoneRelief = src => { const c = document.createElement('canvas'); c.width = c.height = 16; const g = c.getContext('2d'); g.drawImage(src, 0, 0);
+  const im = g.getImageData(0, 0, 16, 16), d = im.data, is = (i, h) => { const [r, gg, b] = srgb(h); return d[i] === r && d[i+1] === gg && d[i+2] === b; }, cut = new Uint8Array(256), lo = srgb('#c4a064'), hi = srgb('#dcbb80');
+  const map = {'#b8a35a':'#e8c04a', '#d8d0b8':'#f4e8c8'}, keep = ['#c84a2a', '#7a3a2a'];
+  for (let p = 0; p < 256; p++){ const i = p*4;
+    if (is(i, '#5a564a')){ cut[p] = 1; [d[i], d[i+1], d[i+2]] = srgb('#7c5a30'); continue; }
+    const m = Object.keys(map).find(h => is(i, h)); if (m){ [d[i], d[i+1], d[i+2]] = srgb(map[m]); cut[p] = 2; continue; }
+    if (keep.some(h => is(i, h))){ cut[p] = 2; continue; }
+    const t = Math.max(0, Math.min(1, ((d[i] + d[i+1] + d[i+2])/3 - 124)/26)); for (let k = 0; k < 3; k++) d[i+k] = Math.round(lo[k] + (hi[k] - lo[k])*t); }
+  const lit = srgb('#f0d9a4'); for (let p = 0; p < 240; p++) if (cut[p] === 1 && !cut[p + 16]){ const i = (p + 16)*4; [d[i], d[i+1], d[i+2]] = lit; }
+  g.putImageData(im, 0, 0); return c; };
+CV.glyphs = CV.gglyphs.map(stoneRelief); CV.glyph = CV.glyphs[0];
+// the band round every tier: a carved frieze (a stepped meander), gilded at the edges
+CV.frieze = cv16(g => { sspeck(g, ['#d8b77c', '#dfbf84', '#d1b075']); const cut = new Set();
+  for (let x = 0; x < 16; x += 8){ [[x,8,4,4],[x+2,6,4,2],[x+4,4,4,2]].forEach(([a, b, w, h]) => { for (let i = 0; i < w; i++) for (let j = 0; j < h; j++) cut.add(((a + i) & 15) + ',' + (b + j)); }); }
+  [1, 5, 9, 13].forEach(x => { cut.add(x + ',12'); cut.add((x + 1) + ',12'); });
+  g.fillStyle = '#8a673a'; cut.forEach(k => { const [x, y] = k.split(',').map(Number); g.fillRect(x, y, 1, 1); });
+  g.fillStyle = '#f0d9a4'; cut.forEach(k => { const [x, y] = k.split(',').map(Number); if (!cut.has(x + ',' + (y + 1))) g.fillRect(x, y + 1, 1, 1); });
+  g.fillStyle = '#d9ad3c'; g.fillRect(0,1,16,1); g.fillRect(0,14,16,1); g.fillStyle = '#6e5230'; g.fillRect(0,0,16,1); g.fillRect(0,15,16,1); });
 CV.vine = (() => { const c = document.createElement('canvas'); c.width = c.height = 16; const g = c.getContext('2d'); const pal = ['#3f7a22','#4f9430','#2f6018']; for (let x=1; x<16; x+=3){ const len = 6 + ((x*7) % 10); for (let y=0; y<len; y++){ g.fillStyle = pal[(x+y) % 3]; g.fillRect(x + ((y % 4) < 2 ? 0 : 1), y, 1, 1); if (y % 3 === 0){ g.fillRect(x - 1 + ((y % 4) < 2 ? 0 : 2), y, 1, 1); } } } return c; })();
 M.brick = lam(CV.brick); M.mossy = lam(CV.mossy); M.cracked = lam(CV.cracked); M.glyph = lam(CV.glyph); M.glyphs = CV.glyphs.map(c => lam(c)); M.frieze = lam(CV.frieze);
+M.brick2 = lam(CV.brick2); M.gbrick = lam(CV.gbrick); M.gmossy = lam(CV.gmossy); M.gglyph = lam(CV.gglyph);   // (g...: the grey stone, for the other acts)
 M.vine = new THREE.MeshLambertMaterial({map:tex(CV.vine, null, true), transparent:true, alphaTest:.5, side:THREE.DoubleSide});
 // the climbable spots are Minecraft-style ladders (two rails, a rung every quarter block), so they read as "climb here" (decor vines stay vines)
 CV.ladder = (() => { const c = document.createElement('canvas'); c.width = c.height = 16; const g = c.getContext('2d'); g.fillStyle = '#8a6438'; g.fillRect(2,0,2,16); g.fillRect(12,0,2,16); for (let y=1; y<16; y+=4) g.fillRect(4,y,8,2); g.fillStyle = '#5c3f1e'; g.fillRect(2,0,1,16); g.fillRect(13,0,1,16); for (let y=1; y<16; y+=4) g.fillRect(4,y+1,8,1); g.fillStyle = '#b08850'; g.fillRect(3,0,1,16); g.fillRect(12,0,1,16); return c; })();
 M.ladder = new THREE.MeshLambertMaterial({map:tex(CV.ladder, [1, 1], true), transparent:true, alphaTest:.5, side:THREE.DoubleSide});
-M.lip = new THREE.MeshLambertMaterial({color:0x6e6c62});
+M.lip = new THREE.MeshLambertMaterial({color:0xbe9a64}); M.glip = new THREE.MeshLambertMaterial({color:0x6e6c62});   // the coping on wall tops: sandstone in the temple, grey elsewhere
 CV.vein = cv16(g => { g.drawImage(CV.brick, 0, 0); g.fillStyle = '#9a2a1c'; [[2,0],[2,1],[3,2],[3,3],[4,4],[5,5],[5,6],[6,7],[8,8],[9,8],[10,9],[11,10],[11,11],[12,12],[13,13],[13,14],[13,15],[7,6],[8,5],[9,4],[10,4]].forEach(([x,y]) => g.fillRect(x, y, 1, 1)); g.fillStyle = '#d83a22'; [[3,2],[6,7],[10,9],[12,12]].forEach(([x,y]) => g.fillRect(x, y, 1, 1)); });
 M.gatePaint = new THREE.MeshLambertMaterial({color:0xd8381c, emissive:0x3a0a02}); M.gateWhite = new THREE.MeshLambertMaterial({color:0xf4efe0, emissive:0x202018});   // a fence gate's paint (bright, so it shows across a dim room)
 M.vein = new THREE.MeshLambertMaterial({map:tex(CV.vein, [1, 3], true)}); M.gold = lam(CV.gold); M.leaves = lam(CV.leaves); M.log = lam(CV.log); M.plank = lam(CV.plank);
@@ -2005,8 +2048,9 @@ function labelSprite(text, wide){
 
 /* temple walls: static, tall, drawn with instancing */
 const wallRoot = new THREE.Group(); world.add(wallRoot);
-const WALL_MATS = () => [null, M.brick, M.mossy, M.gold, M.leaves, M.log, M.cracked, M.glyph, M.frieze, ...M.glyphs.slice(1), M.stripeR, M.stripeB, M.crate, M.moon, M.sand, M.terra, M.lab, M.mrock, M.plaster, M.mred, M.mstone, M.mblue, M.castle, M.cbanner, M.uwin, M.uwinTop, M.ustain, M.ustainTop, M.ushelf, M.uscorch, M.ugreen];   // 24+: the University's castle (uniWallMat)   // 18-21: the Maya city
-// which block goes where: mostly brick, about 1 in 5 mossy, a few cracked, glyph blocks framing doorways, a painted frieze on the gold hall
+const WALL_MATS = () => [null, M.brick, M.mossy, M.gold, M.leaves, M.log, M.cracked, M.glyph, M.frieze, ...M.glyphs.slice(1), M.stripeR, M.stripeB, M.crate, M.moon, M.sand, M.terra, M.lab, M.mrock, M.plaster, M.mred, M.mstone, M.mblue, M.castle, M.cbanner, M.uwin, M.uwinTop, M.ustain, M.ustainTop, M.ushelf, M.uscorch, M.ugreen, M.brick2];   // 24+: the University's castle (uniWallMat)   // 18-21: the Maya city
+// which block goes where: golden sandstone, patches of weathered grey-gold stone, about 1 in 5 mossy, a few cracked, glyph blocks framing
+// doorways, a carved frieze on the gold hall. (The weathered stone is the last material: WALL_MATS().length - 1.)
 const whash = (x, y, j) => { let h = (x*374761393 + y*668265263 + j*1442695041) | 0; h = (h ^ (h >>> 13)) * 1274126177; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 function wallMatIndex(x, y, j, k, h){
   if (k >= 24 && typeof uniWallMat === 'function') return uniWallMat(x, y, j, k, h);   // the University's castle: windows, bookshelves, scorched stone, glass
@@ -2018,11 +2062,13 @@ function wallMatIndex(x, y, j, k, h){
   const r = whash(x, y, j);
   if (r < (k === 2 ? .45 : .2)) return 2;
   if (r < (k === 2 ? .52 : .27)) return 6;
+  if (whash(x >> 2, y >> 2, (j >> 1) + 57) < .3 || r > .9) return WALL_TONE2;   // weathered in patches (a few blocks across), and the odd stone here and there
   return 1;
 }
+let WALL_TONE2 = 1;
 function buildWalls(){
   freeKids(wallRoot);
-  const mats = WALL_MATS(), counts = new Array(mats.length).fill(0);
+  const mats = WALL_MATS(), counts = new Array(mats.length).fill(0); WALL_TONE2 = mats.length - 1;
   let lips = 0, vines = 0;
   const edgy = (x, y) => DIRS.some(([dx, dy]) => inb(x+dx, y+dy) && (!S.walls[(y+dy)*NX + x+dx] || topOf(x+dx, y+dy) < topOf(x, y)));
   // only the blocks you can see: anything below the lowest neighbouring top is hidden inside the pyramid
@@ -2053,7 +2099,7 @@ function buildWalls(){
     const runFrom = (i, dx, dy) => { const x0 = i % NX, y0 = (i / NX) | 0, top = lipAt.get(i); let n = 1; while (inb(x0 + dx*n, y0 + dy*n)){ const j = (y0 + dy*n)*NX + x0 + dx*n; if (done.has(j) || lipAt.get(j) !== top) break; n++; } return n; };
     lipAt.forEach((top, i) => { if (done.has(i)) return; const nx = runFrom(i, 1, 0), ny = runFrom(i, 0, 1), alongX = nx >= ny, n = alongX ? nx : ny;
       for (let k = 0; k < n; k++) done.add(i + (alongX ? k : k*NX)); runs.push([i % NX, (i / NX) | 0, top, alongX ? n : 1, alongX ? 1 : n]); });
-    const lm = new THREE.InstancedMesh(cbox(1, .14, 1), M.lip, runs.length), sc = new THREE.Matrix4();
+    const lm = new THREE.InstancedMesh(cbox(1, .14, 1), A.act === 1 ? M.lip : M.glip, runs.length), sc = new THREE.Matrix4();
     runs.forEach(([x, y, top, w, d], k) => { const p = cellPos(x, y); mtx.makeTranslation(p.x + (w - 1)/2, top, p.z + (d - 1)/2).multiply(sc.makeScale(w + .1, 1, d + .1)); lm.setMatrixAt(k, mtx); });
     lm.frustumCulled = false; lm.instanceMatrix.needsUpdate = true; lm.raycast = () => {}; wallRoot.add(lm); }
   // proper leafy canopies on every tree trunk: a big blocky crown, not a matchstick (they fall away with the jungle when the temple flies)
@@ -4447,6 +4493,7 @@ const col = (x, y0, y1) => { const a = []; for (let y = y0; y0 <= y1 ? y <= y1 :
 const TEMPLE_ROOMS = [
   // ---------------- Chapter 1: POWER ----------------
   { id:1, direct:true, ch:1, name:'Wake the lamp', give:['rblock'], check:'lit', out:[[7,3]],
+    teaches:['SOURCE+FLOW'], uses:[], step:'use', understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('lamp',7,3)],
     goal:'You\'ve got a Redstone Block: it\'s always ON. Put it right next to the sleepy lamp.',
     hello:'A lamp! Fast asleep. I\'ve tried shouting at it. Nothing. Maybe POWER would wake it up...',
@@ -4455,6 +4502,7 @@ const TEMPLE_ROOMS = [
     mc:'In Minecraft, a Redstone Block next to a Redstone Lamp lights it up, just like this.',
     sol:[K('rblock',6,3)] },
   { id:2, direct:true, ch:1, name:'Power spreads', give:['rblock'], check:'lit', out:[[5,2],[4,3],[6,3],[5,4]],
+    teaches:['SPLIT'], uses:['SOURCE+FLOW'], step:'alone', understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('lamp',5,2,{look:'fountain'}),K('lamp',4,3,{look:'fountain'}),K('lamp',6,3,{look:'fountain'}),K('fart',5,4)],
     goal:'One red block, FOUR things to wake up. Where should it go?',
     hello:'The Courtyard of Four Fountains! Three fountains... and a whoopee cushion. Nobody mentions the fourth fountain. One block can touch lots of things at once!',
@@ -4463,6 +4511,7 @@ const TEMPLE_ROOMS = [
     mc:'In Minecraft, a Redstone Block powers everything touching its sides.',
     unlock:['dust'], sol:[K('rblock',5,3)] },
   { id:3, ban:['rblock','lever','button','plate'], want:'the dust wire has to carry the power from the red block that\'s already here, all the way to the door', ch:1, name:'The long way round', give:['dust'], check:'lit', doorOut:true, showPower:true,
+    teaches:['SOURCE+FLOW','INTO'], uses:[], step:{'SOURCE+FLOW':'guided', INTO:'see'}, understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('rblock',2,5)], walls:[[5,1,2],[5,2,2],[5,3,2],[5,4,2],[5,5,2]],
     goal:'The door is shut! It needs power. Lay a dust wire from the red block, round the pillar, right up to the door.',
     hello:'That door only opens for POWER. Dust is like a wire: lay a trail of it. And watch the little numbers!',
@@ -4473,6 +4522,7 @@ const TEMPLE_ROOMS = [
     sol:[D(3,5),D(4,5),D(4,6),D(5,6),D(6,6),D(6,5),D(7,5),D(8,5),D(9,5),D(10,5)] },
   // the "into, not alongside" room: a wire that touches the lamp but turns away, so its END doesn't point in (Java). One pick-up fixes it.
   { id:4, ban:['rblock','lever','button','plate'], want:'the power has to come from the red block that\'s already here, along the wire', ch:1, name:'Point it IN!', give:['dust'], check:'lit', out:[[8,2]],
+    teaches:['INTO','DIAGNOSE'], uses:['SOURCE+FLOW'], step:{INTO:'fix', DIAGNOSE:'fix'}, understand:['diagnose'],   // the learning gate (test-concepts.js)
     fixed:[K('rblock',2,6), K('lamp',8,2)],
     loose:[D(3,6),D(4,6),D(5,6),D(6,6),D(7,6),D(8,6),D(8,5),D(8,4),D(8,3),D(9,3),D(9,2),D(9,1)],
     goal:'This wire goes right up to the lamp... then turns away! Power only comes out of the END of a wire. Make the end point INTO the lamp.',
@@ -4482,6 +4532,7 @@ const TEMPLE_ROOMS = [
     mc:'Same in Minecraft: dust only powers what its END points into. A line of dust running past a lamp won\'t light it.',
     sol:[K('air',9,3)] },
   { id:5, need:'lever', ch:1, name:'Parp!', give:['dust','lever'], check:'pulse', count:2, out:[[8,2]],
+    teaches:['SOURCE+FLOW'], uses:[], step:'guided', understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('fart',8,2)],
     get goal(){ return `Make the cushion go PARP two times! Wire your Lever to it with dust. Then ${useWord()} the lever: ON is PARP. Then OFF. Then ON again: PARP!`; },
     hello:'A whoopee cushion! In the guards\' bunk room. Finally, some SCIENCE. A lever is a switch: ON, OFF, ON...',
@@ -4491,6 +4542,7 @@ const TEMPLE_ROOMS = [
     bonus:{text:'BONUS: make it parp 5 times (ON, OFF, ON...) to win your own Whoopee Cushion!', kind:'pulses', n:5, reward:'fart'},
     unlock:['lever'], sol:[K('lever',4,2),D(5,2),D(6,2),D(7,2)] },
   { id:6, need:'button', ch:1, name:'Quick!', give:['dust','button'], check:'pulse', count:3, out:[[7,2]],
+    teaches:['PULSE'], uses:['SOURCE+FLOW'], step:'guided', understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('fart',7,2)],
     get goal(){ return `You've got a Button now! Wire it to the cushion with dust. Then ${useWord()} the button THREE times: three PARPS!`; },
     hello:'A button! Press it: power for a moment, then it lets go by itself. Like me holding a hot potato.',
@@ -4499,6 +4551,7 @@ const TEMPLE_ROOMS = [
     mc:'Minecraft buttons give a short burst of power. Stone buttons are quick; wooden ones stay on a bit longer.',
     unlock:['button'], sol:[K('button',4,2),D(5,2),D(6,2)] },
   { id:7, need:'plate', only:{plate:1}, ban:['rblock','lever','button'], want:'the Pressure Plate has to switch the lamps on', ch:1, name:'One step, three lights', give:['dust','plate'], check:'lit', out:[[3,2],[5,2],[7,2]],
+    teaches:['SPLIT','INTO'], uses:['SOURCE+FLOW'], step:'guided', understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('lamp',3,2),K('lamp',5,2),K('lamp',7,2)],
     goal:'You get ONE Pressure Plate. Wire it with dust to ALL THREE lamps, then stand on it. Every wire must END pointing INTO a lamp.',
     hello:'The Banquet Hall! VERY long. The ancients liked a long dinner. Three lamps, ONE plate. One wire can split and go lots of places...',
@@ -4509,6 +4562,7 @@ const TEMPLE_ROOMS = [
     bonus:{text:'BONUS: can you light all three with 7 dust or fewer? Win your own Lamp!', kind:'dust', n:7, reward:'lamp'},
     unlock:['plate'], sol:[K('plate',5,6),D(5,5),D(5,4),D(5,3),D(4,4),D(3,4),D(3,3),D(6,4),D(7,4),D(7,3)] },
   { id:8, ch:1, name:'The Great Golden Toilet', toiletExit:true, tntAt:[5,0], check:'boom', out:[[5,0]],   // the TNT sits right up against the toilet, so it's clear what it's for
+    teaches:['SOURCE+FLOW'], uses:['INTO'], step:'alone', understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[],
     goal:'A giant golden toilet blocks the door! Power the Boom Block (TNT!) next to it to blast the toilet away.',
     hello:'Who put a GIANT TOILET in the doorway?! There\'s a Boom Block right next to it... I wonder what happens if it gets power...',
@@ -4519,6 +4573,7 @@ const TEMPLE_ROOMS = [
   // ---------------- Chapter 2: THE INVERTER (a torch on a block: give the block power and the torch switches OFF) ----------------
   // ---------------- The Monkey Business wing: troops of monkeys you control with circuits ----------------
   { id:9, ch:4, name:'Feeding Time', give:['dust'], check:'pen', out:[[2,4],[4,2]],
+    teaches:['SPLIT'], uses:['SOURCE+FLOW','INTO'], step:'alone', understand:['none-yet'],   // the learning gate (test-concepts.js)
     walls:[[4,1,1],[4,3,1],[1,4,1],[3,4,1],[4,4,1]],
     fixed:[K('lever',8,6), K('dispenser',2,4), K('gate',4,2,{dir:1})],
     troop:{kinds:['tamarin'], n:20, pen:[1,1,3,3], lure:[2,2], start:[5,1,9,7], warmup:1, labels:[['BANANA MACHINE', 2, 4], ['GATE', 4, 2]]},
@@ -4529,6 +4584,7 @@ const TEMPLE_ROOMS = [
     mc:'In Minecraft, hold wheat and cows follow you. Lead them into a fenced pen and shut the gate: that\'s how a farm starts!',
     sol:[D(7,6),D(6,6),D(5,6),D(4,6),D(3,6),D(2,6),D(2,5),...col(6,5,2),D(5,2)] },
   { id:10, ch:4, name:'Monkey Launch', give:['dust','plate'], check:'launch', launches:10, out:[[7,2]],
+    teaches:['SOURCE+FLOW'], uses:[], step:'alone', understand:['none-yet'],   // the learning gate (test-concepts.js)
     walls:[[1,1,1],[2,1,1],[3,1,1],[4,1,1],[5,1,1],[6,1,1],[7,1,1],[8,1,1],[9,1,1],[1,3,1],[3,3,1],[4,3,1],[5,3,1],[6,3,1],[7,3,1],[8,3,1],[9,3,1]],
     fixed:[K('launcher',7,2)],
     troop:{kinds:['capuchin'], n:16, food:[9,2], start:[1,4,9,7]},
@@ -4539,6 +4595,7 @@ const TEMPLE_ROOMS = [
     mc:'Minecraft traps work just like this: a pressure plate on the path, wired to something sneaky.',
     sol:[K('plate',5,2), D(6,2)] },
   { id:11, ch:4, name:'Showtime!', give:['dust'], check:'together', out:[[3,1],[5,1],[7,1]],
+    teaches:['SPLIT'], uses:['SOURCE+FLOW','INTO','PULSE'], step:'alone', understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('firework',3,1),K('firework',5,1),K('firework',7,1),K('button',5,4)],
     troop:{kinds:['macaque','snow','macaque'], n:18, seats:[1,6,9,7]},
     goal:'The macaques want a fireworks show. One button. All three fireworks. All at the SAME time.',
@@ -4548,6 +4605,7 @@ const TEMPLE_ROOMS = [
     mc:'Firework shows in Minecraft use one button and branching wire to fire lots of dispensers at once.',
     sol:[D(5,3),D(5,2),D(4,3),D(3,3),D(3,2),D(6,3),D(7,3),D(7,2)] },
   { id:12, ch:4, name:'Monkey Disco', give:['dust'], check:'each', inputs:[[2,7],[4,7],[6,7],[8,7]], out:[[5,3]],
+    teaches:['OR'], uses:['SOURCE+FLOW','INTO'], step:['see','alone'], understand:['none-yet'], understandNote:'Gate Card quiz checks WHAT the gate does (everyday examples), not WHY it works',   // the learning gate (test-concepts.js)
     // the plates in a row along one side, the ball out in front (Tom, 11 Oct: four plates round the ball made kids wire a pinwheel, a
     // shape we never want in a kids' game). Now the natural build is a comb: one wire along the plates, one wire up into the ball.
     fixed:[K('plate',2,7),K('plate',4,7),K('plate',6,7),K('plate',8,7),K('disco',5,3)],
@@ -4560,6 +4618,7 @@ const TEMPLE_ROOMS = [
     mc:'Join wires from lots of plates or buttons and any of them can open the same door. Handy for secret bases!',
     sol:[...row(6,2,8), D(5,5), D(5,4)] },
   { id:13, direct:true, ban:['rblock','lever','button','plate'], want:'the Redstone Torch has to do it', ch:2, name:'Torches are power too', give:['torch'], check:'lit', out:[[4,3],[6,3]],
+    teaches:['SOURCE+FLOW'], uses:[], step:'use', understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('lamp',4,3,{look:'fountain'}),K('fart',6,3)],
     goal:'You\'ve got a Redstone Torch! It\'s power on a stick. Start the fountain AND wake the cushion with ONE torch.',
     hello:'A redstone torch! Power on a stick. It gives power to everything right next to it. Don\'t lick it.',
@@ -4568,6 +4627,7 @@ const TEMPLE_ROOMS = [
     mc:'A Redstone Torch on its own is always ON and powers the things next to it.',
     unlock:['torch'], sol:[K('torch',5,3)] },
   { id:14, ch:2, name:'The inverter', check:'table', inputs:[[8,3]], out:[[3,3]], fn:a=>!a,
+    teaches:['INVERTER'], uses:['SOURCE+FLOW'], step:['see','use'], understand:['none-yet'], understandNote:'Barold predicts wrongly and the lamp proves him wrong, but Max is not asked to predict; Gate Card quiz checks WHAT the gate does (everyday examples), not WHY it works',   // the learning gate (test-concepts.js)
     fixed:[K('lamp',3,3),K('dust',4,3),K('torch',5,3,{attach:1}),K('stone',6,3),K('dust',7,3),K('lever',8,3)],
     goal:'Someone left a machine here. Flip the lever. Watch what the torch does... and what the lamp does.',
     hello:'A torch stuck on a block, and a lever. Flip the lever and the lamp comes ON. Obviously. ...Probably. Try it!',
@@ -4580,6 +4640,7 @@ const TEMPLE_ROOMS = [
   // The torch and lamp sit in a GLASS case with the stone block as its only way in (Tom, 11 Oct: Max wired the lamp as well as the block, so the
   // lamp never went off and the right wire looked wrong). Glass takes no power in Java, so "just light the lamp" can't even be tried.
   { id:15, ch:2, name:'Into the block', check:'table', inputs:[[2,6]], out:[[7,4]], fn:a=>!a, missInto:[5,4],
+    teaches:['BLOCK','INVERTER'], uses:['INTO','SOURCE+FLOW'], step:['see','fix'], understand:['none-yet'],   // the learning gate (test-concepts.js)
     // Barold's TEST MACHINE first (Tom, 11 Oct: Max reached room 16 not knowing what a stone block does): lever, dust INTO a stone block, a lamp
     // touching the block. Flip it and the block glows red and wakes the lamp. Its own glass case, so it can't be wired into the puzzle.
     // (against the back wall, so the wall closes the case's far side: few glass blocks, the overhead view's draw-call budget is tight)
@@ -4599,6 +4660,7 @@ const TEMPLE_ROOMS = [
     bonus:{text:'BONUS: do it with only 4 dust. Win the ARROW ACE badge!', kind:'dust', n:4, badge:'ARROW ACE', card:'Your wire took the short way AND pointed straight INTO the block, like an arrow. Barold wants one too. He can\'t have one.'},
     sol:[D(3,6),D(4,6),D(5,6),D(5,5)] },
   { id:16, ch:2, name:'See-through', give:['stone','glass','dust','torch'], check:'table', inputs:[[2,4]], out:[[7,4]], fn:a=>!a,
+    teaches:['BLOCK','DIAGNOSE'], uses:['INVERTER'], step:{BLOCK:['see','fix'], DIAGNOSE:'fix'}, understand:['diagnose'],   // the learning gate (test-concepts.js)
     fixed:[K('lever',2,4),K('torch',5,4,{attach:3}),K('lamp',7,4)],
     loose:[D(3,4),K('glass',4,4),D(6,4)],
     goal:'This torch never switches OFF. Make lever ON turn the lamp OFF. One block here is wrong...',
@@ -4614,6 +4676,7 @@ const TEMPLE_ROOMS = [
     bonus:{text:'BONUS: add your Whoopee Cushion so it parps when the lamp is ON. Win the TWO-JOB WIRE badge!', kind:'toyLit', toy:'fart', badge:'TWO-JOB WIRE', why:'Your circuit lit the lamp AND made the Whoopee Cushion parp!', card:'One circuit, two jobs: a lamp AND a parp. Very clever. Very stinky.'},
     unlock:['glass'], sol:[K('stone',4,4)] },
   { id:17, ch:2, name:'Night-light', give:['dust','stone','torch'], check:'table', inputs:[[3,4]], out:[[8,4]], fn:a=>!a,
+    teaches:['INVERTER'], uses:['SOURCE+FLOW'], step:'alone', understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('plate',3,4),K('lamp',8,4)],
     goal:'Make the lamp go OFF when you stand on the plate, and ON when you step off.',
     hello:'A night-light! It should go dark when someone stands on the plate. I like a night-light. For... reading.',
@@ -4626,6 +4689,7 @@ const TEMPLE_ROOMS = [
   // CO-OP (OR): Barold stands on his plate to raise the bridge. Then it's HIS turn: he steps OFF and it sinks in front of him.
   // You cope by wiring the far side's lever in too: his plate OR your lever holds the bridge. Solved when he's across. (coop*, below)
   { id:18, ch:2, name:'Quicksand!', ban:['rblock','lever','button','plate','torch','stone','glass','repeater'], want:'Barold\'s plate and the lever have to hold the bridge up', give:['dust'], check:'coop', out:[[4,4]],
+    teaches:['OR'], uses:['SOURCE+FLOW','INTO'], step:['see','guided'], understand:['none-yet'], understandNote:'the glass-case play machine invites "try every mix" (observing, not predicting)',   // the learning gate (test-concepts.js)
     quick:[[4,0,6,9]], bridge:[[4,4],[5,4],[6,4]],   // wall to wall (Tom, 11 Oct: the sand stopped short of the walkway, so you could walk round it)
     fixed:[K('plate',2,2),K('lever',8,6),
       // PLAY first (HANDOFF backlog 1: a "see what each mix does" beat before the first OR): Barold's test machine, two levers and one lamp,
@@ -4645,6 +4709,7 @@ const TEMPLE_ROOMS = [
   // CO-OP (NOT launch): a hole too wide to jump, a Bounce Pad at the edge and Barold's "safety plate". When he steps OFF it, the
   // pad has to fling you over. Wired straight, the pad goes off too SOON (while he's still on it): you just hop. An inverter does it.
   { id:19, ch:2, name:'Ready, steady, BOING!', ban:['rblock','lever','button','plate'], want:'Barold\'s safety plate has to work the Bounce Pad', give:['dust','stone','torch'], check:'coop', out:[[3,4]],
+    teaches:['INVERTER'], uses:['SOURCE+FLOW'], step:'alone', understand:['none-yet'],   // the learning gate (test-concepts.js)
     chasm:[[4,0,6,8]], fixed:[K('plate',1,6),K('launcher',3,4)],   // wall to wall, so there's no walking round it
     coop:{kind:'pad', plate:[1,6], pad:[3,4], land:[8,4], bland:[8,6]}, crystalAt:[8,2],
     goal:'Barold stands on his plate. Make the green Bounce Pad turn ON when he steps OFF. Then stand on the pad and wait. 3, 2, 1... WHOOSH!',
@@ -4658,6 +4723,7 @@ const TEMPLE_ROOMS = [
     sol:[D(2,6),K('stone',3,6),K('torch',3,5,{attach:2})] },
   // ---------------- Chapter 3: TIRED SIGNALS ----------------
   { id:20, ch:3, name:'How far does power go?', give:['rblock','dust'], check:'lit', out:[[1,3]], showPower:true,
+    teaches:['BOOST','SOURCE+FLOW'], uses:[], step:{BOOST:'fix', 'SOURCE+FLOW':'see'}, understand:['diagnose'],   // the learning gate (test-concepts.js)
     fixed:[K('rblock',1,7),K('lamp',8,6),K('lamp',8,2),K('lamp',1,3)],
     loose:[...row(7,2,9), ...col(9,6,1), ...row(1,8,1), D(1,2)],
     goal:'Light the lamp at the very END of the wire. Watch the numbers on the dust!',
@@ -4667,6 +4733,7 @@ const TEMPLE_ROOMS = [
     mc:'Minecraft dust carries power 15 blocks, then it fades out. Watch the dust get darker as it goes.',
     sol:[K('rblock',8,3)] },
   { id:21, type:'SN', ch:3, name:'Too far!', give:['dust','stone','torch'], check:'table', inputs:[[1,1]], out:[[1,7]], fn:a=>a, showPower:true,
+    teaches:['BOOST'], uses:['INVERTER','BLOCK','SOURCE+FLOW'], step:'alone', understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('lever',1,1),K('lamp',1,7)], walls:[[1,4,2],[2,4,2],[3,4,2],[4,4,2],[5,4,2],[6,4,2],[7,4,2]],
     goal:'Lever ON: the lamp is ON. Lever OFF: the lamp is OFF. Go the long way round.',
     hello:'The Emperor built a wall right through this room. Of course he did. It\'s a long way round. I wonder if power gets tired...',
@@ -4679,6 +4746,7 @@ const TEMPLE_ROOMS = [
     naive:[...row(1,2,9), ...col(9,2,7), ...row(7,8,2)],
     sol:[...row(1,2,9), D(9,2), K('stone',9,3), K('torch',9,4,{attach:0}), D(9,5), K('stone',9,6), K('torch',8,6,{attach:1}), ...row(7,8,2)] },
   { id:22, type:'SE', ch:3, name:'The slowpoke', give:['repeater'], check:'table', inputs:[[4,1]], out:[[9,1]], fn:a=>a, showPower:true,
+    teaches:['REPEATER','BOOST','ONE-WAY'], uses:['SOURCE+FLOW'], step:'fix', understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('lever',4,1),K('lamp',9,1)], walls:[[5,0,2],[5,1,2],[5,2,2],[5,3,2],[5,4,2],[5,5,2],[5,6,2]],   // (the wall reaches the back wall: a fresh 6-dust wire round its top end used to solve it, 11 Oct)
     loose:[...col(4,2,7), D(5,7), D(6,7), ...col(6,6,1), D(7,1), D(8,1)],
     goal:'You\'ve got a Repeater now! The wire is too long. Put a Repeater in it.',
@@ -4688,6 +4756,7 @@ const TEMPLE_ROOMS = [
     mc:'Minecraft repeaters boost a signal back to 15. Right-click one to make it slower!',
     unlock:['repeater'], sol:[K('repeater',4,4,{dir:2})] },
   { id:23, type:'WS', ch:3, name:'One-way street', give:['repeater','dust'], check:'table', inputs:[[2,2],[2,6]], out:[[8,2],[8,6]], fn:(a,b)=>[a, a||b],
+    teaches:['ONE-WAY'], uses:['REPEATER','OR','SOURCE+FLOW'], step:'fix', understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('lever',2,2),K('lever',2,6),K('lamp',8,2),K('lamp',8,6)],
     loose:[...row(2,3,7), ...row(6,3,7), D(5,3), D(5,4), D(5,5)],
     goal:'Lever A should light BOTH lamps. Lever B should light ONLY the lamp across from it.',
@@ -4698,6 +4767,7 @@ const TEMPLE_ROOMS = [
     sol:[K('repeater',5,4,{dir:2})] },
   // ---- repeaters make power WAIT (world redesign plan, rooms NEW A-C): so the Fuel Valves aren't the first time you see it ----
   { id:26, type:'NE', ch:3, name:'The Water Clock', give:['dust','repeater'], check:'delay', minDelay:3, inputs:[[2,4]], out:[[8,4]],
+    teaches:['REPEATER','DELAY'], uses:['PULSE'], step:'fix', understand:['none-yet'],   // the learning gate (test-concepts.js)
     ban:['rblock','lever','button','plate','torch'], want:'the button has to open the water door',
     fixed:[K('button',2,4),K('lamp',8,4)],
     loose:[...row(4,3,7)],
@@ -4709,6 +4779,7 @@ const TEMPLE_ROOMS = [
     mc:'In Minecraft, right-click a repeater to make it slower. Each click adds a tiny wait: up to four.',
     sol:[K('repeater',5,4,{dir:1,delay:4})] },
   { id:27, type:'WE', ch:3, name:'The Dart Corridor', give:['dust','repeater'], check:'delay', minDelay:6, inputs:[[2,5]], out:[[8,5]],
+    teaches:['DELAY'], uses:['REPEATER'], step:'fix', understand:['none-yet'],   // the learning gate (test-concepts.js)
     ban:['rblock','lever','button','plate','torch'], want:'the plate has to fire the darts',
     walls:[[1,2,2],[2,2,2],[3,2,2],[4,2,2],[5,2,2],[6,2,2],[7,2,2],[8,2,2],[9,2,2]],
     fixed:[K('plate',2,5),K('lamp',8,5)],
@@ -4721,6 +4792,7 @@ const TEMPLE_ROOMS = [
     mc:'Minecraft trap builders put lots of repeaters in a row to make a really long wait.',
     sol:[K('repeater',4,5,{dir:1,delay:4}),K('repeater',6,5,{dir:1,delay:4})] },
   { id:28, type:'WN', ch:3, name:'The Bell Tower', give:['dust','repeater'], check:'order', inputs:[[5,6]], out:[[2,2],[5,2],[8,2]], outNames:['small bell', 'middle bell', 'BIG bell'], gap:2,
+    teaches:['DELAY'], uses:['REPEATER','PULSE','SOURCE+FLOW'], step:'guided', understand:['none-yet'],   // the learning gate (test-concepts.js)
     ban:['rblock','lever','button','plate','torch'], want:'the button has to ring the bells',
     fixed:[K('button',5,6),K('lamp',2,2,{tag:'SMALL'}),K('lamp',5,2,{tag:'MIDDLE'}),K('lamp',8,2,{tag:'BIG'})],
     loose:[D(5,5),...row(4,2,8),D(2,3),D(5,3),D(8,3)],
@@ -4732,6 +4804,7 @@ const TEMPLE_ROOMS = [
     naive:[K('repeater',5,3,{dir:0,delay:4})],
     sol:[K('repeater',5,3,{dir:0,delay:3}),K('repeater',7,4,{dir:1,delay:2}),K('repeater',8,3,{dir:0,delay:4})] },
   { id:24, type:'SE', ch:3, name:'Fix the power line', give:['dust','stone','torch','repeater','glass'], check:'table', inputs:[[8,5]], out:[[2,1]], fn:a=>a,
+    teaches:['DIAGNOSE','BLOCK','INVERTER','ONE-WAY'], uses:['SOURCE+FLOW','REPEATER'], step:{DIAGNOSE:'guided', BLOCK:'fix', INVERTER:'fix', 'ONE-WAY':'fix'}, understand:['diagnose'],   // the learning gate (test-concepts.js)
     // Tom, 11 Oct: Max picked up the glass and ran his own wire straight to the lamp, and it was "super unclear" what to change. Now
     // everything belongs to the room (it stays put) except the TWO wrong parts, the lamp and the end of the line sit in a low brick
     // channel so no new wire can reach the lamp, and the words say exactly what to look for.
@@ -4746,6 +4819,7 @@ const TEMPLE_ROOMS = [
     mc:'Fixing broken circuits is a big part of Minecraft redstone. Follow the power, block by block.',
     sol:[K('stone',6,5),K('torch',2,5,{attach:1}),K('repeater',2,2,{dir:0})] },
   { id:25, requireOff:[2,4], ban:['rblock','lever','button','plate'], want:'the inverter has to raise the bridge', ch:3, name:'Bridge of Doom', type:'WN', check:'lit', out:[[5,3]],
+    teaches:['INVERTER','DIAGNOSE'], uses:['SOURCE+FLOW'], step:{INVERTER:'fix', DIAGNOSE:'alone'}, understand:['diagnose'],   // the learning gate (test-concepts.js)
     quick:[[0,1,10,3]], bridge:[[5,1],[5,2],[5,3]],   // (in from the side, out over the chasm: TOP_PLACE). Wall to wall, so there's no walking round it
     fixed:[K('lever',2,4,{on:true}),K('stone',4,4),K('torch',4,5,{attach:0})],
     loose:[D(3,4),D(5,5)],
@@ -4858,6 +4932,7 @@ SECRETS.forEach(s => { const b = ROOMS.find(r => r.id === s.from).box;
 const FUN_ROOMS = [
   // ---------------- the pier: the gates you know, mixed (review) ----------------
   { id:301, name:'Hook-a-Duck', give:['dust','stone','torch'], check:'table', inputs:[[1,2],[1,6]], out:[[8,3]], fn:(a, b) => a && !b,
+    teaches:['AND','AND-NOT'], uses:['INVERTER'], step:'fix', understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('lever',1,2,{tag:'DUCK'}),K('lever',1,6,{tag:'CAPTAIN'}),K('stone',3,2),K('torch',4,2,{attach:3}),K('stone',7,4),K('torch',7,3,{attach:2}),K('lamp',8,3)], inHead:'<th>duck</th><th>Captain</th>',
     loose:[D(2,2),D(2,6),...col(5,2,6),D(6,4)],
     goal:'Hook-a-Duck! The DUCK lever ON: you hooked a duck. The CAPTAIN lever ON: the Captain is looking. The prize lamp needs a duck AND the Captain NOT looking.',
@@ -4868,6 +4943,7 @@ const FUN_ROOMS = [
     naive:[K('stone',3,6),K('torch',4,6,{attach:3})],
     sol:[D(3,6),D(4,6)] },
   { id:302, name:'The Rowing-Boat Dodgems', give:['dust','repeater'], check:'table', inputs:[[1,1],[1,7]], out:[[8,1],[8,7],[8,4]], fn:(a, b) => [a, b, a || b],
+    teaches:['ONE-WAY'], uses:['REPEATER','OR'], step:'alone', understand:['none-yet'],   // the learning gate (test-concepts.js)
     inHead:'<th>red</th><th>blue</th>', outHead:'<th>red</th><th>blue</th><th>BIG</th>',
     fixed:[K('lever',1,1),K('lever',1,7),K('lamp',8,1),K('lamp',8,7),K('lamp',8,4),...row(1,2,7),...row(7,2,7)],
     goal:'Each rowing boat lights its OWN lamp. The BIG lamp in the middle should light for EITHER boat. But the red boat must never light the blue lamp!',
@@ -4880,6 +4956,7 @@ const FUN_ROOMS = [
     sol:[K('repeater',5,2,{dir:2}),D(5,3),D(5,4),D(5,5),K('repeater',5,6,{dir:0}),D(6,4),D(7,4)] },
   // ---------------- clocks: things that tick all by themselves ----------------
   { id:303, play:true, name:'The Haunted Lamp', check:'stopclock', inputs:[[2,4]], out:[[5,3]],
+    teaches:['CLOCK'], uses:['INVERTER','REPEATER','BLOCK'], step:['see','use'], understand:['none-yet'], understandNote:'the play machine is observing, not predicting; Gate Card quiz checks WHAT the gate does (everyday examples), not WHY it works',   // the learning gate (test-concepts.js)
     fixed:[K('lever',2,4),D(3,4),K('stone',4,4),K('torch',5,4,{attach:3}),K('lamp',5,3),D(6,4),D(6,5),D(6,6),D(5,6),D(4,6),K('repeater',4,5,{dir:0,delay:2})],
     goal:'PLAY TIME! The haunted lamp flickers all by itself. Flip the lever ON and watch. Then flip it OFF again. What is the lever doing?',
     hello:'Our haunted lamp. A REAL ghost lives in it. Probably. It flickers all night. Have a fiddle with the lever.',
@@ -4888,6 +4965,7 @@ const FUN_ROOMS = [
     mc:'A Minecraft clock: a torch on a block whose power loops back through a repeater. Power the block with a lever to stop it.',
     sol:[] },
   { id:304, name:'The Carousel', give:['dust','repeater'], check:'clock', out:[[5,3]], gate:'clock',
+    teaches:['CLOCK'], uses:['INVERTER','REPEATER'], step:['see','fix'], understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('stone',4,4),K('torch',5,4,{attach:3}),K('lamp',5,3)],
     loose:[D(6,4),D(6,5),D(6,6),D(5,6)],
     why:[{say:'Remember the haunted lamp? Here\'s its clock, with bits missing. No power in the block, so the inverter\'s torch is ON.', at:[5,4]},
@@ -4902,6 +4980,7 @@ const FUN_ROOMS = [
     naive:[D(4,6),D(4,5)],
     sol:[D(4,6),K('repeater',4,5,{dir:0,delay:2})] },
   { id:305, name:'The Hall of Mirrors', give:['dust','stone','torch'], check:'table', inputs:[[1,2],[1,6]], out:[[8,3],[8,6]], fn:(a, b) => [a && b, !(a && b)],
+    teaches:['NAND'], uses:['AND','INVERTER'], step:'inside', understand:['diagnose'], understandNote:'reading a working machine to find where the answer already is',   // the learning gate (test-concepts.js)
     outHead:'<th>real</th><th>mirror</th>',
     fixed:[K('lever',1,2),K('lever',1,6),D(2,2),D(2,6),K('stone',3,2),K('stone',3,6),K('torch',4,2,{attach:3}),K('torch',4,6,{attach:3}),...col(5,2,6),D(6,4),K('stone',7,4),K('torch',7,3,{attach:2}),K('lamp',8,3),K('lamp',8,6)],
     goal:'The real lamp is an AND gate: ON when BOTH levers are on. The MIRROR lamp must always do the OPPOSITE. Is the answer already hiding in there somewhere?',
@@ -4913,6 +4992,7 @@ const FUN_ROOMS = [
     naive:[D(9,3),D(9,4),D(9,5),D(9,6)],
     sol:[D(6,6),D(7,6)] },
   { id:306, name:'The Chip Shop Sign', give:['dust','torch'], check:'alt', out:[[5,3],[8,3]],
+    teaches:['INVERTER'], uses:['CLOCK'], step:'inside', understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('stone',4,4),K('torch',5,4,{attach:3}),K('lamp',5,3),D(6,4),D(6,5),D(6,6),D(5,6),D(4,6),K('repeater',4,5,{dir:0,delay:2}),K('stone',8,5),K('lamp',8,3)],
     goal:'The chip shop sign: FISH, then CHIPS, then FISH, then CHIPS. When one lamp is ON the other must be OFF, swapping back and forth all by itself.',
     hello:'Our chip shop sign. FISH... FISH... FISH. It\'s meant to say CHIPS in between. Nobody buys our chips. We have SO many chips.',
@@ -4921,6 +5001,7 @@ const FUN_ROOMS = [
     mc:'Add a torch on a block to any Minecraft clock and you get two lights that take turns.',
     sol:[D(7,5),K('torch',8,4,{attach:2})] },
   { id:307, name:'The Lighthouse', give:['dust','stone','torch','repeater'], check:'clock', out:[[5,3]],
+    teaches:['CLOCK'], uses:['INVERTER','REPEATER','BLOCK'], step:'alone', understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('lamp',5,3)],
     goal:'The lighthouse lamp must flash ON and OFF all by itself, so ships can see the pier. There\'s nothing here but the lamp. Build a clock from scratch!',
     hello:'Our lighthouse. Ships keep bumping into the pier. Well. OUR ship does. It\'s a long story.',
@@ -4932,6 +5013,7 @@ const FUN_ROOMS = [
     sol:[K('stone',4,4),K('torch',5,4,{attach:3}),D(6,4),D(6,5),D(6,6),D(5,6),D(4,6),K('repeater',4,5,{dir:0,delay:2})] },
   // ---------------- memory: things that remember ----------------
   { id:308, play:true, name:'The Strength Tester', check:'latch', inputs:[[2,4],[7,5]], out:[[8,3]],
+    teaches:['MEMORY'], uses:['INVERTER','BLOCK'], step:['see','use'], understand:['none-yet'], understandNote:'the play machine is observing, not predicting; Gate Card quiz checks WHAT the gate does (everyday examples), not WHY it works',   // the learning gate (test-concepts.js)
     fixed:[K('plate',2,4),D(3,4),K('stone',4,4),K('torch',5,4,{attach:3}),D(6,4),K('stone',7,4),K('torch',7,3,{attach:2}),K('button',7,5,{attach:0}),K('lamp',8,3),D(7,2),D(6,2),D(5,2),D(4,2),D(4,3)],
     goal:'PLAY TIME! The Strength Tester. Jump on the plate, then jump off. Is the bell lamp still on? Then try the button.',
     hello:'Test your strength! Jump on the plate. Our bell lamp has a VERY good memory. Better than mine. What was I saying?',
@@ -4940,6 +5022,7 @@ const FUN_ROOMS = [
     mc:'This is an RS latch in Minecraft: two torches, two blocks, cross-wired.',
     sol:[] },
   { id:309, name:'The High Striker', give:['dust'], check:'latch', inputs:[[1,4],[6,5]], out:[[7,3]], gate:'memory',
+    teaches:['MEMORY'], uses:['INVERTER'], step:['see','fix'], understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('plate',1,4),D(2,4),K('stone',3,4),K('torch',4,4,{attach:3}),K('stone',6,4),K('torch',6,3,{attach:2}),K('button',6,5,{attach:0}),K('lamp',7,3)],
     loose:[D(6,2),D(5,2),D(4,2),D(3,2)],
     why:[{say:'Two inverters, like the Strength Tester. Look where each torch\'s power goes.', at:[4,4]},
@@ -4954,6 +5037,7 @@ const FUN_ROOMS = [
     naive:[D(5,4)],
     sol:[D(5,4),D(3,3)] },
   { id:310, name:'The Treasure Alarm', give:['dust','torch'], check:'latch', inputs:[[2,2],[2,6],[7,5]], out:[[8,3]],
+    teaches:['MEMORY'], uses:['OR','INVERTER'], step:'guided', understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('plate',2,2),K('plate',2,6),K('stone',4,4),K('stone',7,4),K('button',7,5,{attach:0}),K('lamp',8,3)],
     goal:'Two treasure chests, two plates. If anyone steps on EITHER plate, the alarm lamp must come on and STAY on after they step off. Only the button turns it off.',
     hello:'Our treasure. I mean, our completely normal prizes. Build an alarm that REMEMBERS if anyone touched them. Not that there\'s treasure. There\'s NO treasure.',
@@ -4964,6 +5048,7 @@ const FUN_ROOMS = [
     sol:[D(2,3),D(2,4),D(3,4),D(2,5),K('torch',5,4,{attach:3}),D(6,4),K('torch',7,3,{attach:2}),D(7,2),D(6,2),D(5,2),D(4,2),D(4,3)] },
   // ---------------- counting: one press, several dings ----------------
   { id:311, play:true, name:'Three Cheers', check:'count', count:3, inputs:[[1,2]], out:[[8,4]],
+    teaches:['COUNT'], uses:['DELAY','REPEATER','PULSE','SOURCE+FLOW','SPLIT'], step:['see','use'], understand:['none-yet'], understandNote:'asks "how does ONE press ring THREE times?" but Max\'s answer is not checked',   // the learning gate (test-concepts.js)
     fixed:[K('button',1,2),D(2,2),D(2,1),K('repeater',3,1,{dir:1,delay:4}),K('repeater',4,1,{dir:1,delay:4}),K('repeater',5,1,{dir:1,delay:4}),D(6,1),D(7,1),D(8,1),D(8,2),D(8,3),
       ...col(2,3,7),...row(4,3,7),...[3,4,5,6,7].map(x => K('repeater',x,7,{dir:1,delay:4})),D(8,7),K('repeater',8,6,{dir:0,delay:4}),D(8,5),K('lamp',8,4)],
     goal:'PLAY TIME! The bell machine. Press the button ONCE and count the dings. How does ONE press ring the bell THREE times?',
@@ -4973,6 +5058,7 @@ const FUN_ROOMS = [
     mc:'In Minecraft, one button and wires with different repeater delays make a pulse counter. Great for doorbells!',
     sol:[] },
   { id:312, name:'The Bell Ringer', give:['dust','repeater'], check:'count', count:2, inputs:[[1,6]], out:[[8,4]],
+    teaches:['COUNT'], uses:['DELAY','PULSE'], step:'guided', understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('button',1,6),D(2,6),...row(6,3,8),D(8,5),K('lamp',8,4)],
     loose:[D(2,5),D(2,4),D(2,3),D(2,2),...row(2,3,8),D(8,3)],
     goal:'Ring the bell exactly TWICE with ONE press of the button: ding... DING! Right now both wires ring it at the same moment.',
@@ -4986,6 +5072,7 @@ const FUN_ROOMS = [
     sol:[K('repeater',3,2,{dir:1,delay:4}),K('repeater',4,2,{dir:1,delay:4}),K('repeater',5,2,{dir:1,delay:4})] },
   // ---------------- THE GHOST TRAIN: seven repairs, each wakes a part of the ride (the Captain and the Parrot guide you) ----------------
   { id:313, part:0, name:'Ghost Train 1: Track Power', give:['dust','repeater'], check:'cart',
+    teaches:['BOOST','DIAGNOSE'], uses:['REPEATER','RAILS'], step:{BOOST:'fix', DIAGNOSE:'memory'}, understand:['diagnose'],   // the learning gate (test-concepts.js)
     fixed:[K('rail',1,7),K('rail',1,6),K('prail',1,5),K('prail',1,4),K('prail',1,3),K('rail',1,2),K('rail',1,1),K('lever',9,1)],
     loose:[D(8,1),D(7,1),D(6,1),D(5,1),D(4,1),D(3,1),D(3,2),D(3,3),D(4,3),D(5,3),D(6,3),D(7,3),D(8,3),D(8,4),D(8,5),D(7,5),D(6,5),D(5,5),D(4,5),D(3,5),D(2,5)],
     carts:[[1,7]], station:[1,1], out:[[1,1]],
@@ -4998,6 +5085,7 @@ const FUN_ROOMS = [
     mc:'Long Minecraft wires need a repeater every 15 dust, or the power runs out.',
     sol:[K('repeater',5,3,{dir:1})] },
   { id:314, part:1, name:'Ghost Train 2: The Doors', give:['dust','torch'], check:'table', inputs:[[8,2],[4,6]], out:[[8,6]], fn:(d, g) => d && !g,
+    teaches:['AND','AND-NOT'], uses:['INVERTER','RAILS'], step:'fix', understand:['none-yet'],   // the learning gate (test-concepts.js)
     inHead:'<th>cart</th><th>ghost</th>', outHead:'<th>doors</th>',
     fixed:[K('prail',1,2),K('lever',1,1),...[2,3,4,5,6,7].map(x => K('rail',x,2)),K('drail',8,2),K('lever',4,6),K('stone',8,4),K('torch',7,4,{attach:1}),K('stone',6,6),K('lamp',8,6)],
     carts:[[1,2]], launch:[1,1],
@@ -5011,6 +5099,7 @@ const FUN_ROOMS = [
     naive:[D(5,6),K('torch',7,6,{attach:3})],
     sol:[D(8,3),D(6,4),D(6,5),D(5,6),K('torch',7,6,{attach:3})] },
   { id:315, part:2, name:'Ghost Train 3: Flashing Skeletons', give:['dust','torch'], check:'runclock', inputs:[[1,2]], out:[[5,3]],
+    teaches:['CLOCK'], uses:['INVERTER'], step:'inside', understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('lever',1,2),K('stone',3,2),K('stone',4,4),K('torch',5,4,{attach:3}),K('lamp',5,3),D(6,4),D(6,5),D(6,6),D(5,6),D(4,6),K('repeater',4,5,{dir:0,delay:2})],
     goal:'The skeletons\' lamp must FLASH while the RIDE lever is ON, and stay DARK while it\'s OFF. The clock is already built. The lever isn\'t wired in.',
     hello:'Our flashing skeletons! They flash all the time. Even at night. Even when the ride is shut. Even at breakfast.',
@@ -5020,6 +5109,7 @@ const FUN_ROOMS = [
     mc:'Minecraft clocks with an on-switch: a torch on the lever\'s block powers the clock\'s block, so lever OFF = clock stopped.',
     sol:[D(2,2),K('torch',4,2,{attach:3}),D(4,3)] },
   { id:316, part:3, name:'Ghost Train 4: The Scare', give:['dust','repeater'], check:'order', inputs:[[1,7]], out:[[6,2],[6,4],[5,7]], outNames:['bats', 'coffin', 'BOO'], gap:2,
+    teaches:['DELAY'], uses:['REPEATER','PULSE'], step:'guided', understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('button',1,7),K('lamp',6,2,{tag:'BATS'}),K('lamp',6,4,{tag:'COFFIN'}),K('lamp',5,7,{tag:'BOO'})],   // (named in the world: no top/middle/nearest)
     loose:[D(2,7),D(3,7),D(4,7),...col(2,2,6),...row(4,3,5),...row(2,3,5)],
     goal:'One button. First the BATS lamp, THEN the COFFIN lamp, THEN the BOO lamp. Right now all three go at once!',
@@ -5031,6 +5121,7 @@ const FUN_ROOMS = [
     naive:[K('repeater',4,4,{dir:1,delay:3})],
     sol:[K('repeater',4,4,{dir:1,delay:3}),K('repeater',3,7,{dir:1,delay:3}),K('repeater',4,7,{dir:1,delay:3})] },
   { id:317, part:4, name:'Ghost Train 5: The Junctions', give:['dust','stone','torch'], check:'table', inputs:[[1,1],[1,6]], out:[[6,3],[8,6]], fn:(a, b) => [a || b, !(a || b)],
+    teaches:['OR','NOR'], uses:['INVERTER','RAILS'], step:{OR:'fix', NOR:'inside'}, understand:['none-yet'],   // the learning gate (test-concepts.js)
     inHead:'<th>BAT</th><th>SKULL</th>', outHead:'<th>points</th><th>TREASURE</th>',   // (the targets are named, never left/right: Tom's rule)
     fixed:[K('lever',1,1,{tag:'BAT'}),K('lever',1,6,{tag:'SKULL'}),K('rail',6,3),K('rail',6,4),K('rail',6,5),K('rail',4,3),K('rail',5,3),K('rail',7,3),K('rail',8,3),K('stone',6,6),K('lamp',8,6)],
     loose:[D(2,1),D(3,1),D(4,1),D(5,1),D(6,1),D(6,2)],
@@ -5042,6 +5133,7 @@ const FUN_ROOMS = [
     naive:[D(2,6),D(2,5),D(2,4),D(2,3),D(2,2)],
     sol:[D(2,6),D(2,5),D(2,4),D(2,3),D(2,2),D(3,6),D(4,6),D(5,6),K('torch',7,6,{attach:3})] },
   { id:318, part:5, name:'Ghost Train 6: The Score Board', give:['dust','torch'], check:'latch', inputs:[[3,8],[7,6]], out:[[8,4]],
+    teaches:['MEMORY'], uses:['RAILS','INVERTER'], step:'guided', understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('prail',1,8),K('lever',0,8),K('rail',2,8),K('drail',3,8),...[4,5,6,7,8,9].map(x => K('rail',x,8)),K('stone',3,5),K('stone',7,5),K('button',7,6,{attach:0}),K('lamp',8,4)],
     carts:[[1,8]], launch:[0,8],
     cardNote:'Start lever ON: the cart rolls over the detector rail. The button is NEW GAME.',
@@ -5053,6 +5145,7 @@ const FUN_ROOMS = [
     naive:[K('torch',4,5,{attach:3}),D(5,5),D(6,5),K('torch',7,4,{attach:2}),D(3,7),D(3,6)],
     sol:[K('torch',4,5,{attach:3}),D(5,5),D(6,5),K('torch',7,4,{attach:2}),D(7,3),D(6,3),D(5,3),D(4,3),D(3,3),D(3,4),D(3,7),D(3,6)] },
   { id:319, part:6, type:'WN', name:'Ghost Train 7: Definitely Not a Plank', give:['dust','stone','torch'], check:'table', inputs:[[2,6]], out:[[8,6]], fn:a => !a,
+    teaches:['INVERTER'], uses:['SOURCE+FLOW'], step:'memory', understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('plate',2,6),K('lamp',8,6)],
     goal:'The plank (the lamp) must stick OUT when nobody is on the plate, and fold IN when someone stands on it. Stand on the plate, then off it.',
     hello:'This is NOT a plank. It\'s a CHEESE BOARD. For the cheese. From earlier. It should fold away when someone\'s on the plate. Don\'t ask why.',
@@ -5063,6 +5156,7 @@ const FUN_ROOMS = [
     sol:[D(3,6),D(4,6),D(5,6),K('stone',6,6),K('torch',7,6,{attach:3})] },
   // ---------------- the twist: the funfair was bait. The great distraction machine ----------------
   { id:320, type:'NS', whisper:true, name:'The Great Distraction Machine', give:['dust','repeater'], check:'order', inputs:[[1,4]], out:[[6,1],[6,3],[6,5],[6,7]], outNames:['big wheel', 'carousel', 'bell', 'BOO'], gap:2,
+    teaches:['DELAY'], uses:['REPEATER'], step:'fix', understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('lever',1,4),K('lamp',6,1),K('lamp',6,3),K('lamp',6,5),K('lamp',6,7)],
     loose:[...col(2,1,7),...row(1,3,5),...[3,5,7].flatMap(y => [D(3,y),K('repeater',4,y,{dir:1}),D(5,y)])],
     goal:'ONE lever sets off every ride, one after another: the big wheel, THEN the carousel, THEN the bell, THEN the ghost train\'s BOO. Right now the last three all go together.',
@@ -5942,6 +6036,7 @@ const XOR_CROSS = [...col(9,5,2),D(8,2),...col(1,3,6),D(2,6)], XOR_OUT = [D(7,4)
 const APE_ROOMS = [
   // ---------------- NOR: nobody touches anything ----------------
   { id:201, play:true, name:'Do Not Touch', check:'table', inputs:[[2,2],[2,6]], out:[[8,4]], fn:(a, b) => !(a || b),
+    teaches:['NOR'], uses:['OR','INVERTER','BLOCK'], step:['see','use'], understand:['none-yet'], understandNote:'the play table ("try every mix") is observing, not predicting; Gate Card quiz checks WHAT the gate does (everyday examples), not WHY it works',   // the learning gate (test-concepts.js)
     fixed:[K('lever',2,2),K('lever',2,6),D(3,2),D(4,2),D(4,3),D(4,4),D(5,4),D(3,6),D(4,6),D(4,5),K('stone',6,4),K('torch',7,4,{attach:3}),K('lamp',8,4)],
     goal:'PLAY TIME! The museum\'s DO NOT TOUCH light already works. Try every mix of the two levers and fill in the table. When is it on?',
     hello:'Test 1. The DO NOT TOUCH light. *writes* "Specimen: hairless. Clever? Unlikely." Go on. Touch things.',
@@ -5950,6 +6045,7 @@ const APE_ROOMS = [
     mc:'In Minecraft, two wires joined into a block with a torch on it make a NOR gate.',
     sol:[] },
   { id:202, name:'The Quiet Library', give:['dust'], check:'table', inputs:[[2,2],[2,6]], out:[[8,4]], fn:(a, b) => !(a || b), gate:'nor',
+    teaches:['NOR'], uses:['OR','INVERTER','BLOCK'], step:['see','fix'], understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('lever',2,2),K('lever',2,6),K('stone',6,4),K('torch',7,4,{attach:3}),K('lamp',8,4)],
     loose:[D(3,2),D(4,2),D(4,3),D(4,4),D(5,4)],
     why:[{say:'See the inverter: the torch on that block? Its block has no power, so the torch is ON. Quiet please!', at:[7,4]},
@@ -5962,6 +6058,7 @@ const APE_ROOMS = [
     mc:'A Minecraft NOR gate: two wires joined into one block, a torch on the other side.',
     sol:[D(3,6),D(4,6),D(4,5)] },
   { id:203, name:'Nobody Moves', give:['dust','stone','torch'], check:'table', inputs:[[2,2],[2,6]], out:[[8,4]], fn:(a, b) => !(a || b),
+    teaches:['NOR'], uses:['OR','INVERTER','BLOCK'], step:'alone', understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('lever',2,2),K('lever',2,6),K('lamp',8,4)],
     goal:'Test 3: the NOBODY MOVES light. It should only be on when NEITHER lever is on. Just two levers and a lamp. Build it!',
     hello:'Test 3. ALL the wire is gone. *writes* "Specimen stuck for weeks." I have written it in INK.',
@@ -5971,6 +6068,7 @@ const APE_ROOMS = [
     sol:[D(3,2),D(4,2),D(4,3),D(4,4),D(5,4),D(3,6),D(4,6),D(4,5),K('stone',6,4),K('torch',7,4,{attach:3})] },
   // ---------------- NAND: not both ----------------
   { id:204, play:true, name:'The Banana Vault', check:'table', inputs:[[1,2],[1,6]], out:[[7,4]], fn:(a, b) => !(a && b),
+    teaches:['NAND'], uses:['INVERTER','BLOCK'], step:['see','use'], understand:['none-yet'], understandNote:'the play table is observing, not predicting; Gate Card quiz checks WHAT the gate does (everyday examples), not WHY it works',   // the learning gate (test-concepts.js)
     fixed:[K('lever',1,2),K('lever',1,6),D(2,2),D(2,6),K('stone',3,2),K('stone',3,6),K('torch',4,2,{attach:3}),K('torch',4,6,{attach:3}),...col(5,2,6),D(6,4),K('lamp',7,4)],
     goal:'PLAY TIME! The Banana Vault\'s LOCKED light. Two key levers. Try every mix and fill in the table. What opens the vault?',
     hello:'Test 4. The Banana Vault. Two keys, two inverters. *taps pencil* Three tests passed. A coincidence. Three coincidences.',
@@ -5979,6 +6077,7 @@ const APE_ROOMS = [
     mc:'Two torches on two blocks, their wires joined: a Minecraft NAND gate.',
     sol:[] },
   { id:205, name:'Two Keys, One Grumble', give:['dust','torch'], check:'table', inputs:[[1,2],[1,6]], out:[[7,4]], fn:(a, b) => !(a && b), gate:'nand',
+    teaches:['NAND'], uses:['INVERTER','BLOCK'], step:['see','fix'], understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('lever',1,2),K('lever',1,6),K('stone',3,2),K('stone',3,6),K('torch',4,2,{attach:3}),K('lamp',7,4)],
     loose:[D(2,2),D(2,6),D(5,2),D(5,3),D(5,4),D(5,5),D(6,4)],
     why:[{say:'Like the Banana Vault, but THIS torch is missing. See? Just a block.', at:[4,6]},
@@ -5993,6 +6092,7 @@ const APE_ROOMS = [
     sol:[K('torch',4,6,{attach:3}),D(5,6)] },
   // ---------------- AND: both keys, or nothing. The vault's NAND with ONE more inverter (the first AND Max builds; 211, 301, 305 and the Mega modes rest on it) ----------------
   { id:206, name:'The General\'s Safe', give:['dust','stone','torch'], check:'table', inputs:[[1,2],[1,6]], out:[[7,2]], fn:(a, b) => a && b, gate:'and',
+    teaches:['AND'], uses:['NAND','INVERTER','BLOCK'], step:['see','alone'], understand:['none-yet'], understandNote:'Gate Card quiz checks WHAT the gate does (everyday examples), not WHY it works',   // the learning gate (test-concepts.js)
     fixed:[K('lever',1,2),K('lever',1,6),K('lamp',7,2)], outHead:'<th>OPEN</th>',
     goal:'General Grumbletum\'s safe. The OPEN light comes on only when BOTH keys are on. One key alone does nothing. Build it!',
     hello:'Test 6. The General\'s safe. It opens only when BOTH keys are turned. Nobody has ever opened it. Not even the General.',
@@ -6004,6 +6104,7 @@ const APE_ROOMS = [
     sol:[D(2,2),D(2,6),K('stone',3,2),K('stone',3,6),K('torch',4,2,{attach:3}),K('torch',4,6,{attach:3}),...col(5,2,6),D(6,4),K('stone',7,4),K('torch',7,3,{attach:2})] },
   // ---------------- XOR: one or the other, not both ----------------
   { id:207, play:true, name:'The Landing Light', check:'table', inputs:[[1,2],[9,6]], out:[[5,4]], fn:(a, b) => a !== b,
+    teaches:['XOR'], uses:[], step:['see','use'], understand:['none-yet'], understandNote:'the play table is observing, not predicting; Gate Card quiz checks WHAT the gate does (everyday examples), not WHY it works',   // the learning gate (test-concepts.js)
     fixed:[...XOR_FIXED, ...XOR_CROSS, ...XOR_OUT],
     goal:'PLAY TIME! The landing light has a switch at the top of the stairs and one at the bottom. Try every mix. What flips the light?',
     hello:'Test 7. Our landing light. Two switches, one light. We\'ve had it 400 years. Nobody knows how it works. ...Do YOU? *pencil hovers*',
@@ -6012,6 +6113,7 @@ const APE_ROOMS = [
     mc:'Stair lights in Minecraft houses use XOR, so either switch works.',
     sol:[] },
   { id:208, name:'Odd One Out', give:['dust','torch'], check:'table', inputs:[[1,2],[9,6]], out:[[5,4]], fn:(a, b) => a !== b, gate:'xor',
+    teaches:['XOR'], uses:['INVERTER','OR','AND-NOT'], step:['see','fix'], understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[...XOR_FIXED.filter(c => !(c.t === 'torch' && c.x === 3 && c.y === 5)), ...XOR_CROSS, D(7,4), D(6,4)],
     why:[{say:'Two halves. This half lights the lamp when the lever by the door is on and the far lever is OFF.', at:[7,3]},
       {say:'Watch. The lever by the door ON... light ON!', at:[5,4], set:[[1,2,true]]},
@@ -6024,6 +6126,7 @@ const APE_ROOMS = [
     mc:'This is a real Minecraft XOR: two "this AND NOT that" halves feeding one lamp.',
     sol:[K('torch',3,5,{attach:2}),D(3,4),D(4,4)] },
   { id:209, name:'The Two-Key Door', give:['dust'], check:'table', inputs:[[1,2],[9,6]], out:[[5,4]], fn:(a, b) => a !== b,
+    teaches:['XOR'], uses:['INVERTER','OR','AND-NOT'], step:'guided', understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:XOR_FIXED, naive:XOR_OUT,
     goal:'The way out! The door light must be on when exactly ONE key is on. Both keys: it stays off. Every part is here. The wires are not.',
     hello:'Test 9. The Two-Key Door. One key opens it, TWO keep it shut. *writes* "If specimen passes, I owe Greg a banana." I never owe Greg a banana.',
@@ -6034,6 +6137,7 @@ const APE_ROOMS = [
     sol:[...XOR_CROSS, ...XOR_OUT] },
   // ---------------- logic expressions: the bureaucracy ----------------
   { id:210, name:'Form 27B', give:['dust','torch'], check:'table', inputs:[[1,1],[1,3],[1,6]], out:[[9,3]], fn:(a, b, c) => (a || b) && !c,
+    teaches:['RULE'], uses:['OR','AND','AND-NOT','INVERTER'], step:'fix', understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('lever',1,1),K('lever',1,3),K('lever',1,6),K('stone',4,2),K('stone',8,4),K('torch',8,3,{attach:2}),K('lamp',9,3)],
     loose:[D(2,1),D(3,2),D(6,2),D(6,3),D(6,4),D(7,4)],
     goal:'Form 27B says: you may pass with a STAMP or a BANANA... but NOT if General Grumbletum is looking. Make the PASS light do that.',
@@ -6044,6 +6148,7 @@ const APE_ROOMS = [
     naive:[D(2,2),D(2,3),K('torch',5,2,{attach:3})],
     sol:[D(2,2),D(2,3),K('torch',5,2,{attach:3}),...row(6,2,6),D(6,5)] },
   { id:211, name:'The Grand Panel', give:['dust','torch'], check:'table', inputs:[[1,2],[1,6],[8,6]], out:[[8,3]], fn:(a, b, c) => (a && b) || c,
+    teaches:['RULE','AND'], uses:['OR','INVERTER'], step:'fix', understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('lever',1,2),K('lever',1,6),K('lever',8,6),K('stone',3,2),K('stone',3,6),K('torch',4,2,{attach:3}),K('torch',4,6,{attach:3}),K('stone',7,4),K('lamp',8,3)],
     loose:[D(2,2),D(2,6),D(5,2),D(5,3),D(5,4),D(5,5),D(5,6),D(8,5)],
     goal:'The Grand Panel of Very Senior Thinkers: you pass with a stamp AND a banana. OR if the King says so. Make the light do that.',
@@ -6056,6 +6161,7 @@ const APE_ROOMS = [
   // Java rules: a gold (powered) rail is GO with power and a BRAKE without; a detector rail makes power while a cart is on it;
   // three rails round one make POINTS that switch with power; power runs along up to 8 more gold rails in a line.
   { id:212, name:'All Aboard!', give:['lever','rblock','torch','dust'], check:'cart',
+    teaches:['RAILS'], uses:['SOURCE+FLOW'], step:'fix', understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('prail',1,6),K('lever',1,7),K('rail',2,6),K('rail',3,6),K('rail',4,6),K('prail',5,6),K('prail',6,6),K('rail',7,6),K('rail',8,6),K('rail',9,6)],
     carts:[[1,6]], launch:[1,7], station:[9,6], out:[[9,6]],
     goal:'Get the crystal cart all the way to the end of the track. Gold rails: power ON = GO. Power OFF = STOP!',
@@ -6066,6 +6172,7 @@ const APE_ROOMS = [
     mc:'Minecraft powered rails: power ON boosts the cart, power OFF stops it dead. A lever or redstone torch next to them powers them.',
     sol:[K('rblock',5,5)] },
   { id:213, name:'Ding Ding!', give:['drail','rail','dust'], check:'ding',
+    teaches:['RAILS'], uses:['SOURCE+FLOW','INTO'], step:'alone', understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('prail',1,2),K('lever',1,1),K('rail',2,2),K('rail',3,2),K('rail',5,2),K('rail',6,2),K('rail',7,2),K('rail',8,2),K('lamp',7,5)],
     carts:[[1,2]], launch:[1,1], station:[9,2], out:[[7,5]],
     goal:'The bell (the lamp) must be ON when the cart ARRIVES at the end of the track, and stay on while it waits. Two bits of track are missing.',
@@ -6077,6 +6184,7 @@ const APE_ROOMS = [
     naive:[K('drail',4,2),K('rail',9,2),D(4,3),D(4,4),D(4,5),D(5,5),D(6,5)],
     sol:[K('rail',4,2),K('drail',9,2),D(9,3),D(8,3),D(7,3),D(7,4)] },
   { id:214, name:'Points Change', give:['lever','dust','rblock','torch'], check:'route',
+    teaches:['RAILS'], uses:['SOURCE+FLOW'], step:'fix', understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('prail',5,7),K('lever',4,7),...[6,5,4,3].map(y => K('rail',5,y)),K('rail',5,2),...[1,2,3,4,6,7,8,9].map(x => K('rail',x,2))],
     carts:[[5,7]], launch:[4,7], station:[9,2], pit:[1,2], out:[[5,2]],
     goal:'Send the crystal cart to the CRYSTAL store, not into the SLIME. Where the track splits, the points pick the way.',
@@ -6087,6 +6195,7 @@ const APE_ROOMS = [
     mc:'In Minecraft, a T-junction of rails switches when you power it. A lever next to the junction does it.',
     sol:[K('rblock',5,1)] },
   { id:215, name:'Stop That Cart!', give:['rail','lever'], check:'stopgo',
+    teaches:['RAILS'], uses:['SOURCE+FLOW'], step:'fix', understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('prail',1,2),K('lever',1,1),K('prail',2,2),K('prail',3,2),K('prail',5,2),K('prail',7,2),K('prail',8,2),K('rail',9,2),K('lever',8,1,{on:true})],
     loose:[K('prail',4,2),K('prail',6,2)],
     carts:[[1,2]], launch:[1,1], platform:[5,2], station:[9,2],
@@ -6103,6 +6212,7 @@ const APE_ROOMS = [
     sol:[K('rail',4,2),K('rail',6,2),K('lever',5,3)] },
   // ---------------- the Crystal Express: four puzzles, each lays a piece of the track you ride out on ----------------
   { id:216, name:'Express 1: Booster Line', give:['dust'], check:'cart', piece:1,
+    teaches:['RAILS'], uses:['SOURCE+FLOW'], step:'memory', understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('prail',1,2),K('lever',1,3),...[2,3,4,5,6,7,8].map(x => K('prail',x,2)),K('rail',9,2),K('rail',9,3),K('rail',9,4),K('rail',9,5),K('rail',9,6),...[2,3,4,5,6,7,8].map(x => K('prail',x,6)),K('rail',1,6)],
     carts:[[1,2]], launch:[1,3], station:[1,6], out:[[1,6]],
     goal:'The Express needs a booster line. Get the cart all the way round to the end. You only have DUST this time. Where can power come from?',
@@ -6113,6 +6223,7 @@ const APE_ROOMS = [
     mc:'Power one gold rail in Minecraft and the next 8 in a line get power too.',
     sol:[D(1,4),D(2,4),D(2,5)] },
   { id:217, name:'Express 2: The Signal Box', give:['dust','torch'], check:'table', piece:2, inputs:[[1,1],[1,3],[1,6]], out:[[8,2]], fn:(a, b, c) => (a || b) && !c,
+    teaches:['RULE'], uses:['OR','AND','AND-NOT','INVERTER','RAILS'], step:'guided', understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('lever',1,1),K('lever',1,3),K('lever',1,6),K('stone',4,2),K('stone',8,4),K('torch',8,3,{attach:2}),K('prail',8,1),K('lever',9,1),K('rail',8,2),K('rail',7,2),K('rail',9,2)],
     carts:[[8,1]], launch:[9,1], station:[7,2], pit:[9,2],
     goal:'The signal box sets the points: to the CRYSTALS with a green flag OR the royal seal, but NOT if the gorilla guard says stop. The torch by the points is the last part.',
@@ -6124,6 +6235,7 @@ const APE_ROOMS = [
     naive:[D(2,2),D(2,3),K('torch',5,2,{attach:3})],
     sol:[D(2,1),D(2,2),D(2,3),D(3,2),K('torch',5,2,{attach:3}),D(6,2),D(6,3),D(6,4),D(7,4),...row(6,2,6),D(6,5)] },
   { id:218, name:'Express 3: The Loading Bay', give:['button','lever','dust'], check:'loadgo', piece:3,
+    teaches:['PULSE'], uses:['RAILS'], step:'memory', understand:['none-yet'],   // the learning gate (test-concepts.js)
     fixed:[K('prail',1,2),K('lever',1,1),K('prail',2,2),K('prail',3,2),...[4,5,6,7,8].map(x => K('rail',x,2)),K('prail',9,2)],
     carts:[[1,2]], launch:[1,1], bay:[9,2], station:[1,2],
     goal:'The cart must STOP in the loading bay (the gold rail at the end), wait to be loaded, THEN go back. Gold rail against a wall: give it power and the cart shoots away from the wall.',
@@ -6135,6 +6247,7 @@ const APE_ROOMS = [
     mc:'Minecraft stations: a cart stops on an unpowered gold rail against a block. A button launches it away.',
     sol:[K('button',9,3)] },
   { id:219, name:'Express 4: Crystal Delivery', give:['repeater','dust'], check:'cartorder', piece:4,
+    teaches:['DELAY'], uses:['REPEATER','RAILS','PULSE'], step:'fix', understand:['none-yet'],   // the learning gate (test-concepts.js)
     loose:[D(2,3),D(2,5)],
     fixed:[K('button',2,4),K('prail',2,2),...[3,4,5,6,7,8,9].map(x => K('rail',x,2)),K('prail',2,6),...[3,4,5,6,7,8,9].map(x => K('rail',x,6))],
     carts:[[2,2],[2,6]], launch:[2,4], order:[[9,2],[9,6]],
@@ -6856,6 +6969,7 @@ const SHIP_CORR = {x0:42, x1:67, y0:8, y1:12}, SHIP_DOOR = [42, 10];
 const shipLoop = (x0, y0, x1, y1) => [...row(y0, x0, x1), ...row(y1, x0, x1), ...col(x0, y0 + 1, y1 - 1), ...col(x1, y0 + 1, y1 - 1)];
 const SHIP_ROOMS = [
   { id:31, ship:1, short:'the ENGINES', part:'engines', name:'The Engines', box:{x0:43, x1:55, y0:0, y1:8}, color:0xff8a2a,
+    teaches:['BOOST','DIAGNOSE'], uses:['REPEATER','SOURCE+FLOW'], step:{BOOST:'fix', DIAGNOSE:'alone'}, understand:['diagnose'],   // the learning gate (test-concepts.js)
     check:'table', give:['dust','repeater'], ban:['rblock','lever','button','plate','torch'], showPower:true,
     want:'the lever has to start the engines, along the old wire',
     inputs:[[5,4]], out:[[4,0],[6,0]], fn:a => [a, a], outHead:'',
@@ -6870,6 +6984,7 @@ const SHIP_ROOMS = [
     win:'BRRRRRMMM! Both engines are roaring! A fresh 15 from the repeater gets the power all the way round. ...Why does a temple have ENGINES?',
     decree:'BY ROYAL DECREE: the boring little boxes on this wire have been REMOVED. Wires should be WIRES! Signed, His Magnificence, the EMPEROR.' },
   { id:32, ship:2, short:'the LANDING LEGS', part:'legs', name:'The Landing Legs', box:{x0:43, x1:55, y0:12, y1:20}, flip:true, color:0x4fa3ff,
+    teaches:['NOR'], uses:['OR','INVERTER','BLOCK'], step:'alone', understand:['none-yet'],   // the learning gate (test-concepts.js)
     check:'table', give:['dust','stone','torch'],
     want:'the clamps have to fold the legs',
     inputs:[[9,1],[1,1]], out:[[5,0]], fn:(a, b) => !(a || b), outHead:'<th>legs up</th>',   // clamp A, clamp B: A on the left as you walk in (drawn upside down: x = 9 is on your left), carved in the wall behind each
@@ -6883,6 +6998,7 @@ const SHIP_ROOMS = [
     win:'CLUNK! The legs folded up and the whole temple WOBBLED! Either clamp powers the block, and the inverter says NO. Both clamps off: legs up!',
     decree:'BY ROYAL DECREE: the legs stay DOWN. Forever. I like it here. Signed, Emperor Archibald Whiffington III.' },
   { id:33, ship:3, short:'the SKY WINDOW', part:'window', name:'The Sky Window', box:{x0:55, x1:67, y0:0, y1:8}, color:0x7fe0ff,
+    teaches:['OR','INTO','DIAGNOSE'], uses:['SOURCE+FLOW'], step:{OR:'fix', INTO:'fix', DIAGNOSE:'alone'}, understand:['diagnose'],   // the learning gate (test-concepts.js)
     check:'table', give:['dust'],
     want:'the lever and the plate have to open it',
     inputs:[[0,3],[10,3]], out:[[5,2],[4,3],[6,3],[5,4]], fn:(a, b) => [a || b, a || b, a || b, a || b], outHead:'<th colspan="4">shutters</th>',
@@ -6895,6 +7011,7 @@ const SHIP_ROOMS = [
     win:'The roof slid OPEN! Look at all that sky! Either switch works, and every shutter has a wire pointing right INTO it.',
     decree:'BY ROYAL DECREE: wires shall go AROUND the shutters, not INTO them. It is more polite. Signed, the EMPEROR.' },
   { id:34, ship:4, short:'the FUEL VALVES', part:'fuel', name:'The Fuel Valves', box:{x0:55, x1:67, y0:12, y1:20}, flip:true, color:0x6dff5a,
+    teaches:['DELAY'], uses:['REPEATER','PULSE','SOURCE+FLOW','SPLIT'], step:'alone', understand:['none-yet'],   // the learning gate (test-concepts.js)
     check:'seq', give:['dust','repeater'], ban:['rblock','lever','button','plate','torch'],
     want:'the button has to open the valves',
     // valve 1, valve 2, valve 3: 1, 2, 3 from the LEFT as you walk in (Tom, 11 Oct: "why arent they just 1,2,3 left to right"). The room
@@ -7357,8 +7474,31 @@ CV.goldtile = cv16(g => { speckle(g, ['#d8b04a','#e0b852','#cca442']); g.fillSty
 CV.bathtile = cv16(g => { for (let y = 0; y < 16; y += 4) for (let x = 0; x < 16; x += 4){ g.fillStyle = ((x + y) >> 2) % 3 ? '#e9f1f4' : '#4f8fbf'; g.fillRect(x, y, 4, 4); g.fillStyle = '#9fb4bd'; g.fillRect(x, y, 4, 1); g.fillRect(x, y, 1, 4); } });
 CV.terracotta = cv16(g => { speckle(g, ['#b8683c','#c07044','#ac6034']); g.fillStyle = '#7e4222'; g.fillRect(0,0,16,1); g.fillRect(0,0,1,16); g.fillRect(0,8,16,1); g.fillRect(8,8,1,8); g.fillRect(4,0,1,8); });
 CV.lapis = cv16(g => { speckle(g, ['#2a4a9a','#2f52a6','#26448c']); g.fillStyle = '#e8c860'; [[3,4],[11,2],[7,10],[13,12],[2,13]].forEach(([x, y]) => g.fillRect(x, y, 1, 1)); g.fillStyle = '#1a3070'; g.fillRect(0,0,16,1); g.fillRect(0,0,1,16); });
-const TERRAIN_TOPS = () => [lam(CV.grass), lam(CV.tile), lam(CV.plank), lam(CV.ice), lam(CV.crypt), lam(CV.sand), lam(CV.amoss), lam(CV.plaster), ...(A.act === UNI_ACT && CV.uflag ? [lam(CV.uflag), lam(CV.uboard), lam(CV.uchequer), lam(CV.uscorchF), lam(CV.uearth)] : Array.from({length:5}, () => lam(CV.tile))),
-  ...['marbleW', 'marbleB', 'brass', 'mosaic', 'parquet', 'carpet', 'goldtile', 'bathtile', 'terracotta', 'lapis'].map(k => lam(CV[k]))];   // 13-22: the fancy floors (FK). (8-12 keep their place outside the University)
+// ---- the temple's floors in temple stone (Tom, 17 Oct: white tiles aren't right for the temple; "I really like ... the checkerboard"):
+// pale sandstone flagstones, the checkerboards and patterns kept but in stone (cream sandstone + grey basalt in the Pillar Hall, cream +
+// lapis in the Ballroom), gold and brass as treasure, lapis only in the royal rooms, pale wood in the wooden rooms. Every one is pale
+// enough that red dust, dark or lit, stands out at least as well as it did on the old grey tiles (test-sandstone.js measures it).
+// Act 1 only (TERRAIN_TOPS): the other acts keep their own floors.
+const TEMPLE_FLOOR = (() => { const F = {}, joint = (g, c) => { g.fillStyle = c; g.fillRect(0,0,16,1); g.fillRect(0,0,1,16); };
+  F.tile = cv16(g => { sspeck(g, ['#e3cfa3', '#e8d5aa', '#dcc89b']); joint(g, '#bba277'); g.fillStyle = '#f0e1bb'; g.fillRect(1,1,14,1); g.fillStyle = '#cfb889'; for (let k = 0; k < 4; k++) g.fillRect(2 + ((SR()*12)|0), 2 + ((SR()*12)|0), 1, 1); });   // sandstone flagstones
+  F.grass = cv16(g => sspeck(g, ['#76b44a', '#82c052', '#6ca844', '#8cc85c', '#68a240', '#80bc50']));   // garden lawn (a little lighter: dark wire shows on it even by torchlight)
+  F.plank = cv16(g => { sspeck(g, ['#dad0b6', '#e0d6bc', '#d2c8ae']); g.fillStyle = '#a8987a'; [3,7,11,15].forEach(y => g.fillRect(0, y, 16, 1)); g.fillRect(5,0,1,3); g.fillRect(11,4,1,3); g.fillRect(3,8,1,3); g.fillRect(9,12,1,3); });   // pale ash boards
+  F.crypt = cv16(g => { sspeck(g, ['#d0c4a8', '#c9bda1', '#d6caae']); g.fillStyle = '#a3967a'; g.fillRect(0,7,16,1); g.fillRect(7,0,1,7); g.fillRect(12,8,1,8); g.fillStyle = '#93a868'; for (let k = 0; k < 5; k++) g.fillRect((SR()*16)|0, (SR()*16)|0, 1, 1); });   // old grey-gold stone, a little moss in the cracks
+  F.moss = cv16(g => { sspeck(g, ['#a3b77a', '#adc184', '#99ad70']); g.fillStyle = '#d6c79e'; for (let k = 0; k < 10; k++) g.fillRect((SR()*16)|0, (SR()*16)|0, 1, 1); });   // soft moss over stone
+  F.marbleW = cv16(g => { sspeck(g, ['#ead9b2', '#efdfb9', '#e5d3ab']); g.fillStyle = '#dac699'; for (let k = 0; k < 3; k++){ const y = (SR()*16)|0; for (let x = 0; x < 16; x++) if (SR() < .7) g.fillRect(x, (y + (x >> 3)) & 15, 1, 1); } joint(g, '#cbb487'); });   // polished pale sandstone (fine bedding lines)
+  F.marbleB = cv16(g => { sspeck(g, ['#a3a69d', '#9ea198', '#a8aba2']); g.fillStyle = '#8f938a'; for (let k = 0; k < 6; k++) g.fillRect((SR()*16)|0, (SR()*16)|0, 2, 1); joint(g, '#878b82'); });   // grey basalt (as dark as red dust allows)
+  F.brass = cv16(g => { sspeck(g, ['#e3cfa3', '#e8d5aa', '#dcc89b']); g.fillStyle = '#c9a23c'; g.fillRect(0,0,16,1); g.fillRect(0,0,1,16); g.fillRect(7,7,2,2); g.fillStyle = '#ecc860'; g.fillRect(1,1,2,1); g.fillRect(7,7,1,1); g.fillStyle = '#9a7a2a'; g.fillRect(0,15,16,1); g.fillRect(15,0,1,16); });   // sandstone with brass inlay
+  F.mosaic = cv16(g => { const pal = ['#e6d2a6', '#dcb44c', '#9ec3a4', '#e9d9b4', '#b0d0c0', '#eadcb8']; for (let y = 0; y < 16; y += 4) for (let x = 0; x < 16; x += 4){ g.fillStyle = pal[((x >> 2) + (y >> 2)*3 + ((x*y) >> 3)) % pal.length]; g.fillRect(x, y, 4, 4); g.fillStyle = '#bda374'; g.fillRect(x, y, 4, 1); g.fillRect(x, y, 1, 4); } });   // sandstone, gold and pale jade chips
+  F.parquet = cv16(g => { for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++){ const b = (((x + y) >> 2) + (x >> 3)) & 1; g.fillStyle = b ? (((x - y) & 3) ? '#dacfb4' : '#cbbfa4') : (((x + y) & 3) ? '#e3d8bc' : '#d3c8ac'); g.fillRect(x, y, 1, 1); } });   // pale ash
+  F.carpet = cv16(g => { sspeck(g, ['#80a4f0', '#88acf4', '#789ce8']); g.fillStyle = '#f0cc5a'; for (let k = 0; k < 4; k++){ g.fillRect(8 - k, 4 + k, 1, 1); g.fillRect(7 + k, 4 + k, 1, 1); g.fillRect(8 - k, 11 - k, 1, 1); g.fillRect(7 + k, 11 - k, 1, 1); } g.fillStyle = '#6c8ee0'; g.fillRect(0,0,16,1); g.fillRect(0,0,1,16); });   // a royal blue runner (light enough for wire)
+  F.goldtile = cv16(g => { sspeck(g, ['#e2bc58', '#e8c462', '#dab250']); g.fillStyle = '#b48a2c'; g.fillRect(0,0,16,1); g.fillRect(0,0,1,16); g.fillRect(8,0,1,16); g.fillRect(0,8,16,1); g.fillStyle = '#f8e494'; g.fillRect(1,1,2,1); g.fillRect(9,9,2,1); });   // gold (treasure)
+  F.bathtile = cv16(g => { for (let y = 0; y < 16; y += 4) for (let x = 0; x < 16; x += 4){ g.fillStyle = ((x + y) >> 2) % 3 ? '#ead9b2' : '#9cc0e0'; g.fillRect(x, y, 4, 4); g.fillStyle = '#c2b08a'; g.fillRect(x, y, 4, 1); g.fillRect(x, y, 1, 4); } });   // cream stone and pale blue
+  F.terracotta = cv16(g => { sspeck(g, ['#e0d3b4', '#e6d9ba', '#d9ccad']); g.fillStyle = '#bba680'; g.fillRect(0,0,16,1); g.fillRect(0,0,1,16); g.fillRect(0,8,16,1); g.fillRect(8,8,1,8); g.fillRect(4,0,1,8); });   // pale ochre bricks
+  F.lapis = cv16(g => { sspeck(g, ['#7ea4f4', '#88acf8', '#7498ea']); g.fillStyle = '#f2d470'; [[3,4],[11,2],[7,10],[13,12],[2,13]].forEach(([x, y]) => g.fillRect(x, y, 1, 1)); g.fillStyle = '#6a8ee2'; g.fillRect(0,0,16,1); g.fillRect(0,0,1,16); });   // lapis (royal rooms)
+  return F; })();
+const TERRAIN_TOPS = () => { const T = A.act === 1 ? TEMPLE_FLOOR : CV, t = k => lam(T[k] || CV[k]);   // (Act 1: the temple's stone floors)
+  return [t('grass'), t('tile'), t('plank'), lam(CV.ice), t('crypt'), lam(CV.sand), T === TEMPLE_FLOOR ? t('moss') : lam(CV.amoss), lam(CV.plaster), ...(A.act === UNI_ACT && CV.uflag ? [lam(CV.uflag), lam(CV.uboard), lam(CV.uchequer), lam(CV.uscorchF), lam(CV.uearth)] : Array.from({length:5}, () => t('tile'))),
+  ...['marbleW', 'marbleB', 'brass', 'mosaic', 'parquet', 'carpet', 'goldtile', 'bathtile', 'terracotta', 'lapis'].map(t)]; };   // 13-22: the fancy floors (FK). (8-12 keep their place outside the University)
 const FK = {grass:0, tile:1, plank:2, ice:3, crypt:4, sand:5, moss:6, plaster:7, marbleW:13, marbleB:14, brass:15, mosaic:16, parquet:17, carpet:18, gold:19, bath:20, terracotta:21, lapis:22};   // 8-12: the University's floors   // 7: the Maya city's white plaster   // 5, 6: the Ape Planet's desert and alien moss
 const terrainRoot = new THREE.Group(); world.add(terrainRoot);
 // raised floors: stacks of blocks under every floor that's above the jungle, with the right top for each zone
@@ -7366,7 +7506,7 @@ function buildTerrain(){
   freeKids(terrainRoot);
   if (!S.elev || S.mode !== 'adventure') return;
   GLOW.mesh = FIRE.mesh = null; artDrop(terrainRoot);   // the flame and glow meshes live here too: rebuilt on the next frame
-  const tops = TERRAIN_TOPS(), side = A.act === UNI_ACT && M.castle ? M.castle : M.brick, cubes = [], slabs = [], decks = [], ladders = [], roofs = [];
+  const tops = TERRAIN_TOPS(), side = A.act === UNI_ACT && M.castle ? M.castle : A.act === 1 ? M.brick : M.gbrick, cubes = [], slabs = [], decks = [], ladders = [], roofs = [];
   for (let y=0;y<NY;y++) for (let x=0;x<NX;x++){
     const i = y*NX + x, e = S.elev[i]; if (S.pit[i]) continue;
     if (S.deck[i]){ decks.push([x, y, e]); continue; }
@@ -7398,7 +7538,7 @@ function buildTerrain(){
   ladders.forEach(([x, y, e]) => { let n = 0, hi = e; for (const [dx, dy] of DIRS){ const nx = x+dx, ny = y+dy; if (!inb(nx, ny) || S.walls[ny*NX + nx]) continue; const ne = S.elev[ny*NX + nx]; hi = Math.max(hi, ne); if (ne > e + 1){ ladderAt(x, y, e, Math.round(ne - e) + .3, dx, dy); n++; } }
     if (!n){ const h = Math.max(4, Math.round(hi - e) + 1); ladderAt(x, y, e, h, 0, 0); const v2 = terrainRoot.children[terrainRoot.children.length - 1].clone(); v2.rotation.y = Math.PI/2; terrainRoot.add(v2); } });
   // ceilings over the crypt and tunnels (hidden when you look from above)
-  const rf = inst(cbox(1, .3, 1), M.cobble, roofs, (mtx, [x, y, yy]) => { const p = cellPos(x, y); mtx.makeTranslation(p.x, yy + .15, p.z); }); if (rf){ rf.userData.roof = true; rf.raycast = () => {}; }
+  const rf = inst(cbox(1, .3, 1), A.act === 1 ? M.brick2 : M.cobble, roofs, (mtx, [x, y, yy]) => { const p = cellPos(x, y); mtx.makeTranslation(p.x, yy + .15, p.z); }); if (rf){ rf.userData.roof = true; rf.raycast = () => {}; }
   // wall torches wherever it's torch-lit
   const torches = [];
   for (let y=1;y<NY-1;y++) for (let x=1;x<NX-1;x++){ const i = y*NX + x; if (!S.zone[i] || S.walls[i] || S.pit[i] || (x*7 + y*3) % 4) continue; for (const [dx, dy] of DIRS){ if (S.walls[(y+dy)*NX + x+dx]){ torches.push([x, y, S.elev[i], dx, dy]); break; } } }
@@ -7407,7 +7547,7 @@ function buildTerrain(){
   terrainRoot.children.forEach(m => { if (!m.userData.terrain) m.raycast = () => {}; });
   // the bottom of every drop: under the rope bridges it's cooled lava crust with glowing cracks (hot to look at, safe to stand on); the side door's chasm stays mossy
   const pits = [], hot = [], trapHole = new Set(TRAP.hole.map(([x, y]) => y*NX + x)); for (let i=0;i<NX*NY;i++) if (S.pit[i]) (trapHole.has(i) || isChasm(i) ? pits : hot).push([i % NX, (i / NX) | 0]);
-  inst(cbox(1, .08, 1), M.mossy, pits, (mtx, [x, y]) => { const p = cellPos(x, y); mtx.makeTranslation(p.x, .04, p.z); });
+  inst(cbox(1, .08, 1), A.act === 1 ? M.mossy : M.gmossy, pits, (mtx, [x, y]) => { const p = cellPos(x, y); mtx.makeTranslation(p.x, .04, p.z); });
   inst(cbox(1, .08, 1), M.crust, hot, (mtx, [x, y]) => { const p = cellPos(x, y); mtx.makeTranslation(p.x, .04, p.z); });
   hot.forEach(([x, y]) => { const p = cellPos(x, y); if ((x + y) % 2 === 0) glowAdd(terrainRoot, p.x, .35, p.z, 2.6, 0xff4a14, .08); if ((x*3 + y) % 4 === 0) lavaSpot(terrainRoot, p.x, .1, p.z, 'crust'); });
   const lavas = []; if (S.lava) for (let i=0;i<NX*NY;i++) if (S.lava[i]) lavas.push([i % NX, (i / NX) | 0]);
@@ -10185,6 +10325,23 @@ function buildTempleArt(){
     for (let k = 1; k < n; k += 2){ const sd = (k >> 1) % 2 ? 1 : -1, cx = horiz ? a[0] + dir*k : a[0], cy = horiz ? a[1] : a[1] + dir*k, wx = horiz ? cx : cx + sd*2, wy = horiz ? cy + sd*2 : cy;
       if (!inb(wx, wy) || !S.walls[wy*NX + wx]) continue;
       const p = cellPos(cx, cy), ox = horiz ? 0 : sd*1.42, oz = horiz ? sd*1.42 : 0; B(.1, .55, .1, M.wood, p.x + ox, p.y + 2, p.z + oz); fireAdd(g, p.x + ox, p.y + 2.24, p.z + oz, .5); } });
+  // ---- Ta Prohm (Tom, 17 Oct: "golden sandstone, WITH tree roots"): strangler figs on the front tiers pour their roots down the steps,
+  // and roots spill over a few corridor walls (rootCascade). Hugging the stone, never on a step you walk on; one palette, one draw call.
+  const wallFrame = (x, y, z, ry) => { const grp = new THREE.Group(); grp.position.set(x, y, z); grp.rotation.y = ry; g.add(grp);
+    return (w, h, d, c, bx, by, bz) => { const q = new THREE.Mesh(pbox(w, h, d, c), DPAL.mat); q.position.set(bx, by + h/2, (bz || 0) + d/2); grp.add(q); return q; }; };
+  [[-34, 4, 71], [44, 4, 72]].forEach(([fx, tTop, seed]) => {
+    const zt = F - tTop - .5, yt = 4*tTop + 4, last = 2;
+    B(1.7, 6, 1.6, RL, fx, yt + 3, zt); B(1, 3, 1, RL, fx + 1, yt + 6.8, zt - .2);   // the fig's trunk, sitting on the stone
+    [[10, 3, 8, 0, 8.4, 0], [6.5, 2.2, 6, -1.5, 10.6, -.4], [5, 1.8, 4.4, 2.6, 7, .8]].forEach(([w, h, d, ox, oy, oz]) => B(w, h, d, RLv, fx + ox, yt + oy, zt + oz));   // its leafy crown
+    for (let t = tTop; t >= last; t--) rootCascade(wallFrame(fx + (whash(seed, t, 5) - .5)*1.2, 4*t, F - t, 0), {L:Math.max(2.6, 5.4 - (tTop - t)*.7), top:4, over:1, seed:seed*10 + t, s:1.35, dLo:.3, dHi:.4});
+  });
+  A.rootSpots = [];   // (where: the corridor cell and the wall it hangs on; test-sandstone.js)
+  STAIR_LEGS.filter(l => l[2] === 'stairs').forEach(([a, b], li) => { const horiz = a[1] === b[1], n = horiz ? Math.abs(b[0] - a[0]) : Math.abs(b[1] - a[1]); if (n < 6 || whash(a[0], a[1], 59) > .4) return;
+    const k = n >> 1, dir = horiz ? Math.sign(b[0] - a[0]) : Math.sign(b[1] - a[1]), cx = horiz ? a[0] + dir*k : a[0], cy = horiz ? a[1] : a[1] + dir*k, sd = ((k >> 1) % 2 ? 1 : -1)*-1;   // (the side without a torch here)
+    const wx = horiz ? cx : cx + sd*2, wy = horiz ? cy + sd*2 : cy; if (!inb(wx, wy) || !S.walls[wy*NX + wx]) return;
+    for (let o = -2; o <= 2; o++){ const qx = horiz ? wx + o : wx, qy = horiz ? wy : wy + o; if (!inb(qx, qy) || at(qx, qy) || ![1, 2].includes(S.wallKind[qy*NX + qx] || 1) || !S.walls[qy*NX + qx]) return; }   // plain wall only (no secret doors, no carved parts)
+    const p = cellPos(cx, cy), top = S.elev[wy*NX + wx] + S.walls[wy*NX + wx] - p.y; A.rootSpots.push([cx, cy, wx, wy]);
+    rootCascade(wallFrame(p.x + (horiz ? 0 : sd*1.5), p.y, p.z + (horiz ? sd*1.5 : 0), horiz ? Math.atan2(0, -sd) : Math.atan2(-sd, 0)), {L:2.8, top, over:1, seed:li*17 + 5}); });
   // ---- the Crystal Skull's chamber: braziers along the wall tops, carved faces with burning eyes, and a shaft of light on the Skull
   const hy = HALL_ELEV + 6;
   [[4, HALL.y0], [14, HALL.y0], [30, HALL.y0], [40, HALL.y0], [14, HALL.y1], [30, HALL.y1], [40, HALL.y1], [HALL.x0, 6], [HALL.x0, 11], [HALL.x1, 6], [HALL.x1, 11]].forEach(([x, y]) => { const c = cellPos(x, y), b = makeBrazier(); b.scale.setScalar(1.6); b.position.set(c.x, hy, c.z); g.add(b); });
@@ -10229,9 +10386,9 @@ const ROOM_DECOR = {
   1:{who:'giant', use:'the giants\' boot room', ceil:8, sign:'Wake the sleepy lamp! Put your red block right next to it.',
     props:[['pegs'], ['picture', 'foot'], ['poster', 'WIPE YOUR FEET!'], ['boots'], ['keys']]},
   2:{who:'giant', use:'the giants\' fountain courtyard', ceil:0, sign:'ONE red block. Wake up all FOUR things!',
-    props:[['bunting'], ['deckchair'], ['poster', 'NO SWIMMING IN THE FOUNTAINS. This means YOU, Reginald.'], ['towel'], ['picture', 'bananas']]},
+    props:[['roots'], ['bunting'], ['deckchair'], ['poster', 'NO SWIMMING IN THE FOUNTAINS. This means YOU, Reginald.'], ['towel'], ['picture', 'bananas']]},
   3:{who:'giant', use:'the giants\' kitchen', ceil:8, sign:'Start at the red block. Run dust ALL the way to the DOOR!',
-    props:[['shelf', 'jars'], ['spoon'], ['poster', 'BANANA JAM. Do NOT eat it all.'], ['pans']]},
+    props:[['shelf', 'jars'], ['spoon'], ['poster', 'BANANA JAM. Do NOT eat it all.'], ['pans'], ['roots']]},
   4:{who:'work', use:'the wire workshop', ceil:5, sign:'The wire\'s END must point INTO the lamp!',
     props:[['pipes'], ['spools'], ['gauge'], ['poster', 'WIRES: the end goes IN.'], ['picture', 'plan']]},
   5:{who:'small', use:'the little ones\' clubhouse', ceil:4, sign:'Make the cushion go PARP two times!',
@@ -10243,7 +10400,7 @@ const ROOM_DECOR = {
   8:{who:'giant', use:'the giants\' bathroom', ceil:8, sign:'Blast the toilet out of the doorway! Power the TNT.',
     props:[['window', 'bath'], ['cabinet'], ['towel'], ['poster', 'BATH DAY: TUESDAY'], ['roll'], ['tiles'], ['tiles']]},
   9:{who:'small', use:'the little ones\' canteen', ceil:4, sign:'Tempt the tamarins into the pen. Then shut the gate!',
-    props:[['tinydoor'], ['poster', 'MENU. Monday: bananas. Tuesday: bananas. Every day: BANANAS.'], ['tinyshelf', 'bowls'], ['bunting'], ['tinydoor']]},
+    props:[['roots'], ['tinydoor'], ['poster', 'MENU. Monday: bananas. Tuesday: bananas. Every day: BANANAS.'], ['tinyshelf', 'bowls'], ['bunting'], ['tinydoor']]},
   10:{who:'work', use:'the cargo bay (open roof, for loading)', ceil:0, sign:'Make the capuchins launch THEMSELVES. 10 launches!',
     props:[['crates'], ['poster', 'FRAGILE: BANANAS'], ['gauge'], ['crates']]},
   11:{who:'giant', use:'the giants\' roof theatre', ceil:0, sign:'ONE button. All three fireworks at the SAME time!',
@@ -10251,25 +10408,25 @@ const ROOM_DECOR = {
   12:{who:'giant', use:'the giants\' ballroom', ceil:7, sign:'Wire ALL FOUR plates to the disco ball!',
     props:[['speakers'], ['record'], ['bunting'], ['speakers'], ['poster', 'DANCE FLOOR. No sitting down.']]},
   13:{who:'work', use:'the torch store', sign:'ONE torch: start the fountain AND the cushion!',
-    props:[['torchrack'], ['shelf', 'crates'], ['poster', 'SPARE TORCHES. Do not lick.'], ['torchrack']]},
+    props:[['torchrack'], ['shelf', 'crates'], ['poster', 'SPARE TORCHES. Do not lick.'], ['torchrack'], ['roots']]},
   14:{who:'small', use:'the little ones\' bedroom', sign:'Flip the lever. Watch the torch... and the lamp!',
     props:[['bunks'], ['tinydoor'], ['poster', 'SHHH! Torches sleeping.'], ['bunks']]},
   15:{who:'work', use:'the block store', sign:'Lever ON should turn the lamp OFF!',
     props:[['shelf', 'blocks'], ['picture', 'plan'], ['pipes'], ['poster', 'BLOCKS: please put them back.']]},
   16:{who:'giant', use:'the giants\' dressing room', sign:'Lever ON should turn the lamp OFF. One block is wrong!',
-    props:[['mirror'], ['comb'], ['poster', 'LOOKING GOOD!'], ['picture', 'foot']]},
+    props:[['roots'], ['mirror'], ['comb'], ['poster', 'LOOKING GOOD!'], ['picture', 'foot']]},
   17:{who:'giant', use:'the giants\' bedroom', sign:'Stand on the plate: lamp OFF. Step off: lamp ON!',
     props:[['headboard'], ['picture', 'planet'], ['slippers'], ['poster', 'LIGHTS OUT! (Night-light allowed.)']]},
   18:{who:'work', use:'the sand tank', sign:'Get over the quicksand. Then get Barold over too!',
-    props:[['pipes'], ['hopper'], ['gauge'], ['poster', 'SAND TANK. Do NOT paddle.']]},
+    props:[['pipes'], ['hopper'], ['gauge'], ['poster', 'SAND TANK. Do NOT paddle.'], ['roots']]},
   19:{who:'small', use:'the little ones\' bouncy gym (open roof: mind your head)', ceil:0, sign:'Barold steps OFF his plate: the pad flings you over!',
-    props:[['bunting'], ['poster', 'NO BOUNCING. (Bounce anyway.)'], ['tinydoor'], ['tinyshelf', 'bowls']]},
+    props:[['bunting'], ['poster', 'NO BOUNCING. (Bounce anyway.)'], ['tinydoor'], ['tinyshelf', 'bowls'], ['roots']]},
   20:{who:'work', use:'the measuring room', sign:'Light the lamp at the wire\'s very END!',
     props:[['ruler'], ['gauge'], ['poster', 'POWER GOES 15 STEPS. Then it gets tired.']]},
   21:{who:'work', use:'the top deck', ceil:0, sign:'Lever ON: lamp ON. Lever OFF: lamp OFF.',
-    props:[['flags'], ['telescope'], ['spools']]},
+    props:[['flags'], ['telescope'], ['spools'], ['roots']]},
   22:{who:'giant', use:'the giants\' sun deck', ceil:0, sign:'The wire is too long. Put a Repeater in it!',
-    props:[['deckchair'], ['poster', 'SUN CREAM. Giant size.'], ['flags']]},
+    props:[['roots'], ['deckchair'], ['poster', 'SUN CREAM. Giant size.'], ['flags']]},
   23:{who:'work', use:'the sorting deck', ceil:0, sign:'Lever A lights BOTH lamps. Lever B: only the lamp across from it!',
     props:[['poster', 'ONE WAY -->'], ['pipes'], ['poster', '<-- ONE WAY'], ['flags']]},
   26:{who:'work', use:'the water clock', ceil:0, sign:'Press the button. The door must open a moment LATER!',
@@ -10281,7 +10438,7 @@ const ROOM_DECOR = {
   24:{who:'work', use:'the power deck', ceil:0, sign:'Fix the power line! THREE things are broken.',
     props:[['pylon'], ['spools'], ['poster', 'DANGER: SPARKS!'], ['gauge']]},
   25:{who:'giant', use:'the lookout', ceil:0, sign:'Make the last bridge rise! Look at the machine.',
-    props:[['flags'], ['telescope'], ['picture', 'compass']]},
+    props:[['flags'], ['telescope'], ['picture', 'compass'], ['roots']]},
   31:{sign:'Make the lever start BOTH engines!'}, 32:{sign:'Fold the legs only when BOTH clamps are OFF!'},
   33:{sign:'Open the sky window: the lever OR the plate!'}, 34:{sign:'One press: open valve 1, then 2, then 3!'}
 };
@@ -10413,6 +10570,28 @@ function pbox(w, h, d, hex){ const k = w + '_' + h + '_' + d + '_' + hex; let g 
 // The props. Each one is built against a wall in its own little frame: x along the wall, y up from the floor, z out of the wall.
 // w: cells of wall it needs ('flex' takes a whole run). band: low (thin, under head height), high (up out of reach), top (on the wall's top).
 // B(w, h, d, colour or material, x, y, z): a box whose BOTTOM is at y and BACK is z out from the wall. A(key, w, h, x, y, z): a picture. F(x, y, z, s): a flame.
+// Ta Prohm's roots (the temple's rooms, its front tiers and a few corridors), built against a wall in a decor frame: x along the wall, y up,
+// z out of it; B(w, h, d, colour, x, y, z) is a box whose bottom is at y and back at z. A thick mat of root along the top (and back over
+// the wall top when it's open to the sky: over), then strands pouring down: one fat one to the floor with a flared foot, the others
+// stopping part way like dripping wax, each bulging and wandering as it goes, pale bark with a lit side and a shadowed side.
+// o: {L: how much wall it covers, top, over, seed, s: size, dLo/dHi: how far it may stand out below/above head height (2.6 x s)}
+const BARK = [0xc2ad8c, 0xa48d6c, 0x7e6a50, 0xdccaa8];   // pale fig bark: base, darker, shadow, lit
+function rootCascade(B, o){ const s = o.s || 1, L = o.L, T = o.top, dLo = o.dLo || .19, dHi = o.dHi || .3, hs = (a, b) => whash(o.seed + a*7, b*13 + 3, 47);
+  const strand = (x, w, y0, y1, k) => { let y = y0;
+    for (let i = 0; y > y1 + .02 && i < 40; i++){ const hh = Math.min((.45 + hs(k, i)*.35)*s, y - y1), ww = w*(.85 + hs(k + 1, i)*.3), d = (y - hh > 2.6*s ? dHi : dLo)*(ww > .4*s ? 1 : .8);
+      B(ww, hh + .02*s, d, BARK[k % 2], x, y - hh, 0);
+      if (k === 1 && ww > .38*s){ B(ww*.2, hh, d + .015, BARK[3], x - ww*.32, y - hh, 0); B(ww*.18, hh, d + .015, BARK[2], x + ww*.34, y - hh, 0); }   // round: a lit side, a shadowed side
+      x = Math.max(-L/2 + w/2, Math.min(L/2 - w/2, x + (hs(k + 2, i) - .5)*.3*s)); w = Math.max(.14*s, w*(.9 + hs(k + 3, i)*.05)); y -= hh; }
+    return x; };
+  const dAt = y => y >= 2.6*s ? dHi : dLo;   // (only up out of reach may it stand out further)
+  B(L, .5*s, dAt(T - .5*s), BARK[1], 0, T - .5*s, 0);   // the mat along the top
+  const nl = Math.round(L*.8); for (let i = 0; i < nl; i++) B((.4 + hs(9, i)*.4)*s, .28*s, dAt(T - .72*s) + .03, BARK[i % 2 ? 0 : 3], -L/2 + (i + .5)*L/nl, T - (.72 - hs(8, i)*.3)*s, 0);
+  if (o.over){ B(L*.9, .32*s, o.over + .1, BARK[0], 0, T - .04*s, -o.over); for (let i = 0; i < 2; i++) B(.5*s, .22*s, .5*s, BARK[3], (i - .5)*L*.4, T + .26*s, -o.over*(.3 + hs(7, i)*.4)); }   // over the top of the wall
+  const list = [[(hs(0, 0) - .5)*.2*L, 1.0*s, 0], [-L*.33, .52*s, T*(.35 + hs(1, 1)*.25)], [L*.31, .58*s, T*(.2 + hs(2, 2)*.25)], [-L*.1, .26*s, T*(.45 + hs(3, 3)*.2)], [L*.13, .24*s, T*(.3 + hs(4, 4)*.3)]];
+  list.forEach(([x, w, end], k) => { const xe = strand(x, Math.min(w, L*.45), T - .4*s, end, k*5 + 1);
+    if (!end){ B(1.3*s, .16*s, dLo, BARK[1], xe, 0, 0); [-1, 1].forEach(sd => B(.45*s, .11*s, dLo*.8, BARK[0], Math.max(-L/2, Math.min(L/2, xe + sd*.75*s)), 0, 0)); }   // a flared foot
+    else B(w*.5, .22*s, dLo*.7, BARK[k % 2], xe, end - .2*s, 0); });   // a drip at the end
+}
 const WOOD = 0x8a5a2c, DARK = 0x3a2614, GOLDC = 0xe0b030, METAL = 0x8a9098, COPPER = 0xb8693a, RED = 0xc0281c, CREAM = 0xf0e6c8, BLACK = 0x1a1a1a, WHITE = 0xf4f4f0;
 const DECOR_PROPS = {
   poster:{w:2, band:'low', build(B, A, F, o){ const h = 1.08; B(1.82, h + .12, .05, DARK, 0, 1.4, 0); A('poster:' + o.arg, 1.7, h, 0, 1.46, .06); }},
@@ -10432,6 +10611,9 @@ const DECOR_PROPS = {
       else if (k === 'blocks' && i < 4) B(.5, .5, .5, [0x8a8a7e, GOLDC, 0xa87e4a, 0x6a6a6a][i], x + .2, y + .12, .15); } }},
   spoon:{w:1, band:'high', h:3, build(B, A, F, o){ const t = o.top - .3; B(.16, 2.2, .12, 0xc89a5a, 0, t - 2.2, .05); B(.75, .95, .2, 0xc89a5a, 0, t - 3.1, .02); B(.2, .2, .2, DARK, 0, t, 0); }},
   pans:{w:2, band:'high', h:1.6, build(B, A, F, o){ const t = o.top - .4; B(1.8, .1, .3, METAL, 0, t, 0); [-.5, .5].forEach((x, i) => { B(.1, .7, .06, BLACK, x, t - .7, .12); B(.8 - i*.15, .8 - i*.15, .1, 0x3a3a3a, x, t - 1.45 + i*.15, .1); }); }},
+  // Ta Prohm (Tom, 17 Oct: "golden sandstone, WITH tree roots"): a strangler fig's roots pour over the wall and down its face (rootCascade).
+  // Hugging the wall (a hand's width at head height), never in front of a puzzle part or a door, nothing to bump into.
+  roots:{w:3, band:'low', full:true, build(B, A, F, o){ rootCascade(B, {L:o.len - .1, top:o.wallTop, over:o.sky ? 1.02 : 0, seed:o.room*31 + o.i}); }},
   pipes:{w:'flex', min:3, band:'high', h:1, build(B, A, F, o){ const y = Math.max(2.95, o.top - 1.1), L = o.len - .2; B(L, .32, .32, COPPER, 0, y, .06); B(L, .26, .26, METAL, 0, y + .5, .08);
     for (let x = -L/2 + .5; x < L/2; x += 1.6) B(.12, .9, .44, DARK, x, y - .05, 0); B(.6, .6, .08, RED, L/4, y - .1, .42); B(.36, .36, .4, COPPER, -L/4, y - .02, .02); }},
   spools:{w:2, band:'high', h:1.4, build(B, A, F, o){ const y = Math.max(2.9, o.top - 1.5); B(1.8, .12, .5, DARK, 0, y + 1.1, 0); [-.45, .45].forEach((x, i) => { B(.8, .8, .3, [RED, BLACK][i], x, y + .2, .1); B(.9, .2, .34, WOOD, x, y + .5, .08); }); }},
@@ -10553,7 +10735,7 @@ function decorRoom(r, d, lo, hi){
     const F = (x, y, z, s) => { const m = new THREE.Object3D(); m.position.set(x, y, z); m.scale.setScalar(s); m.userData.flame = true; g.add(m); flames.push(m); };
     fn(B, A, F); return {lowDepth:+lowD.toFixed(3), depth:+maxD.toFixed(3), y0:+y0.toFixed(2), y1:+y1.toFixed(2)}; };
   // find a run of n cells on a side that a band may use (nearest the middle of the wall)
-  const findRun = (s, n, band) => { const ok = i => s.free[i] && (band === 'low' ? s.lowOk[i] && !s.usedLo[i] : band === 'sign' ? !s.usedLo[i] : !s.usedHi[i]); let best = null;
+  const findRun = (s, n, band) => { const ok = i => s.free[i] && (band === 'full' ? s.lowOk[i] && !s.usedLo[i] && !s.usedHi[i] : band === 'low' ? s.lowOk[i] && !s.usedLo[i] : band === 'sign' ? !s.usedLo[i] : !s.usedHi[i]); let best = null;
     for (let i = 0; i + n <= s.cells.length; i++){ let good = true; for (let k = i; k < i + n; k++) if (!ok(k)) { good = false; break; } if (!good) continue; const dm = Math.abs(i + n/2 - s.cells.length/2); if (!best || dm < best.dm) best = {i, j:i + n - 1, dm}; }
     return best; };
   const longest = (s, band, from) => { let best = null, run = 0; for (let i = 0; i <= s.cells.length; i++){ const ok = i < s.cells.length && s.free[i] && (band === 'low' ? s.lowOk[i] && !s.usedLo[i] : band === 'top' ? !s.usedHi[i] : !s.usedHi[i]);
@@ -10578,11 +10760,11 @@ function decorRoom(r, d, lo, hi){
     if (P.band === 'high' && top - 2.95 < (P.h || 1)) return;   // no room up there (low ceilings, short walls)
     if (P.band === 'top' && ceil) return;
     const sk = [...order.slice(n % 4), ...order.slice(0, n % 4)];
-    for (const k of sk){ const s = sides[k], band = P.band === 'top' ? 'top' : P.band;
+    for (const k of sk){ const s = sides[k], band = P.full ? 'full' : P.band === 'top' ? 'top' : P.band;   // (full: from the floor to the top of the wall, like the tree roots)
       const run = P.w === 'flex' ? longest(s, band, P.min) : findRun(s, P.w, band); if (!run) continue;
       const j = P.w === 'flex' ? Math.min(run.j, run.i + 8) : run.j, g = frame(s, run.i, j, P.band === 'top' ? 'top' : 'inner');
-      const info = build(g, (B, A, F) => P.build(B, A, F, {arg, top:Math.min(top, 7), len:j - run.i + 1, i:n}));   // (in the giants' tall rooms, things still hang where you can see them)
-      (P.band === 'low' ? lo : hi).add(g); use(s, run.i, j, P.band === 'low', P.band !== 'low'); rec(kind, s, run.i, j, P.band, info); return; }
+      const info = build(g, (B, A, F) => P.build(B, A, F, {arg, top:Math.min(top, 7), len:j - run.i + 1, i:n, wallTop:top, sky:!ceil, room:r.id}));   // (in the giants' tall rooms, things still hang where you can see them)
+      (P.band === 'low' ? lo : hi).add(g); use(s, run.i, j, P.band === 'low', P.band !== 'low' || P.full); rec(kind, s, run.i, j, P.band, info); return; }
   });
   // 4. a ceiling (unless the room needs the sky), wall torches round it, and twice-as-tall walls for the giants
   if (ceil && !crypt){
@@ -16143,6 +16325,7 @@ const MAYA_OWN = ['rblock', 'lever', 'button', 'plate'];
 const MAYA_ROOMS = [
   // ---------------- the Scribes' House: counting in twenties (the Scribe) ----------------
   { id:401, name:'The Counting Stone', check:'num', targets:[3, 7, 12], ban:MAYA_OWN,
+    teaches:['MAYA'], uses:[], step:'use', understand:['none-yet'],   // the learning gate (test-concepts.js)
     disp:[MDOT(2,2), MDOT(3,2), MDOT(4,2), MDOT(5,2), MBAR(2,5), MBAR(3,5), MBAR(4,5)],
     fixed:[K('lever',2,3), K('lever',3,3), K('lever',4,3), K('lever',5,3), K('lever',2,6), K('lever',3,6), K('lever',4,6)],
     goal:'PLAY! Each lever lights a DOT or a BAR on the counting stone. Make the stone say 3. Then 7. Then 12. What is a bar worth?',
@@ -16152,6 +16335,7 @@ const MAYA_ROOMS = [
     mc:'Maya numbers really work like this: dots for ones, bars for fives. You can build a dot-and-bar sign in Minecraft with lamps!',
     sol:[] },
   { id:402, name:'Count the Beans', check:'tally', rows:[0, 1, 2, 3, 4], count:{max:4}, ban:MAYA_OWN, give:['dust'],
+    teaches:['MAYA'], uses:['SOURCE+FLOW','INTO'], step:['see','fix'], understand:['none-yet'],   // the learning gate (test-concepts.js)
     disp:[MDOT(2,2), MDOT(4,2), MDOT(6,2), MDOT(8,2)],
     trays:[{k:'dot', cups:[[8,6], [6,6], [4,6], [2,6]]}], chute:[1,6], add:[1,7], empty:[9,7],
     loose:[...col(8,5,3), ...col(6,5,3)],
@@ -16166,6 +16350,7 @@ const MAYA_ROOMS = [
     mc:'Pressure plates notice things resting on them. In Minecraft, items dropped on a WOODEN pressure plate press it too!',
     sol:[...col(4,5,3), ...col(2,5,3)] },
   { id:403, name:'Five Make a Bar', check:'tally', rows:[0, 1, 2, 3, 4, 5, 6, 7, 8, 9], count:{max:9}, ban:MAYA_OWN, give:['dust'],
+    teaches:['MAYA'], uses:['SOURCE+FLOW'], step:'fix', understand:['none-yet'],   // the learning gate (test-concepts.js)
     disp:[MDOT(1,1), MDOT(2,1), MDOT(3,1), MDOT(4,1), MBAR(6,6)],
     trays:[{k:'dot', cups:[[4,2], [3,2], [2,2], [1,2]]}, {k:'bar', cups:[[8,2]]}], chute:[0,2], add:[1,3], empty:[2,3],
     goal:'Count all the way to NINE. When five beans are in, the Scribe swaps them for one BAR bean. Wire the bar cup to the BAR lamp.',
@@ -16175,6 +16360,7 @@ const MAYA_ROOMS = [
     mc:'Grouping in fives is how tally marks work too. The Maya did it with bars.',
     sol:[...col(8,3,6), D(7,6)] },
   { id:404, name:'Nothing At All', check:'tally', rows:[0, 1, 2, 3, 4, 5, 6, 7, 8, 9], count:{max:9}, ban:MAYA_OWN, give:['dust'],
+    teaches:['MAYA','NOR'], uses:['INVERTER','OR'], step:'fix', understand:['none-yet'],   // the learning gate (test-concepts.js)
     disp:[MDOT(1,8), MDOT(2,8), MDOT(3,8), MDOT(4,8), MBAR(7,8), MSHELL(7,5)],
     trays:[{k:'dot', cups:[[4,7], [3,7], [2,7], [1,7]]}, {k:'bar', cups:[[7,7]]}], chute:[0,7], add:[1,6], empty:[1,5],
     fixed:[K('stone',5,5), K('torch',6,5,{attach:3})],
@@ -16187,6 +16373,7 @@ const MAYA_ROOMS = [
     naive:[D(5,7), D(5,6)],
     sol:[D(5,7), D(5,6), D(6,7)] },
   { id:405, name:'Twenty!', check:'tally', rows:[18, 19, 20, 21], count:{start:18, max:21}, ban:MAYA_OWN, give:['dust'], gate:'maya',
+    teaches:['MAYA'], uses:['INVERTER'], step:'fix', understand:['none-yet'],   // the learning gate (test-concepts.js)
     disp:[MDOT(1,0), MDOT(2,0), MDOT(3,0), MDOT(4,0), MBAR(6,0), MBAR(7,0), MBAR(8,0), MSHELL(3,3), MDOT(10,0,1)],
     trays:[{k:'dot', cups:[[4,1], [3,1], [2,1], [1,1]]}, {k:'bar', cups:[[6,1], [7,1], [8,1]]}, {k:'twenty', cups:[[10,1]]}], chute:[0,1], add:[1,5], empty:[2,5],
     fixed:[K('stone',5,3), K('torch',4,3,{attach:1})],
@@ -16199,6 +16386,7 @@ const MAYA_ROOMS = [
     mc:'Place value: the same dot means 1 or 20, depending on WHERE it is. Our numbers do the same: the 2 in 20 means two tens.',
     solBreak:[[8,3]], sol:[] },
   { id:406, name:'The Cacao Market', check:'num', targets:[8, 13, 20, 33], ban:MAYA_OWN,
+    teaches:['MAYA'], uses:[], step:'use', understand:['none-yet'],   // the learning gate (test-concepts.js)
     disp:[MDOT(1,2), MDOT(2,2), MDOT(3,2), MDOT(4,2), MBAR(5,2), MBAR(6,2), MBAR(7,2), MSHELL(8,2), MDOT(2,1,1), MDOT(3,1,1)],
     fixed:[K('lever',1,3), K('lever',2,3), K('lever',3,3), K('lever',4,3), K('lever',5,3), K('lever',6,3), K('lever',7,3), K('lever',8,3), K('lever',2,0), K('lever',3,0)],
     goal:'The market price stone! Set the levers so the stone shows each price: 8 beans, then 13, then 20, then 33. The two lamps at the back are TWENTIES.',
@@ -16210,6 +16398,7 @@ const MAYA_ROOMS = [
     sol:[] },
   // ---------------- the Monkey Engineers' workshop: lamp code (binary) (Bananahead, an apprentice) ----------------
   { id:407, name:'Lamp Code', check:'num', targets:[5, 10, 15], binary:true, ban:MAYA_OWN,
+    teaches:['MAYA'], uses:[], step:'use', understand:['none-yet'],   // the learning gate (test-concepts.js)
     disp:[MBIT(2,2,8), MBIT(4,2,4), MBIT(6,2,2), MBIT(8,2,1)],
     fixed:[K('lever',2,3), K('lever',4,3), K('lever',6,3), K('lever',8,3)],
     goal:'PLAY! The monkeys\' lamp code: each lamp is worth a number (look above them). Add up the lamps that are ON. Make 5, then 10, then 15.',
@@ -16219,6 +16408,7 @@ const MAYA_ROOMS = [
     mc:'Binary is how computers store every number, picture and song: billions of ONs and OFFs.',
     sol:[] },
   { id:408, name:'Count in Lamps', check:'num', targets:[4, 5, 6, 7], binary:true, ban:MAYA_OWN, gate:'binary',
+    teaches:['MAYA'], uses:[], step:['see','use'], understand:['none-yet'],   // the learning gate (test-concepts.js)
     disp:[MBIT(2,2,4), MBIT(4,2,2), MBIT(6,2,1)],
     fixed:[K('lever',2,3), K('lever',4,3), K('lever',6,3)],
     why:[{who:'Bananahead', say:'Watch me count in lamp code! All off: nothing. ONE: the last lamp.', at:[6,2], set:[[6,3,true]]},
@@ -16232,6 +16422,7 @@ const MAYA_ROOMS = [
     mc:'Counting in binary: 1, 10, 11, 100, 101, 110, 111. Computers count like that all day long.',
     sol:[] },
   { id:409, name:'The Number Lock', check:'table', doorOut:true, give:['dust','stone','torch'], ban:MAYA_OWN,
+    teaches:['AND','RULE'], uses:['INVERTER','MAYA','AND-NOT'], step:'memory', understand:['none-yet'],   // the learning gate (test-concepts.js)
     inputs:[[1,1], [1,3], [1,5]], fn:(a, b, c) => a && !b && c, outHead:'<th>door</th>',
     disp:[MBIT(0,1,4), MBIT(0,3,2), MBIT(0,5,1)],
     fixed:[K('lever',1,1), K('lever',1,3), K('lever',1,5)],
@@ -16245,6 +16436,7 @@ const MAYA_ROOMS = [
     sol:[D(2,1), K('stone',3,1), K('torch',4,1,{attach:3}), ...row(1,5,9), D(9,2), ...row(3,2,8), K('stone',9,3), K('torch',10,3,{attach:3}), D(2,5), K('stone',3,5), K('torch',4,5,{attach:3}), ...row(5,5,9), D(9,4)] },
   // ---------------- the observatory: the sun-window (the Star-Watcher) ----------------
   { id:410, name:'The Sun Window', check:'sun', give:['dust','repeater'], ban:MAYA_OWN,
+    teaches:['DELAY'], uses:['REPEATER','PULSE'], step:'alone', understand:['none-yet'],   // the learning gate (test-concepts.js)
     dawn:[1,2], out:[[9,2]], fixed:[K('button',1,2), K('lamp',9,2)],
     goal:'Press DAWN and the sun starts to rise. The SHUTTER must open just as the sun lines up with the window: not too early, not too late!',
     hello:'I watch the sky. Tonight the setting sun lines up with the temple\'s window, like it does on this day every year. First, help me time my shutter.',
@@ -16255,6 +16447,7 @@ const MAYA_ROOMS = [
     sol:[D(2,2), ...[3,4,5,6,7].map(x => K('repeater',x,2,{dir:1, delay:4})), D(8,2)] },
   // ---------------- the ball court: four jobs, then the match (the Court Captain) ----------------
   { id:411, name:'Court 1: Serve!', check:'serve', give:['dust','repeater'], ban:MAYA_OWN, piece:1,
+    teaches:['DELAY'], uses:['REPEATER','SOURCE+FLOW','PULSE','SPLIT'], step:'alone', understand:['none-yet'],   // the learning gate (test-concepts.js)
     ref:[1,2], out:[[5,2], [8,6]], fixed:[K('button',1,2), K('gong',5,2), K('launcher',8,6)],
     goal:'The referee\'s button: the GONG must sound first, THEN the bounce pad serves the ball. Right now nothing happens at all.',
     hello:'Pok-ta-pok! The monkeys have challenged you to a match. But the court isn\'t finished. Job one: the serve. Gong FIRST, then the ball.',
@@ -16267,6 +16460,7 @@ const MAYA_ROOMS = [
     naive:[D(2,2), D(3,2), D(4,2), ...col(3,3,6), D(4,6), D(5,6), D(6,6), D(7,6)],
     sol:[D(2,2), D(3,2), D(4,2), ...col(3,3,6), K('repeater',4,6,{dir:1, delay:4}), D(5,6), D(6,6), D(7,6)] },
   { id:412, name:'Court 2: Goal!', check:'goal', give:['dust','torch'], ban:MAYA_OWN, piece:2,
+    teaches:['MEMORY'], uses:['INVERTER'], step:'guided', understand:['none-yet'],   // the learning gate (test-concepts.js)
     set:[1,6], reset:[8,6], out:[[7,7]], fixed:[K('plate',1,6), K('stone',3,6), K('stone',6,6), K('button',8,6), K('lamp',7,7)],
     goal:'The GOAL light: when the ball hits the ring plate it must come on, and STAY on, until the referee presses RESET. Stand on the plate to test it.',
     hello:'Job two: the goal light. The ball lands on the plate for a moment. But the light has to stay on, so everyone sees. It has to REMEMBER.',
@@ -16275,6 +16469,7 @@ const MAYA_ROOMS = [
     mc:'Two torches holding each other make a memory latch in Minecraft (an RS latch).',
     sol:[D(2,6), K('torch',4,6,{attach:3}), D(5,6), K('torch',6,7,{attach:0}), D(6,8), D(5,8), D(4,8), D(3,8), D(3,7), D(7,6)] },
   { id:413, name:'Court 3: Your Scoreboard', check:'tally', rows:[0, 1, 2, 3, 4, 5], count:{max:5}, give:['dust','stone','torch'], ban:MAYA_OWN, piece:3,
+    teaches:['MAYA','NOR'], uses:['OR','INVERTER'], step:{MAYA:'alone', NOR:'inside'}, understand:['none-yet'],   // the learning gate (test-concepts.js)
     disp:[MDOT(1,1), MDOT(3,1), MDOT(5,1), MDOT(7,1), MBAR(9,1), MSHELL(8,8)],
     trays:[{k:'dot', cups:[[7,3], [5,3], [3,3], [1,3]]}, {k:'bar', cups:[[9,3]]}], chute:[0,3], add:[1,5], empty:[2,5],
     goal:'YOUR scoreboard, in Maya numbers. Each goal drops a ball in your tray. Dots, the bar, and the shell for NOTHING. First to FIVE wins. Count 0 to 5.',
@@ -16286,6 +16481,7 @@ const MAYA_ROOMS = [
     naive:[D(1,2), D(3,2), D(5,2), D(7,2), D(9,2), D(7,4), D(8,4), D(8,5), K('stone',8,6), K('torch',8,7,{attach:0})],
     sol:[D(1,2), D(3,2), D(5,2), D(7,2), D(9,2), D(8,3), D(8,4), D(8,5), K('stone',8,6), K('torch',8,7,{attach:0})] },
   { id:414, name:'Court 4: The Monkeys\' Scoreboard', check:'tally', rows:[0, 1, 2, 3], count:{sys:'thermo', max:3}, binary:true, give:['dust','stone','torch'], ban:MAYA_OWN, piece:4,
+    teaches:['MAYA','DIAGNOSE'], uses:['AND','AND-NOT','INVERTER'], step:{MAYA:'fix', DIAGNOSE:'memory'}, understand:['diagnose'],   // the learning gate (test-concepts.js)
     disp:[MBIT(8,1,1), MBIT(8,3,2)],
     trays:[{k:'thermo', cups:[[1,1], [1,3], [1,5]]}], chute:[1,7], add:[2,7], empty:[3,7],
     loose:[...row(1,2,7), ...row(3,2,7), ...row(5,2,10), D(10,4), D(10,3), D(10,2), D(10,1), D(9,1)],
@@ -16778,7 +16974,7 @@ const MAYA_PW = [{act:MAYA_ACT, after:404, words:'SHELL'}, {act:MAYA_ACT, after:
 PASSWORDS.push(...MAYA_PW);
 // Barold's stories in the Maya act (between rooms, in calm moments). Undead jokes are fine now (he found out on the Ape Planet).
 LORE[MAYA_ACT] = [
-  {id:'red', when:() => A.mayaMet && loreMaya() >= 1, say:['In my day this temple was grey. And mossy. And full of monkeys.', 'Nobody told me it was RED. I\'d have worn a nicer sash.']},
+  {id:'red', when:() => A.mayaMet && loreMaya() >= 1, say:['In my day this temple was sandy gold. And mossy. And full of monkeys.', 'Nobody told me it was RED. I\'d have worn a nicer sash.']},
   {id:'twenty', when:() => A.mayaMet && loreMaya() >= 3, say:['Twenty fingers and toes. That\'s why they count in twenties!', 'I\'ve got twenty too. They just... come off sometimes.']},
   {id:'zero', when:() => A.mayaMet && loreMaya() >= 5, say:['A shell for nothing. I\'ve got a shell for nothing too.', 'It\'s my head. Ha! ...Skeleton joke. I\'m allowed now.']},
   {id:'friends', when:() => A.mayaMet && loreMaya() >= 7, say:['Best friends again. You and me. Even in the past.', 'Especially in the past. The past is VERY good for friends.']},
@@ -17608,6 +17804,7 @@ const UNI_OWN = ['lever', 'button', 'plate', 'rblock'];
 const UNI_ROOMS = [
   // ---------------- Professor Capuchin: doors ----------------
   { id:501, name:'The Automatic Door', check:'autodoor', host:'Professor Capuchin', give:['plate', 'dust'], ban:['lever', 'button', 'rblock', 'torch'],
+    teaches:['SOURCE+FLOW'], uses:['INTO'], step:'memory', understand:['none-yet'], understandNote:'the nudge asks a question ("What switches ON when you stand on it?") only when he is stuck; no answer is checked',   // the learning gate (test-concepts.js)
     walls:[0, 1, 2, 3, 5, 6, 7, 8].map(y => [7, y, 3]), doorAt:[7, 4], out:[[7, 4]], lectern:[1, 7],
     fixed:[K('idoor', 7, 4, {dir:1})],
     goal:'Make the iron door open by itself when you walk up to it, from BOTH sides. It must shut again behind you. No levers!',
@@ -17620,6 +17817,7 @@ const UNI_ROOMS = [
     sol:[K('plate', 6, 4), K('plate', 8, 4)] },
   // ---------------- Professor Howler: sounds ----------------
   { id:502, name:'Ding-Dong!', check:'dingdong', host:'Professor Howler', give:['note', 'dust', 'repeater'], ban:['lever', 'button', 'plate', 'rblock'],
+    teaches:['NOTE','DELAY'], uses:['REPEATER','PULSE'], step:{NOTE:['see','alone'], DELAY:'memory'}, understand:['none-yet'],   // the learning gate (test-concepts.js)
     bellAt:[2, 6], lectern:[1, 8], out:[], only:{note:2},
     fixed:[K('button', 2, 6, {label:'DOORBELL'}), K('lever', 1, 1, {demo:true}), K('note', 2, 1, {demo:true, delay:8})],
     why:[{who:'Professor Howler', say:'This is a NOTE BLOCK. Give it power, and it plays a note. Listen!', at:[2, 1], fn:r => uniDemoLever(r, [1, 1], true)},
@@ -17635,6 +17833,7 @@ const UNI_ROOMS = [
     sol:[...row(6, 3, 5), K('repeater', 6, 6, {dir:1, delay:4}), D(7, 6), ...col(4, 5, 3), ...row(3, 5, 7), K('note', 8, 3, {delay:13}), K('note', 8, 6, {delay:6})] },
   // ---------------- Professor Lemur: pistons ----------------
   { id:503, name:'Push and Pull', check:'pushpull', host:'Professor Lemur', give:['piston', 'spiston', 'dust'], ban:UNI_OWN,
+    teaches:['PISTON'], uses:['SOURCE+FLOW'], step:['see','alone'], understand:['none-yet'],   // the learning gate (test-concepts.js)
     leverAt:[3, 6], blockAt:[6, 4], markAt:[7, 4], out:[[7, 4]], lectern:[1, 8],
     fixed:[K('lever', 3, 6), K('stone', 6, 4, {mov:true, pp:true}),
       K('lever', 1, 0, {demo:true}), K('piston', 2, 0, {dir:1, demo:true}), K('stone', 3, 0, {mov:true, demo:true}),
@@ -17653,6 +17852,7 @@ const UNI_ROOMS = [
     naive:[K('piston', 5, 4, {dir:1}), D(4, 6), D(5, 6), D(5, 5)],
     sol:[K('spiston', 5, 4, {dir:1}), D(4, 6), D(5, 6), D(5, 5)] },
   { id:504, name:'The Secret Door', check:'secret', host:'Professor Lemur', give:['spiston', 'dust', 'stone', 'torch'], ban:UNI_OWN,
+    teaches:['PISTON','INVERTER'], uses:['BLOCK'], step:{PISTON:'alone', INVERTER:'memory'}, understand:['none-yet'],   // the learning gate (test-concepts.js)
     walls:[0, 1, 2, 3, 4, 5, 6, 10].map(x => [x, 2, 3]), tall:[[7, 2], [8, 2], [9, 2]], doorAt:[7, 2], leverAt:[9, 7], out:[[7, 2]], lectern:[1, 7],
     fixed:[K('stone', 8, 2, {mov:true, hidden:true}), K('lever', 9, 7, {label:'SECRET BOOK'})],
     goal:'Build a SECRET door. The gap in the wall must be SHUT while the lever is OFF. Flip the secret lever ON: it opens. OFF: it shuts again.',
@@ -17667,6 +17867,7 @@ const UNI_ROOMS = [
     sol:[D(9, 6), D(9, 5), K('stone', 9, 4), K('torch', 9, 3, {attach:2}), K('spiston', 9, 2, {dir:3})] },
   // ---------------- Professor Gorilla: a trap (a kind one) ----------------
   { id:505, name:'Catch Gloop!', check:'trap', host:'Professor Gorilla', give:['piston', 'spiston', 'dust', 'repeater'], ban:['lever', 'button', 'plate', 'rblock', 'torch'],
+    teaches:['PISTON','DELAY'], uses:['REPEATER','PULSE'], step:{PISTON:'alone', DELAY:'inside'}, understand:['none-yet'],   // the learning gate (test-concepts.js)
     walls:[[2, 0, 2], [2, 1, 2], [2, 2, 2], [0, 3, 2]], tall:[[1, 3], [2, 3], [3, 3]], flap:[[1, 3]], gateAt:[1, 3], pocketAt:[2, 3], resetAt:[6, 6], lectern:[9, 7], out:[[1, 3]],
     pen:[[0, 0], [1, 0], [0, 1], [1, 1], [0, 2], [1, 2]],
     route:[[4, 4], [3, 4], [2, 4], [1, 4], [1, 3], [1, 2], [1, 1], [1, 0], [0, 0], [0, 1], [0, 2], [1, 2], [1, 3], [1, 4], [1, 5], [1, 6], [2, 6], [3, 6], [4, 6], [5, 5], [6, 5], [7, 5], [7, 4], [7, 3], [7, 2], [6, 2], [5, 2], [4, 2], [4, 3]],
@@ -17684,6 +17885,7 @@ const UNI_ROOMS = [
     sol:[D(1, 5), K('repeater', 2, 5, {dir:1, delay:4}), D(3, 5), K('repeater', 3, 4, {dir:0, delay:4}), K('piston', 3, 3, {dir:3})] },
   // ---------------- Professor Orangutan: an auto farm ----------------
   { id:506, name:'The Pumpkin Patch', check:'farm', host:'Professor Orangutan', give:['observer', 'piston', 'dust'], ban:['lever', 'button', 'plate', 'rblock', 'torch', 'repeater'],
+    teaches:['OBSERVER'], uses:['PISTON','PULSE'], step:['see','alone'], understand:['none-yet'],   // the learning gate (test-concepts.js)
     stemAt:[5, 5], patchAt:[5, 4], out:[[5, 4]], lectern:[1, 7],
     fixed:[K('stem', 5, 5, {patch:0}), K('stone', 4, 5), K('stone', 5, 6),
       K('lever', 1, 0, {demo:true}), K('lamp', 2, 0, {demo:true}), K('observer', 3, 0, {dir:1, demo:true}), K('lamp', 4, 0, {demo:true})],
@@ -17702,6 +17904,7 @@ const UNI_ROOMS = [
     sol:[K('observer', 6, 5, {dir:1}), D(7, 5), D(7, 4), D(7, 3), D(6, 3), K('piston', 5, 3, {dir:2})] },
   // ---------------- Professor Gorilla again (goggles ON): Explosion Class ----------------
   { id:507, name:'Explosion Class', check:'cannon', host:'Professor Gorilla', give:['dust', 'repeater'], ban:['lever', 'button', 'plate', 'rblock', 'torch'],
+    teaches:['TNT','DELAY'], uses:['REPEATER','PULSE'], step:{TNT:['see','alone'], DELAY:'inside'}, understand:['none-yet'],   // the learning gate (test-concepts.js)
     propAt:[1, 8], projAt:[3, 8], targetAt:[9, 8], fireAt:[2, 5], lectern:[1, 1], out:[[9, 8]],
     fixed:[K('uwater', 0, 8), K('tnt', 1, 8, {prop:true}), K('uwater', 2, 8), K('tnt', 3, 8, {proj:true}), K('utarget', 9, 8), K('button', 2, 5, {label:'FIRE!'})],
     why:[{who:'Professor Gorilla', say:'Goggles ON! This is a TNT CANNON. The back TNT sits in WATER. In water, a bang can\'t break blocks. It just PUSHES.', at:[1, 8]},
@@ -17721,6 +17924,7 @@ const UNI_ROOMS = [
     sol:[...col(1, 5, 7), D(3, 5), K('repeater', 3, 6, {dir:2, delay:2}), D(3, 7)] },
   // ---------------- Professor Gibbon: a bubble lift (Java: soul sand under water pushes you up; magma pulls you down) ----------------
   { id:508, name:'Going Up!', check:'lift', host:'Professor Gibbon', give:['soulsand', 'magma'], ban:['lever', 'button', 'plate', 'rblock', 'torch', 'dust', 'repeater'],
+    teaches:['BUBBLE'], uses:[], step:['see','alone'], understand:['none-yet'],   // the learning gate (test-concepts.js)
     hi:8, balcony:[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].flatMap(x => [[x, 0], [x, 1]]), tubeAt:[5, 2], topAt:[5, 1], lectern:[1, 6], out:[],
     walls:[[4, 2, 9], [6, 2, 9]],
     why:[{who:'Professor Gibbon', say:'This tube is full of WATER, all the way up. Water on its own does nothing. You just float.', at:[5, 2]},
@@ -17738,6 +17942,7 @@ const UNI_ROOMS = [
     sol:[K('soulsand', 5, 2)] },
   // ---------------- Sir Reginald: the flying machine (Java: two halves; one pushes, the sticky piston pulls) ----------------
   { id:510, name:'The Flying Machine', check:'fly', host:'Sir Reginald', give:['slime', 'piston', 'spiston', 'observer', 'stone'], ban:['lever', 'button', 'plate', 'rblock', 'torch', 'dust', 'repeater'],
+    teaches:['SLIME','PISTON','OBSERVER'], uses:[], step:{SLIME:['see','alone'], PISTON:'inside', OBSERVER:'inside'}, understand:['none-yet'],   // the learning gate (test-concepts.js)
     pad:[[1, 6], [2, 6], [3, 6], [4, 6], [1, 7], [2, 7], [3, 7], [4, 7]], line:[[7, 6], [8, 6], [9, 6], [10, 6], [7, 7], [8, 7], [9, 7], [10, 7]], startAt:[0, 6], lectern:[1, 1], out:[],
     finish:[7, 8, 9, 10].flatMap(x => [0, 1, 2, 3, 4, 5, 6, 7, 8].map(y => [x, y])),
     fixed:[K('lever', 7, 2, {demo:true}), K('piston', 8, 2, {dir:1, demo:true}), K('slime', 9, 2, {mov:true, demo:true}), K('stone', 9, 3, {mov:true, demo:true})],
@@ -18341,7 +18546,7 @@ function uniHallDecor(){
 // the Temple Rules tablet, as in the temple's secret room (a carved glyph slab), worn away after "Duke of B..."
 const UNI_TABLET_X = 31;
 function uniTabletMesh(){
-  const tab = new THREE.Group(), slab = new THREE.Mesh(cbox(1.6, 1.8, .3), M.glyph); slab.position.y = .9; tab.add(slab);
+  const tab = new THREE.Group(), slab = new THREE.Mesh(cbox(1.6, 1.8, .3), M.gglyph); slab.position.y = .9; tab.add(slab);
   const cv = document.createElement('canvas'); cv.width = 256; cv.height = 256; const x = cv.getContext('2d');
   x.fillStyle = '#6e6a5c'; x.fillRect(0, 0, 256, 256); x.fillStyle = '#efe2b8'; x.textAlign = 'center'; x.textBaseline = 'middle';
   const line = (t, y, fs) => { x.font = `700 ${fs}px "Pixelify Sans", "Atkinson Hyperlegible", sans-serif`; x.fillText(t, 128, y, 240); };
@@ -19261,6 +19466,35 @@ window.__game = {
 };
 window.__game.whyMissing = () => { const out = new Set(); ROOMS.forEach(r => { const b = r.box; for (let x = b.x0; x <= b.x1; x++) for (let y = b.y0; y <= b.y1; y++){ const c = at(x, y); if (c && !WHY[c.t]) out.add(c.t); } }); return [...out]; };   // (test-recover.js: no empty What? cards)
 // test-marks.js: the gold edges on fixed parts, the What? card, and the numbers carved in the machine rooms' walls
+// test-sandstone.js: how well red dust (dark, half and full power) stands out on each of Act 1's floors. A little stage of its own: three
+// floor blocks of one kind with a straight wire across them, under the game's own light (open sky, a roofed room, a torch-lit crypt),
+// seen from where you stand when you look down at your wiring; drawn with and without the wire, so the wire's pixels and the floor
+// right under them are compared. src: a floor kind's name, or 'old:<canvas>' for the old grey tiles (CV.tile) to measure against.
+window.__game.sandstone = {
+  kinds(){ const out = new Set(), I = (x, y) => y*NX + x;   // the floor kinds of every Act 1 room and corridor (where you might wire)
+    ROOMS.forEach(r => { const b = r.box, cells = []; for (let x = b.x0 + 1; x < b.x1; x++) for (let y = b.y0 + 1; y < b.y1; y++) cells.push(I(x, y)); (r.extra || []).forEach(i => cells.push(i));
+      cells.forEach(i => { if (!S.walls[i] && !S.pit[i] && S.elev[i] > 0) out.add(S.fkind[i]); }); });
+    for (let y = 1; y < HUB.y0; y++) for (let x = 1; x < NX - 1; x++){ const i = I(x, y); if (!S.walls[i] && !S.pit[i] && S.elev[i] > 0 && !roomOf(x, y) && !inHall(x, y)) out.add(S.fkind[i]); }
+    const name = k => Object.keys(FK).find(n => FK[n] === k) || String(k); return [...out].sort((a, b) => a - b).map(k => ({k, name:name(k)})); },
+  swatch(src, pw, light){
+    const st = new THREE.Scene(), k = {open:0, roofed:.5, crypt:1}[light] || 0, h = hemi.clone(), s2 = sun.clone();
+    h.intensity = .72 - k*.3; h.color.setRGB(1, 1 - k*.15, 1 - k*.35); s2.intensity = .5 - k*.3; st.add(h); st.add(s2); st.add(s2.target);
+    const own = /^(old:|#)/.test(String(src)), tops = TERRAIN_TOPS(), mat = String(src)[0] === '#' ? lam(cv16(g2 => { g2.fillStyle = src; g2.fillRect(0, 0, 16, 16); })) : own ? lam(CV[src.slice(4)]) : tops[typeof src === 'number' ? src : FK[src]];   // ('#rrggbb': a plain colour, for trying colours out)
+    for (let x = -1; x <= 1; x++) for (let z = -1; z <= 1; z++){ const q = new THREE.Mesh(G.cubeTop, [M.stone, M.stone, mat, M.stone, M.stone, M.stone]); q.position.set(x, -1, z); st.add(q); }
+    const wire = new THREE.Group(), dm = dustMats[pw]; st.add(wire);
+    for (let x = -1; x <= 1; x++){ const c = new THREE.Mesh(cbox(.3, .02, .3), dm); c.position.set(x, .012, 0); wire.add(c); [-1, 1].forEach(sd => { const a = new THREE.Mesh(cbox(.5, .018, .24), dm); a.position.set(x + sd*.25, .011, 0); wire.add(a); }); }
+    const cam = new THREE.PerspectiveCamera(70, 1, .05, 50); cam.position.set(0, 1.62, 1.9); cam.lookAt(0, 0, 0);
+    const W = 160, rt = new THREE.WebGLRenderTarget(W, W), read = () => { renderer.setRenderTarget(rt); renderer.render(st, cam); const px = new Uint8Array(W*W*4); renderer.readRenderTargetPixels(rt, 0, 0, W, W, px); return px; };
+    const was = renderer.getRenderTarget(), withW = read(); wire.visible = false; const without = read(); renderer.setRenderTarget(was); rt.dispose();
+    let n = 0; const d = [0, 0, 0], f = [0, 0, 0];   // the wire's pixels (they changed) and the floor under them
+    for (let i = 0; i < W*W*4; i += 4){ if (Math.abs(withW[i] - without[i]) + Math.abs(withW[i+1] - without[i+1]) + Math.abs(withW[i+2] - without[i+2]) < 6) continue; n++; for (let c = 0; c < 3; c++){ d[c] += withW[i+c]; f[c] += without[i+c]; } }
+    tops.forEach(m => { m.map && m.map.dispose(); m.dispose(); }); if (own){ mat.map && mat.map.dispose(); mat.dispose(); }
+    return {n, dust:d.map(v => n ? v/n : 0), floor:f.map(v => n ? v/n : 0)}; },
+  // which stone this act is drawn in: the floors' pictures, the raised floors' sides, the wall tops (the temple's sandstone only in Act 1)
+  stone(){ const temple = new Set(Object.values(TEMPLE_FLOOR)), side = terrainRoot.children.find(m => m.userData.terrain && Array.isArray(m.material)), lip = wallRoot.children.find(m => m.isInstancedMesh && m.geometry.parameters && m.geometry.parameters.height === .14);
+    return {act:A.act, templeFloors:[...new Set(S.fkind)].filter(k => { const t = TERRAIN_TOPS()[k]; const r = t && temple.has(t.map.image); t && t.dispose(); return r; }), side:side ? (side.material[0].map.image === CV.brick ? 'sandstone' : side.material[0].map.image === CV.gbrick ? 'grey' : 'other') : null,
+      lip:lip ? (lip.material === M.lip ? 'sandstone' : lip.material === M.glip ? 'grey' : 'other') : null, roots:(A.rootSpots || []).map(q => q.slice()), weathered:wallRoot.children.some(m => m.isInstancedMesh && m.material === M.brick2 && m.count > 0)}; }
+};
 window.__game.marks = {
   edges(x, y){ const g = inb(x, y) && cellGroups[y*NX + x]; if (!g) return null; let n = 0; g.traverse(o => { if (o.userData.lockEdge) n++; }); return n; },
   off(v){ LOCK_OFF = !!v; cellKeys.fill('#'); syncVisuals(); }, locked(x, y){ const c = at(x, y); return !!(c && c.locked); },
