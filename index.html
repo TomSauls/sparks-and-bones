@@ -4457,7 +4457,7 @@ const TEMPLE_ROOMS = [
   { id:2, direct:true, ch:1, name:'Power spreads', give:['rblock'], check:'lit', out:[[5,2],[4,3],[6,3],[5,4]],
     fixed:[K('lamp',5,2,{look:'fountain'}),K('lamp',4,3,{look:'fountain'}),K('lamp',6,3,{look:'fountain'}),K('fart',5,4)],
     goal:'One red block, FOUR things to wake up. Where should it go?',
-    hello:'Three dry fountains and a whoopee cushion. One block can touch lots of things at once!',
+    hello:'The Courtyard of Four Fountains! Three fountains... and a whoopee cushion. Nobody mentions the fourth fountain. One block can touch lots of things at once!',
     hint:'Power goes to EVERYTHING touching it, on every side. Find the one spot that touches all four.',
     win:'PARP! One block, four things! Power spreads to every side it touches. The ancients were VERY serious people. Have some Redstone Dust!',
     mc:'In Minecraft, a Redstone Block powers everything touching its sides.',
@@ -4484,7 +4484,7 @@ const TEMPLE_ROOMS = [
   { id:5, need:'lever', ch:1, name:'Parp!', give:['dust','lever'], check:'pulse', count:2, out:[[8,2]],
     fixed:[K('fart',8,2)],
     get goal(){ return `Make the cushion go PARP two times! Wire your Lever to it with dust. Then ${useWord()} the lever: ON is PARP. Then OFF. Then ON again: PARP!`; },
-    hello:'A whoopee cushion! Finally, some SCIENCE. A lever is a switch: ON, OFF, ON...',
+    hello:'A whoopee cushion! In the guards\' bunk room. Finally, some SCIENCE. A lever is a switch: ON, OFF, ON...',
     get hint(){ return `Put the lever down and lay dust from it to the cushion. ${useWord()[0].toUpperCase() + useWord().slice(1)} the lever: ON is a PARP. To parp AGAIN, flip it OFF, then ON.`; },
     win:'PARP! A lever switches power ON and OFF. The smell switches on and NEVER off.',
     mc:'Stick a lever on a block in Minecraft and run dust from it. Flick it to switch things on and off.',
@@ -4501,7 +4501,7 @@ const TEMPLE_ROOMS = [
   { id:7, need:'plate', only:{plate:1}, ban:['rblock','lever','button'], want:'the Pressure Plate has to switch the lamps on', ch:1, name:'One step, three lights', give:['dust','plate'], check:'lit', out:[[3,2],[5,2],[7,2]],
     fixed:[K('lamp',3,2),K('lamp',5,2),K('lamp',7,2)],
     goal:'You get ONE Pressure Plate. Wire it with dust to ALL THREE lamps, then stand on it. Every wire must END pointing INTO a lamp.',
-    hello:'Three lamps. ONE plate. The ancients liked a challenge. One wire can split and go lots of places...',
+    hello:'The Banquet Hall! VERY long. The ancients liked a long dinner. Three lamps, ONE plate. One wire can split and go lots of places...',
     shortLine:'That lamp is lit because the plate TOUCHES it. That works in real Minecraft! But in here, run DUST from the plate into every lamp.',
     hint:'Put a pressure plate down. Run dust from it to all three lamps: the END of each wire must point INTO a lamp. Then stand on the plate.',
     win:'One signal, three places! Wires can split like branches on a tree.',
@@ -4602,7 +4602,7 @@ const TEMPLE_ROOMS = [
     fixed:[K('lever',2,4),K('torch',5,4,{attach:3}),K('lamp',7,4)],
     loose:[D(3,4),K('glass',4,4),D(6,4)],
     goal:'This torch never switches OFF. Make lever ON turn the lamp OFF. One block here is wrong...',
-    hello:'Broken! Look: that block is GLASS. Lovely to look through. But can power get INTO glass?',
+    hello:'A glassblower\'s workshop! Somebody made a block out of GLASS. Lovely to look through. But can power get INTO glass?',
     // a "watch me" first (Tom, 11 Oct): Barold flips the lever so you SEE the glass stay dark, after room 15 showed a stone block glow red
     why:[{say:'Watch the block the torch is stuck on. I\'ll flip the lever ON...', at:[2,4], set:[[2,4,true]]},
       {say:'Nothing! In the last room the stone block glowed RED when power went in. This one is GLASS. Power can\'t get into glass, so the torch never feels it.', at:[4,4]},
@@ -4669,7 +4669,7 @@ const TEMPLE_ROOMS = [
   { id:21, type:'SN', ch:3, name:'Too far!', give:['dust','stone','torch'], check:'table', inputs:[[1,1]], out:[[1,7]], fn:a=>a, showPower:true,
     fixed:[K('lever',1,1),K('lamp',1,7)], walls:[[1,4,2],[2,4,2],[3,4,2],[4,4,2],[5,4,2],[6,4,2],[7,4,2]],
     goal:'Lever ON: the lamp is ON. Lever OFF: the lamp is OFF. Go the long way round.',
-    hello:'Phew, it\'s a long way round. I wonder if power gets tired...',
+    hello:'The Emperor built a wall right through this room. Of course he did. It\'s a long way round. I wonder if power gets tired...',
     nudge:'The power gets tired before the end. What could give it fresh power, part way along?',
     hint:'Power starts at 15. It loses 1 every block. An inverter gives fresh power, but flipped. Two inverters flip it back.',
     tired:'The power got tired! Remember the inverter? What if TWO of them flipped it twice?',
@@ -4682,7 +4682,7 @@ const TEMPLE_ROOMS = [
     fixed:[K('lever',4,1),K('lamp',9,1)], walls:[[5,0,2],[5,1,2],[5,2,2],[5,3,2],[5,4,2],[5,5,2],[5,6,2]],   // (the wall reaches the back wall: a fresh 6-dust wire round its top end used to solve it, 11 Oct)
     loose:[...col(4,2,7), D(5,7), D(6,7), ...col(6,6,1), D(7,1), D(8,1)],
     goal:'You\'ve got a Repeater now! The wire is too long. Put a Repeater in it.',
-    hello:'A Repeater is two inverters squished into one block. It only sends power where its arrow points!',
+    hello:'The Echo Tunnel! HELLO! ...hello! A Repeater is an echo for power: two inverters squished into one block. Fresh power out, and only where its arrow points!',
     hint:'Pick up one dust in the first half of the wire. Put a Repeater in its place. It points the way the power flows.',
     win:'Fresh power at 15! And it only goes one way. Clever slowpoke.',
     mc:'Minecraft repeaters boost a signal back to 15. Right-click one to make it slower!',
@@ -5856,7 +5856,7 @@ function rideEnd(){
 }
 // the twist: the funfair was bait. The ship they want is YOURS
 function funTwist(){
-  beatTalk('twist', [['Captain', 'Arr, what a ride! Thank ye kindly for fixing EVERYTHING.'], ['Captain', 'Now... hand over that lovely SHIP. The one in the sea. The funfair was BAIT, see. Like a worm on a hook. You\'re the fish. No offence. Arr.'], ['Parrot', 'TREASURE!'],
+  beatTalk('twist', [['Gerald', '(the tiniest whisper) ...you did the scare right. Bats, coffin, boo. Nobody ever does it right.'], ['Captain', 'Arr, what a ride! Thank ye kindly for fixing EVERYTHING.'], ['Captain', 'Now... hand over that lovely SHIP. The one in the sea. The funfair was BAIT, see. Like a worm on a hook. You\'re the fish. No offence. Arr.'], ['Parrot', 'TREASURE!'],
     ...(A.snuggles ? [[GUIDE, 'And you found a teddy on the secret way! Keep hold of it.']] : []),
     [GUIDE, '(whispering) Psst! The gate by the station is open now. Through there. I have a PLAN.']], () => { renderCard(); funHostTo(); });
 }
@@ -5944,7 +5944,7 @@ const APE_ROOMS = [
   { id:201, play:true, name:'Do Not Touch', check:'table', inputs:[[2,2],[2,6]], out:[[8,4]], fn:(a, b) => !(a || b),
     fixed:[K('lever',2,2),K('lever',2,6),D(3,2),D(4,2),D(4,3),D(4,4),D(5,4),D(3,6),D(4,6),D(4,5),K('stone',6,4),K('torch',7,4,{attach:3}),K('lamp',8,4)],
     goal:'PLAY TIME! The museum\'s DO NOT TOUCH light already works. Try every mix of the two levers and fill in the table. When is it on?',
-    hello:'Test 1. The DO NOT TOUCH light. The hairless creature will never work it out. Go on. Touch things.',
+    hello:'Test 1. The DO NOT TOUCH light. *writes* "Specimen: hairless. Clever? Unlikely." Go on. Touch things.',
     hint:'Try both OFF. Then just one lever. Then just the other one. Then both. Watch the inverter\'s torch every time.',
     win:'The light is only on when NOBODY touches a lever! Either lever switches the torch OFF. That\'s a NOR gate: NOT this one, NOR that one. You built one for the Landing Legs!',
     mc:'In Minecraft, two wires joined into a block with a torch on it make a NOR gate.',
@@ -5956,7 +5956,7 @@ const APE_ROOMS = [
       {say:'Watch. The lever with the wire goes ON. Power goes INTO the block... and the torch goes OFF. Inverted!', at:[6,4], set:[[2,2,true]]},
       {say:'THIS lever, by me, has no wire. It can\'t reach the block yet. EITHER lever should switch it off. Your turn!', at:[2,6], set:[[2,2,false]]}],
     goal:'The QUIET light should only be on when NOBODY pulls a lever. Either lever on: light off. One lever works. Wire up the other one.',
-    hello:'Test 2. The Quiet Library. SHHH. Any lever at all and the QUIET light goes off. The creature will be baffled.',
+    hello:'Test 2. The Quiet Library. SHHH. Any lever and the QUIET light goes off. *writes* "Specimen is loud. Specimen is also... hm."',
     hint:'The lever with NO wire needs one. Join it onto the other wire, so EITHER lever powers the stone block. The inverter does the rest.',
     win:'Either lever powers the block, and the inverter flips it. NOR! The light is on only when NEITHER lever is on.',
     mc:'A Minecraft NOR gate: two wires joined into one block, a torch on the other side.',
@@ -5964,7 +5964,7 @@ const APE_ROOMS = [
   { id:203, name:'Nobody Moves', give:['dust','stone','torch'], check:'table', inputs:[[2,2],[2,6]], out:[[8,4]], fn:(a, b) => !(a || b),
     fixed:[K('lever',2,2),K('lever',2,6),K('lamp',8,4)],
     goal:'Test 3: the NOBODY MOVES light. It should only be on when NEITHER lever is on. Just two levers and a lamp. Build it!',
-    hello:'Test 3. We took away ALL the wire. The hairless creature will be stuck for WEEKS.',
+    hello:'Test 3. ALL the wire is gone. *writes* "Specimen stuck for weeks." I have written it in INK.',
     hint:'Join both levers\' wires. Point them INTO a stone block. Put a torch on the far side of the block, next to the lamp: an inverter.',
     win:'A NOR gate from nothing at all! Dr Zest is crossing something out on her clipboard.',
     mc:'Minecraft NOR: wires into a block, a torch on the other side.',
@@ -5973,7 +5973,7 @@ const APE_ROOMS = [
   { id:204, play:true, name:'The Banana Vault', check:'table', inputs:[[1,2],[1,6]], out:[[7,4]], fn:(a, b) => !(a && b),
     fixed:[K('lever',1,2),K('lever',1,6),D(2,2),D(2,6),K('stone',3,2),K('stone',3,6),K('torch',4,2,{attach:3}),K('torch',4,6,{attach:3}),...col(5,2,6),D(6,4),K('lamp',7,4)],
     goal:'PLAY TIME! The Banana Vault\'s LOCKED light. Two key levers. Try every mix and fill in the table. What opens the vault?',
-    hello:'Test 4. The Banana Vault. Two keys. Two inverters. One very confused creature.',
+    hello:'Test 4. The Banana Vault. Two keys, two inverters. *taps pencil* Three tests passed. A coincidence. Three coincidences.',
     hint:'Try all four mixes. Watch BOTH torches, not just the light.',
     win:'The LOCKED light only goes off when BOTH keys are on! Each key switches its own torch OFF. That\'s a NAND gate: NOT both.',
     mc:'Two torches on two blocks, their wires joined: a Minecraft NAND gate.',
@@ -5986,7 +5986,7 @@ const APE_ROOMS = [
       {say:'...and the light goes off too. Oops! It should only go off when BOTH keys are on.', at:[7,4]},
       {say:'If EITHER torch is on, the light stays on. The other key needs its own inverter. Your turn!', at:[4,6], set:[[1,2,false]]}],
     goal:'The LOCKED light stays on... until BOTH keys are on. Finish the machine!',
-    hello:'Test 5. The creature MIGHT have been lucky. This one has a missing torch. Ha!',
+    hello:'Test 5. A missing torch. *writes* "Specimen... notices things." That is not a compliment. It is DATA.',
     hint:'Find the block with NO torch. Put a torch on it, then finish its wire to join the other one.',
     win:'Two inverters, wires joined: a NAND gate! Fun fact: you could build a WHOLE computer out of nothing but NAND gates.',
     mc:'In Minecraft, two torches on blocks joined into one wire make a NAND gate.',
@@ -6006,7 +6006,7 @@ const APE_ROOMS = [
   { id:207, play:true, name:'The Landing Light', check:'table', inputs:[[1,2],[9,6]], out:[[5,4]], fn:(a, b) => a !== b,
     fixed:[...XOR_FIXED, ...XOR_CROSS, ...XOR_OUT],
     goal:'PLAY TIME! The landing light has a switch at the top of the stairs and one at the bottom. Try every mix. What flips the light?',
-    hello:'Test 7. Our landing light. Two switches, one light. We\'ve had it for 400 years. Nobody knows how it works.',
+    hello:'Test 7. Our landing light. Two switches, one light. We\'ve had it 400 years. Nobody knows how it works. ...Do YOU? *pencil hovers*',
     hint:'Try both off. Then each one on its own. Then both on. Is the light on when they\'re the SAME, or when they\'re DIFFERENT?',
     win:'Either switch flips the light! ON when the switches are DIFFERENT, OFF when they\'re the same. That\'s an XOR gate. Your stairs at home might have one!',
     mc:'Stair lights in Minecraft houses use XOR, so either switch works.',
@@ -6018,7 +6018,7 @@ const APE_ROOMS = [
       {say:'Now BOTH on. The far lever\'s wire runs into that block, so its torch goes OFF!', at:[7,2], set:[[9,6,true]]},
       {say:'The other half is the same, back to front. It\'s missing its inverter. Your turn!', at:[3,6], set:[[1,2,false],[9,6,false]]}],
     goal:'The ODD ONE OUT light: on when exactly ONE lever is on. Both on, or both off: light off. One half isn\'t finished.',
-    hello:'Test 8. The odd one out. It cannot possibly work out XOR. WE barely worked out XOR.',
+    hello:'Test 8. The odd one out. *whispers* It cannot possibly know XOR. WE barely know XOR. Greg knows XOR. Don\'t tell Greg I said that.',
     hint:'Find the stone block with NO torch on it. Give it one, and run a wire from that torch INTO the lamp.',
     win:'Each half says "this lever AND NOT the other one". Put the two halves together: XOR! On when they\'re DIFFERENT.',
     mc:'This is a real Minecraft XOR: two "this AND NOT that" halves feeding one lamp.',
@@ -6026,7 +6026,7 @@ const APE_ROOMS = [
   { id:209, name:'The Two-Key Door', give:['dust'], check:'table', inputs:[[1,2],[9,6]], out:[[5,4]], fn:(a, b) => a !== b,
     fixed:XOR_FIXED, naive:XOR_OUT,
     goal:'The way out! The door light must be on when exactly ONE key is on. Both keys: it stays off. Every part is here. The wires are not.',
-    hello:'Test 9. The Two-Key Door. One key opens it. TWO keys keep it shut. The creature will NEVER escape. Probably.',
+    hello:'Test 9. The Two-Key Door. One key opens it, TWO keep it shut. *writes* "If specimen passes, I owe Greg a banana." I never owe Greg a banana.',
     hint:'Each lever has its own row. Wire each lever into the OTHER row\'s last block. Then wire the two torches by the lamp into it.',
     tired:'Both keys light it? Then each half needs to know about the OTHER key. Run each lever\'s wire to the far half\'s stone block.',
     win:'The door light works! Each half watches the OTHER key. You built XOR yourself. Dr Zest has fainted. (She\'s fine.)',
@@ -6037,7 +6037,7 @@ const APE_ROOMS = [
     fixed:[K('lever',1,1),K('lever',1,3),K('lever',1,6),K('stone',4,2),K('stone',8,4),K('torch',8,3,{attach:2}),K('lamp',9,3)],
     loose:[D(2,1),D(3,2),D(6,2),D(6,3),D(6,4),D(7,4)],
     goal:'Form 27B says: you may pass with a STAMP or a BANANA... but NOT if General Grumbletum is looking. Make the PASS light do that.',
-    hello:'Test 10. Form 27B. Stamp OR banana, AND NOT General Grumbletum. Very complicated. We needed a lie down.',
+    hello:'Test 10. Form 27B. Stamp OR banana, AND NOT the General. It took the Institute a YEAR. You have this afternoon. Greg has a banana. Don\'t ask.',
     hint:'Stamp OR banana: join their wires into the first block, with an inverter after it. The General\'s wire goes into the LAST block, so he switches it off.',
     win:'(Stamp OR banana) AND NOT the General! You turned a rule into a machine. Real computers do that all day.',
     mc:'Big Minecraft machines are just little gates plugged together, like this one.',
@@ -6047,7 +6047,7 @@ const APE_ROOMS = [
     fixed:[K('lever',1,2),K('lever',1,6),K('lever',8,6),K('stone',3,2),K('stone',3,6),K('torch',4,2,{attach:3}),K('torch',4,6,{attach:3}),K('stone',7,4),K('lamp',8,3)],
     loose:[D(2,2),D(2,6),D(5,2),D(5,3),D(5,4),D(5,5),D(5,6),D(8,5)],
     goal:'The Grand Panel of Very Senior Thinkers: you pass with a stamp AND a banana. OR if the King says so. Make the light do that.',
-    hello:'The FINAL test. The Grand Panel. Stamp AND banana, OR the King. Nobody has ever passed. We have never let anybody try.',
+    hello:'The FINAL test. The Grand Panel. Stamp AND banana, OR the King. Nobody has ever passed. *quietly* I crossed out "specimen". It says "colleague" now. In INK.',
     hint:'The stamp-and-banana side is an AND gate, like the General\'s Safe: it needs its last inverter. Then join the King\'s lever wire into the same lamp. Two ways in = OR.',
     win:'(Stamp AND banana) OR King! The Grand Panel is speechless. They\'ve all put their thinking caps on. (They\'re buckets.)',
     mc:'AND and OR in one Minecraft machine: you just built real computer logic.',
@@ -6059,7 +6059,7 @@ const APE_ROOMS = [
     fixed:[K('prail',1,6),K('lever',1,7),K('rail',2,6),K('rail',3,6),K('rail',4,6),K('prail',5,6),K('prail',6,6),K('rail',7,6),K('rail',8,6),K('rail',9,6)],
     carts:[[1,6]], launch:[1,7], station:[9,6], out:[[9,6]],
     goal:'Get the crystal cart all the way to the end of the track. Gold rails: power ON = GO. Power OFF = STOP!',
-    hello:'Welcome to the Crystal Mine! Foreman Digby. A naked mole-rat. That\'s the real name, I didn\'t pick it. The start lever sends the cart. It always stops halfway. Gold rails, see? Lever OFF and my diggers push it back.',
+    hello:'Welcome to the Crystal Mine! Foreman Digby. A naked mole-rat, didn\'t pick the name. You\'re CREW now. Crew lays track. The start lever sends the cart. It always stops halfway. Gold rails, see? Lever OFF and my diggers push it back.',
     hint:'The cart stops on the gold rails in the middle. Gold rails with NO power are brakes. Give them power: a lever right next to them!',
     stuck:'It stopped on the gold rails! Gold rails with no power are BRAKES. Flip the start lever OFF to get the cart back.',
     win:'All aboard! Powered gold rails go WHOOSH. Unpowered ones go SCREECH. That\'s a powered rail.',
@@ -6143,7 +6143,7 @@ const APE_ROOMS = [
     hint:'Make one cart set off a little LATER. A repeater in a wire makes the power wait a moment. Which cart should wait?',
     tie:'They got there at the SAME time! Red has to be first.',
     wrongOrder:'Blue got there first! The RED one has to be first.',
-    win:'Red, then blue! A repeater delay put them in order. Track piece 4 is laid: the Crystal Express is READY!',
+    win:'Red, then blue! A repeater delay put them in order. Track piece 4 is laid: the Crystal Express is READY! The Queen looked for a long time. "...Acceptable. Take a crystal. Take two. Don\'t tell the General."',
     mc:'Repeaters delay power in Minecraft: perfect for sending carts one after another.',
     naive:[K('repeater',2,3,{dir:0,delay:4})],
     sol:[D(2,3),K('repeater',2,5,{dir:2,delay:4})] }
@@ -6639,6 +6639,8 @@ function apeBeatsFrame(){
   // Sir Reginald stays on the ship ("the air disagrees with me"), and radios his warnings just too late
   const calm = (A.clock || 0) - (A.apeSolvedAt || 0) > 9000 || !!A.podArrive;   // a while after the last test was passed (or just through a portal)
   if (A.solved.has(201) && calm && beat('greg')){ dlgStart([['Greg', 'Take me to your— oh! Sorry. Habit. Hello! I\'m Greg. I\'m an ALIEN. A real one!'], ['Greg', 'I do the mopping.']]); return; }
+  if (A.solved.has(205) && calm && beat('gregWire')){ dlgStart([['Greg', 'I wired the vault. And the library. Nobody asked.'], [GUIDE, 'YOU wired them? Greg, you\'re a GENIUS.'], ['Greg', '...I do the mopping.']]); return; }
+  if (A.solved.has(218) && calm && beat('gregLoad')){ dlgStart([['Greg', 'Loaded. All of them. I\'m good at loading.'], ['Digby', 'Best loader I\'ve had. Doesn\'t talk much. Doesn\'t need to.'], ['Greg', '...']]); return; }
   if (A.solved.has(202) && calm && beat('sticker')){ dlgStart([['Dr Zest', 'Here is your VISITOR sticker. Hold still. *prod* *prod*'], ['You', 'Get your STINKY paws off me!'], ['Dr Zest', '*sniffs her paw* ...Tuesday WAS a while ago. *writes* "Specimen is RUDE. Also correct."']]); return; }
   if (A.solved.has(203) && calm && beat('radio1')){ dlgStart([['Radio', '*crackle* Sir Reginald here, on the ship. I\'m staying put. The air out there disagrees with me.'], ['Radio', 'Ah. Did I mention...? The levers here are upside down. *blub*'], [GUIDE, '...Why does his radio go "blub"?']]); return; }
   // General Grumbletum guards the plaza with his Big Book of Traps (upside down)
@@ -9254,7 +9256,7 @@ function roomRestart(){
   const r = A.rt && A.rt.room;
   if (!r || r.ship || !ROOMS.includes(r)){ resetRoom(); return true; }   // (the Skull's chamber and its machine rooms: the old reset)
   plogEvent('reset');
-  const s = advSerialize(), inside = (x, y) => recapIn(r, x, y);
+  const s = advSerialize(), inside = (x, y) => recapIn(r, x, y) || !!(r.extra && r.extra.has(y*NX + x));   // (and its wings: shapeRoom)
   s.cells = (s.cells || []).filter(c => !inside(c[1], c[2]));
   if (!A.solved.has(r.id)) (r.loose || []).forEach(f => s.cells.push([f.t, f.x, f.y, f.dir ?? 0, f.delay ?? 1, f.attach ?? -1, f.on ? 1 : 0]));
   s.levers = Object.fromEntries(Object.entries(s.levers || {}).filter(([k]) => { const [x, y] = k.split(',').map(Number); return !inside(x, y); }));
@@ -13469,11 +13471,19 @@ function resetRoom(){
     S.lastSnap = ''; syncVisuals(); advSaveSoon(); return;
   }
   const r = A.rt && A.rt.room; if (!r) return;
-  const b = r.box;
-  for (let x=b.x0+1;x<b.x1;x++) for (let y=b.y0+1;y<b.y1;y++){ const c = at(x,y); if (c && !c.locked) setCell(x, y, null); }
+  const b = r.box, mine = (x, y) => { const c = at(x,y); if (c && !c.locked) setCell(x, y, null); };
+  for (let x=b.x0+1;x<b.x1;x++) for (let y=b.y0+1;y<b.y1;y++) mine(x, y);
+  if (r.extra) r.extra.forEach(i => mine(i % NX, (i / NX) | 0));   // and the room's wings (shapeRoom): parts put there go too
   if (!A.solved.has(r.id)) (r.loose || []).forEach(f => setCell(f.x, f.y, makeCell(f.t, f.x, f.y, f)));
   if (r.tntAt && !A.solved.has(r.id) && !at(...r.tntAt)) setCell(...r.tntAt, makeCell('tnt', ...r.tntAt, {locked:true}));
   r.fixed.forEach(f => { const c = at(f.x, f.y); if (c && c.t === 'lever') c.on = !!f.on; });
+  // what the room holds besides its blocks goes back too (as a fresh load has it): carts at their start, standing still and
+  // facing nowhere (a cart left nudged at home set off late: room 219's red cart came in after the blue one); a counting tray
+  // at its first number; a classroom's pistons in, the blocks they pushed back where they began, Gloop back at the start
+  // (left on the trap's plate, Gloop fired the gate the moment the answer went in: "Too soon!" for ever)
+  (S.carts || []).forEach(k => { if (k.room === r.id) cartHome(k); });
+  if (A.act === MAYA_ACT && r.count && MAYA_ROOMS.includes(r)) mayaSetCount(r, mayaStart(r));
+  if (A.act === UNI_ACT && UNI_ROOMS.includes(r)) uniRoomBack(r);
   S.lastSnap = ''; syncVisuals(); advSaveSoon(); enterArea(r, r.id);
 }
 
@@ -16195,7 +16205,7 @@ const MAYA_ROOMS = [
     hello:'The market! Every price is written on the stone in dots and bars. Can you write the prices for us?',
     hint:'Twenty is one dot in the TWENTIES row, and the SHELL below. Thirty-three is twenty, then thirteen: two bars and three dots.',
     miss:(n, d) => d.why === 'noshell' ? 'The bottom row is empty. Write NOTHING there with the shell!' : d.why === 'both' ? 'The shell means nothing. It can\'t sit with dots or bars!' : null,
-    win:'You can write Maya numbers! Cacao beans really were money. And they made a frothy chocolate DRINK from them.',
+    win:'You can write Maya numbers! Cacao beans really were money. And they made a frothy chocolate DRINK from them. Few travellers ever learn our numbers. You did it in a morning.',
     mc:'You can make a number sign in Minecraft with levers and lamps, just like this one.',
     sol:[] },
   // ---------------- the Monkey Engineers' workshop: lamp code (binary) (Bananahead, an apprentice) ----------------
@@ -17912,6 +17922,14 @@ function uniTick(){
   A.uniBtn = A.uniBtn || {};
   UNI_ROOMS.forEach(r => { if (!r.resetAtW) return; const c = at(...r.resetAtW), on = !!(c && c.timer > 0); if (on && !A.uniBtn[r.id] && !A.solved.has(r.id)) uniTrapReset(r, true); A.uniBtn[r.id] = on; });
 }
+// a classroom back as it began: the piston heads in, every piston off, the blocks they pushed (and pulled) back where they started
+function uniPistonsBack(r){
+  uniCells(r, c => c.t === 'phead').forEach(c => setCell(c.x, c.y, null)); uniCells(r, c => UNI_PISTON.has(c.t)).forEach(c => c.on = false);
+  uniCells(r, c => c.mov).forEach(c => { const f = r.fixed.find(q => q.t === c.t && q.mov && (q.pp ? c.pp : q.hidden ? c.hidden : !c.pp && !c.hidden && c.demo === q.demo)); if (f && (f.x !== c.x || f.y !== c.y) && !at(f.x, f.y)){ setCell(c.x, c.y, null); c.x = f.x; c.y = f.y; setCell(f.x, f.y, c); } });
+  uniTallFix();
+}
+// starting a classroom again (resetRoom): that, and Gloop back at the start of the hop
+function uniRoomBack(r){ uniPistonsBack(r); if (r.check === 'trap') uniTrapReset(r); }
 function uniTrapReset(r, said){
   const m = A.uniMob; if (m && m.room === r){ m.i = 0; m.dir = 1; [m.x, m.y] = r.routeW[0]; m.t = 0; m.wait = 0; m.frozen = false; m.px = m.x; m.py = m.y; }
   const blk = uniCells(r, c => c.mov && c.hidden)[0], [kx, ky] = r.pocketAtW;
@@ -19038,9 +19056,7 @@ const UNI_TEST = {
   met(){ return !!A.uniMet; }, done(){ return !!A.uniDone; }, cine(){ return !!A.uniCine; }, finale(){ return A.uniFinale ? A.uniFinale.stage : null; }, beats(){ return [...(A.uniBeats || [])]; },
   headCell(){ return A.headmonkey ? cellAtWorld(A.headmonkey.position.x, A.headmonkey.position.z) : null; }, demo(){ return DLG.on && DLG.why ? DLG.why.id : 0; },
   room(id){ const r = uniRoom(id); return r && {id:r.id, check:r.check, naive2:r.naive2 || null, why:!!r.why, doorAt:r.doorAtW, leverAt:r.leverAtW, bellAt:r.bellAtW, gateAt:r.gateAtW, pen:r.penW, box:r.box, host:r.host, goal:r.goal, sign:UNI_SIGN[r.id]}; },
-  clear(id){ const r = uniRoom(id); uniCells(r, c => !c.locked || c.t === 'phead').forEach(c => setCell(c.x, c.y, null)); uniCells(r, c => UNI_PISTON.has(c.t)).forEach(c => c.on = false);
-    uniCells(r, c => c.mov).forEach(c => { const f = r.fixed.find(q => q.t === c.t && q.mov && (q.pp ? c.pp : q.hidden ? c.hidden : !c.pp && !c.hidden && c.demo === q.demo)); if (f && (f.x !== c.x || f.y !== c.y) && !at(f.x, f.y)){ setCell(c.x, c.y, null); c.x = f.x; c.y = f.y; setCell(f.x, f.y, c); } });
-    uniTallFix(); syncVisuals(); return true; },
+  clear(id){ const r = uniRoom(id); uniCells(r, c => !c.locked).forEach(c => setCell(c.x, c.y, null)); uniPistonsBack(r); syncVisuals(); return true; },
   exercise(id){ return uniExercise(id); },
   solve(id){ const r = uniRoom(id); if (r && !A.solved.has(id)) solveRoom(r); return A.solved.has(id); },
   rt(){ const t = A.rt || {}; return {room:t.room && t.room.id, sides:t.sides, last:t.last, ph:t.ph, inSeen:t.inSeen, wasIn:t.wasIn, caughtT:t.caughtT, said:t.said, picks:A.uniPicks}; },
